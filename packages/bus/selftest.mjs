@@ -169,6 +169,22 @@ try {
   const gotLegacy = bus5.pump({ as: 'bob', reader: true })
   check('老信：没标 mode 的标成"[旧信·未标模式]"（不冒充在线件）',
     gotLegacy.some((x) => String(x.handled ?? '').startsWith('[旧信·未标模式]')), JSON.stringify(gotLegacy.map((x) => x.handled)))
+  // ⑫ ★"核心不认识任何类型标识" ⇒ 默认类型必须是**配置**，不是写死在核心里的常量（独立审计 2026-10-05）
+  check('类型：显式给 ⇒ 用它', (() => {
+    const b = createBus({ root: join(tmp, 'type-explicit'), services: { roster } })
+    b.hello({ as: 'alice' }); b.hello({ as: 'bob' })
+    return b.send({ as: 'alice', to: 'bob', type: 'club', subject: 'x', body: '显式类型：应当照用（正文有货，不是回执）' }).type === 'club'
+  })())
+  check('类型：没给 ＋ 没配默认（defaultType: null）⇒ **拒发**（不替调用方猜）', (() => {
+    const b = createBus({ root: join(tmp, 'type-none'), defaultType: null, services: { roster } })
+    b.hello({ as: 'alice' }); b.hello({ as: 'bob' })
+    try { b.send({ as: 'alice', to: 'bob', subject: 'x', body: '没写类型又没有默认类型 ⇒ 应当拒（正文有货）' }); return false } catch (e) { return /没写类型/.test(e.message) }
+  })())
+  check('类型：配了默认 ⇒ 用它', (() => {
+    const b = createBus({ root: join(tmp, 'type-default'), defaultType: 'club', services: { roster } })
+    b.hello({ as: 'alice' }); b.hello({ as: 'bob' })
+    return b.send({ as: 'alice', to: 'bob', subject: 'x', body: '配了默认类型 club ⇒ 应当用它（正文有货，不是回执）' }).type === 'club'
+  })())
 } catch (err) {
   check('自测没有抛异常', false, err && err.stack ? err.stack.split('\n')[0] : err)
 }

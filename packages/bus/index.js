@@ -30,6 +30,10 @@ const DEFAULTS = {
   maxBody: 64 * 1024,           // 正文上限（字节）
   requireHello: true,           // 要不要握手（协议不许"像 UDP 那样"直接发）
   helloMaxAgeMs: 24 * 3600 * 1000,
+  // ★默认邮件类型：**这是配置** ✗，不是写死在核心里的常量 —— 独立审计 2026-10-05 指出
+  //   "核心不认识任何类型标识"与这里硬编码 `'direct'` 矛盾 ⇒ 挪进 config ✓。
+  //   配成 `null` ⇒ **不替调用方猜类型** ✗：没显式给 type 的信直接被拒（宁可拒，不替人决定 ✓）。
+  defaultType: 'direct',
 }
 
 const sha256 = (s) => createHash('sha256').update(String(s), 'utf8').digest('hex')
@@ -210,7 +214,12 @@ export function createBus(config = {}) {
   }
   function send(letter = {}) {
     ensure()
-    const { as, to, subject = '', body, mode, type = 'direct', re, force = false } = letter
+    const { as, to, subject = '', body, mode, type: typeIn, re, force = false } = letter
+    // ★类型：显式给 ⇒ 用它；没给 ⇒ 用配置里的默认（默认也配成 null ⇒ **拒发**，不替调用方猜 ✓）
+    const type = typeIn ?? cfg.defaultType
+    if (type === undefined || type === null || type === '') {
+      throw new Error('这封信没写类型，而本邮局没有配默认类型（`defaultType: null`）—— 请显式给一个已注册的类型，或把默认类型配进 config')
+    }
     if (!as) throw new Error('send 需要 as（发件人）')
     if (String(body ?? '').trim() === '') {
       throw new Error('正文为空 —— 拒发。空信封会被投递成功（收端只看到空壳）；请检查正文参数是否指到了空文件。')

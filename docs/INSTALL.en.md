@@ -69,6 +69,20 @@ npx dsh-whale-post-cli pump --as bob # read through bob's mailbox once (★this 
 ★To keep undeliverable mail in the mailbox, use `keep`: `keep: true` (look but do not consume) or `keep: (letter) => boolean` (decide per letter); from the command line, pass `--keep`. ★To consume, you have to **declare yourself a reader**: `reader: true` (that is what the CLI does when it prints letters to the terminal).
 ★This is the **receiving half** of "**mail may arrive late, but it never goes missing**" — without it, letters get silently eaten while the recipient is away.
 
+★★**The one wiring point for a real engine: the `sessionOf` probe (read this before you wire anything up)**
+★The core **does not know about "engines" or "sessions"** — it only knows one probe function:
+```js
+sessionOf(id) => ({ live: true, inject: (text) => { /* deliver this text into that session */ } })   // or undefined
+```
+★Two equivalent ways to wire it:
+* `createBus({ probes: { sessionOf } })` — hand it straight to the core;
+* configure `sessionOf` on `dsh-whale-post-deliver` — the core picks up `services.deliver.sessionOf` automatically.
+
+★Three rules (do not mix them up):
+1. ★**It only decides whether an online letter can actually be handed over** — if the probe says "no such session" (or nothing is wired), the online letter is judged **`kept`**: **it stays in `inbox/` and waits** (**late, never lost**);
+2. ★**`pump`'s permission to consume does NOT consult it** — consuming requires `inject` or an explicit `reader: true` (**"the session is alive" ≠ "the letter reached a reader"**);
+3. ★**If you pass `inject`, it is really called; if it throws, nothing is consumed** — a letter that cannot be handed over is never treated as handed over.
+
 ## 4. Packages and interfaces at a glance
 | Package | Role | Interfaces provided / used |
 |---|---|---|
