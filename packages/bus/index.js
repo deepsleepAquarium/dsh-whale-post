@@ -136,11 +136,19 @@ export function createBus(config = {}) {
   function saveState(as, s) {
     ensure()
     const disk = loadState(as)
+    // ★`recent` 必须**去重合并** ✗：原来直接拼接 ⇒ claimSeq 与收尾各存一次 ⇒ 每发一封信翻四倍
+    //   （独立审计 2026-10-05 实测：#1=1 → #2=5 → #3=21 → #4=85 → #5=200 撞上限），
+    //   而闸的"同对 N 分钟 M 封"正是数这个列表 ⇒ 第 5 封就被误拒。
+    const rkey = (r) => `${r && r.to}|${r && r.atMs}|${(r && r.subject) ?? ''}`
+    const seenKeys = new Set()
+    const recent = [...(disk.recent ?? []), ...(s.recent ?? [])]
+      .filter((r) => { const k = rkey(r); if (seenKeys.has(k)) return false; seenKeys.add(k); return true })
+      .slice(-200)
     const merged = {
       as,
       nextSeq: Math.max(Number(disk.nextSeq ?? 1), Number(s.nextSeq ?? 1)),
       seen: [...new Set([...(disk.seen ?? []), ...(s.seen ?? [])])].slice(-2000),
-      recent: [...(disk.recent ?? []), ...(s.recent ?? [])].slice(-200),
+      recent,
     }
     atomicWrite(paths().state(as), JSON.stringify(merged, null, 2))
     return merged
@@ -180,7 +188,12 @@ export function createBus(config = {}) {
     const g = R && typeof R.group === 'function' ? R.group(to) : undefined
     const all = list().filter((id) => id !== as)
     if (to === 'all') return all
-    if (g) return g.map(String).filter((id) => id !== as)
+    if (g) {
+      // ★组员必须**在名单里**才投（独立审计 2026-10-05：原来"幽灵组员"也能收到信 ⇒ 会往名单外的信箱写文件 ✗）
+      const known = g.map(String).filter((id) => has(id) && id !== as)
+      if (known.length === 0) throw new Error(`组「${to}」里没有已知成员（组员必须先出现在名单里）—— 不往名单外的信箱投信`)
+      return known
+    }
     if (has(to)) return [to]
     if (as === to) throw new Error(`不能给自己发信（${to}）—— 自己给自己写笔记不必过邮局`)
     if (force) return [to]                      // --force 只豁免"没握过手"，不豁免"名字写错"
@@ -227,6 +240,7 @@ export function createBus(config = {}) {
       const r = gate.check({ as, to, targets, subject, body, mode: m, type, re, force, hop: hop0, groupMembers })
       if (r && typeof r === 'object' && r.reject) throw new Error(`闸拒发：${r.reason}`)
     }
+    // ★发号放在**闸之后**（独立审计 2026-10-05）：被拒的信不该烧掉一个序号 ⇒ 水位与真实发信量对得上
     const seq = claimSeq(as)
     const id = `${Date.now().toString(36)}-${as}-${String(seq).padStart(4, '0')}-${randomUUID().slice(0, 8)}`
     const hop = hop0
@@ -264,15 +278,20 @@ export function createBus(config = {}) {
   //     · `keep: true` ⇒ 全都不消费（只看一眼）
   //     · `keep: false` ⇒ **显式**要求消费（调用方自己保证读得到）
   //     · `keep: (env) => boolean` ⇒ 逐封判（和我们线上邮差插件的写法一致）
-  //   `reader: true` ＝ "我就是那个读者"（例如 CLI 把信打进终端）⇒ 允许消费
+  //   `reader: true` ＝ "我就是那个读者，我自己负责把信交出去"（例如 CLI 把信打进终端）
+  //   `inject: (env) => void` ＝ ★**真的注入回调**（独立复核 2026-10-05 指出"名不副实"后改的）：
+  //     给了它，`pump` 就**真的**把信交给它；★**它抛异常 ⇒ 不消费**（信原样留着）
+  //     —— 与 `deliver` 里那条保命规则同一条：**交不出去的信，绝不许当成交出去了** ✗。
+  //   ⚠️ **光有"活体会话"不构成消费理由** ✗ —— 会话活着，不等于信交到了读者手里。
   function pump({ as, keep, reader = false, inject } = {}) {
     ensure()
     if (!as) throw new Error('pump 需要 as（收件人）')
+    const hasInject = typeof inject === 'function'
     const sessionOf = probes.sessionOf ?? services.deliver?.sessionOf
     const liveNow = () => {
       try { const s = typeof sessionOf === 'function' ? sessionOf(as) : undefined; return !!(s && s.live) } catch { return false }
     }
-    const canRead = reader === true || typeof inject === 'function' || liveNow()
+    const canRead = reader === true || hasInject
     const keepThis = (env) => {
       if (keep === true) return true
       if (keep === false) return false
@@ -298,10 +317,30 @@ export function createBus(config = {}) {
         out.push({ ok: false, file: f, id: env.id, why: probs.join('；') + ' ⇒ 已挪进"退信"' })
         continue
       }
+      // ★只处理"信"（独立审计 2026-10-05：hello／ack 信封原来会被当普通信消费 ✗）
+      if (env.kind !== 'msg') {
+        atomicWrite(join(paths().dead, f), JSON.stringify(env, null, 2))
+        unlinkSync(p)
+        out.push({ ok: false, file: f, id: env.id, why: `这不是一封信（kind=${env.kind}）⇒ 已挪进"退信"` })
+        continue
+      }
+      // ★收件人核对（独立审计 2026-10-05：原来不看 `to` ⇒ 别人掉进我信箱的信会被我消费并回执 ✗）
+      //   认两种：直接点名我；发给"我所属的组"。**没有 roster 接口时跳过**（认不了组，不冤枉信）
+      const rosterHasGroup = services.roster && typeof services.roster.group === 'function'
+      const memberOfGroup = rosterHasGroup ? services.roster.group(env.to) : undefined
+      const isMine = env.to === as || (Array.isArray(memberOfGroup) && memberOfGroup.includes(as))
+      if (!isMine && rosterHasGroup) {
+        atomicWrite(join(paths().dead, f), JSON.stringify(env, null, 2))
+        unlinkSync(p)
+        out.push({ ok: false, file: f, id: env.id, why: `这封信不是给你的（to=${env.to}）⇒ 已挪进"退信"` })
+        continue
+      }
       const st = loadState(as)
-      const dup = (st.seen ?? []).includes(env.id)
+      // ★幂等：`seen/` 目录**本身就是永久证据**（状态数组会被截断/丢）—— 两边都认
+      //   （独立审计 2026-10-05：只靠 `seen` 数组 ⇒ 重投同一封就会二次交付 ✗）
+      const dup = (st.seen ?? []).includes(env.id) || existsSync(join(paths().seen(as), f))
       const mode = env.mode ?? 'online'                    // 老信没有 mode ⇒ 按"在线"（不把旧信闷死）
-      const label = mode === 'offline' ? '[离线]' : '[在线]'
+      const label = env.mode === undefined ? '[旧信·未标模式]' : (mode === 'offline' ? '[离线]' : '[在线]')
       const row = {
         ok: true, file: f, id: env.id, from: env.from, subject: env.subject, body: env.body,
         mode, dup, handled: `${label} ${env.from} → ${as}：《${env.subject ?? ''}》`,
@@ -309,9 +348,21 @@ export function createBus(config = {}) {
       if (keepThis(env)) {
         out.push({
           ...row, kept: true,
-          why: keep === true ? 'keep=true：只看不消费' : '★没有读者（没有活体会话／没给 inject）⇒ 不投也不消费，原样留在信箱里',
+          why: keep === true ? 'keep=true：只看不消费'
+            : `★没有读者（没给 inject、也没声明 reader${liveNow() ? '；**有活体会话也不算**：会话活着不等于信交到了读者手里' : ''}）⇒ 不投也不消费，原样留在信箱里`,
         })
         continue
+      }
+      // ★真注入（独立复核指出 `inject` 原本"名不副实"）：**交到读者手里才算数**；
+      //   抛异常 ⇒ **不消费** —— 信原样留着，下次再来（不制造"偶发丢信"）
+      if (hasInject) {
+        try {
+          inject(env)
+        } catch (err) {
+          const msg = String(err && err.message ? err.message : err)
+          out.push({ ...row, kept: true, injectError: msg, why: `★注入抛异常 ⇒ **不消费**（信留在信箱里，没搬 seen、没写 ack）：${msg}` })
+          continue
+        }
       }
       atomicWrite(join(paths().seen(as), f), JSON.stringify(env, null, 2))
       unlinkSync(p)
@@ -320,12 +371,19 @@ export function createBus(config = {}) {
         atomicWrite(join(paths().ack(env.from), `${env.id}.${as}.ack.json`), JSON.stringify(ack, null, 2))
         saveState(as, { ...st, seen: [...(st.seen ?? []), env.id] })
       }
-      out.push({ ...row, kept: false })
+      out.push({ ...row, kept: false, ...(hasInject ? { injected: true } : {}) })
     }
     return out
   }
 
-  const api = { apiVersion, send, pump, verify, hello, paths, root, keyHex, digest, seal, sign, loadState }
+  /** 把一封信排成人读的样子（给 inject 回调／CLI 用 —— 免得每个人各写一份） */
+  const format = (env) => [
+    `【${(env.mode ?? 'online') === 'offline' ? '离线' : '在线'}邮件】${env.from} → ${env.to}`,
+    env.subject ? `主题：${env.subject}` : '',
+    env.body,
+  ].filter(Boolean).join('\n')
+
+  const api = { apiVersion, send, pump, verify, hello, format, paths, root, keyHex, digest, seal, sign, loadState }
   return api
 }
 

@@ -66,6 +66,19 @@ try {
   const day = g9.localDay(new Date('2026-10-05T02:00:00').getTime())
   check('日界：凌晨 2 点算前一天（09:00 分界）', day === '2026-10-04', day)
 
+  // ⑨ ★别让闸的类型表变成"第二套真相"（独立审计 2026-10-05）：不在桶表里的类型 ⇒ 落**默认桶**，不许拒
+  const g10 = createGate({ root: tmp, quota: { defaultLimit: 7, types: { direct: { label: 'direct', limit: 100 } } } })
+  check('新类型：不在桶表里 ⇒ 落默认桶、放行（不拒）', g10.check({ as: 'helen', to: 'bob', targets: ['bob'], mode: 'online', type: 'internal-note', body: '新注册的类型不该被闸拒掉（正文有货，不是回执）' }) === 'pass')
+  const rec9 = g10.record({ as: 'helen', to: 'bob', targets: ['bob'], mode: 'online', type: 'internal-note', body: '新类型走默认桶' })
+  check('新类型：记在它自己的桶里、用默认额度', rec9.bucket === 'internal-note' && rec9.limit === 7, JSON.stringify(rec9))
+
+  // ⑩ ★回执闸中英都认（独立审计：原来只认中文 ⇒ 英文回执成了绕过闸的后门）
+  for (const t of ['got it — thanks, all clear', 'OK', 'noted, thanks']) {
+    const r = gate.check(L({ as: 'irene', body: t }))
+    check(`回执闸（英文）：拒「${t}」`, r && r.reject === true && /纯回执/.test(r.reason), JSON.stringify(r))
+  }
+  check('回执闸：真内容（含事实）放行', gate.check(L({ as: 'irene', body: 'got it — 我已经把第 3 项改完了，另外发现第 7 项也有问题' })) === 'pass')
+
   // ⑧ 台账落盘
   check('台账：state/quota-<谁>.json 落盘了', existsSync(join(tmp, 'state', 'quota-erin.json')))
 } catch (err) {

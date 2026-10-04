@@ -46,6 +46,11 @@ try {
   // ⑦ 核心不认识"会话"概念：不给探针 ⇒ 一律 kept（保守，信不丢）
   const bare = createDeliver({})
   check('没有会话探针 ⇒ 一律 kept（保守优先）', bare.deliver(letter({ mode: 'online' }), { targets: ['bob'] }) === 'kept')
+
+  // ⑧ ★"活着"与"能投"是两件事（独立审计 2026-10-05 的变异点）：探针说 `live:false` 却给了 inject
+  //    ⇒ 仍**不许**投 —— 不许拿"有 inject"替代"会话活着"
+  const halfLive = createDeliver({ sessionOf: () => ({ live: false, inject: () => { throw new Error('不该被调用') } }) })
+  check('live:false 但给了 inject ⇒ 仍 kept（不许用 inject 顶替"活着"）', halfLive.deliver(letter({ mode: 'online' }), { targets: ['bob'] }) === 'kept')
 } catch (err) {
   check('自测没有抛异常', false, err && err.stack ? err.stack.split('\n')[0] : err)
 }

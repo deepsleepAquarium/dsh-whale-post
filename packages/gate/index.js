@@ -31,7 +31,9 @@ export const apiVersion = 1
 const DEFAULTS = {
   loop: {
     ackMaxBytes: 40,
-    ackOnly: /^(已读|收到|好的|好|行|ok|OK|Ok|同意|赞成|谢谢|多谢|不客气|辛苦了|辛苦|明白|了解|知道了|没问题|嗯|赞|thx|thanks|ack|roger)$/,
+    // ★中英都认（独立审计 2026-10-05：原来只认中文 ⇒ 英文回执成了绕过闸的后门 ✗）；
+    //   判定方式＝**把空白标点去掉后整串由"回执词"拼成** ⇒ `got it — thanks, all clear` 也拦得住
+    ackOnly: /^(已读|收到|好的|好|行|ok|同意|赞成|谢谢|多谢|不客气|辛苦了|辛苦|明白|了解|知道了|没问题|嗯|赞|thx|thanks|thankyou|manythanks|ack|roger|copy|noted|understood|sure|np|gotit|willdo|allclear|noworries)+$/i,
     pairWindowMs: 20 * 60 * 1000,
     pairMax: 3,
     hopMax: 3,
@@ -48,6 +50,9 @@ const DEFAULTS = {
       club: { label: 'club', limit: 40 },
       offline: { label: '离线', limit: 50, perSend: true },
     },
+    // ★没在本表里的类型 ⇒ 落这个**默认桶**（独立审计 2026-10-05：原来直接判"配额桶不认识"⇒ 拒发，
+    //   于是"注册一个新类型"在闸这一层根本不成立 ✗ —— 闸的类型表**不该**变成第二套真相）
+    defaultLimit: 100,
   },
 }
 
@@ -116,8 +121,7 @@ export function createGate(config = {}) {
       }
     }
     const bucket = bucketOf(letter)
-    const cap = cfg.quota.types[bucket]
-    if (!cap) return { reject: true, reason: `配额桶不认识：${bucket}（类型没注册？）` }
+    const cap = cfg.quota.types[bucket] ?? { label: bucket, limit: cfg.quota.defaultLimit }
     const d = load(letter.as).days[localDay()] ?? { letters: 0, units: 0, byBucket: {}, recent: [] }
     const used = Number(d.byBucket?.[bucket]?.units ?? 0)
     const units = quotaUnits(letter, { resolve: (id) => cfg.quota.types[id] })
@@ -137,7 +141,7 @@ export function createGate(config = {}) {
     const day = localDay(letter.sentAtMs ?? Date.now())
     const d = j.days[day] ?? (j.days[day] = { letters: 0, units: 0, byBucket: {}, recent: [] })
     const bucket = bucketOf(letter)
-    const cap = cfg.quota.types[bucket] ?? { label: bucket, limit: Infinity }
+    const cap = cfg.quota.types[bucket] ?? { label: bucket, limit: cfg.quota.defaultLimit }
     const b = d.byBucket[bucket] ?? (d.byBucket[bucket] = { letters: 0, units: 0, over: 0, feeCent: 0 })
     const units = quotaUnits({ ...letter, targets: tg }, { resolve: (id) => cfg.quota.types[id] })
     const over = Number.isFinite(cap.limit) ? Math.max(0, b.units + units - cap.limit) : 0

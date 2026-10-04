@@ -40,7 +40,12 @@ export function createRoster(config = {}) {
   /** 坏输入不许抛未捕获异常：所有读取都吞掉错误，退化成"空名单" */
   const safe = (fn, dflt) => { try { return fn() } catch { return dflt } }
 
-  const list = () => safe(() => read().members.map((m) => ({ id: String(m.id), label: String(m.label ?? m.id) })), [])
+  // 成员写成纯字符串也认（独立审计 2026-10-05：原来会变成 `id: "undefined"` ✗）；没有 id 的一律丢掉
+  const list = () => safe(() => read().members
+    .map((m) => (typeof m === 'string'
+      ? { id: m, label: m }
+      : { id: String(m?.id ?? ''), label: String(m?.label ?? m?.id ?? '') }))
+    .filter((m) => m.id !== ''), [])
   const has = (id) => list().some((m) => m.id === id)
   const label = (id) => list().find((m) => m.id === id)?.label ?? String(id)
   const groups = () => safe(() => Object.keys(read().groups), [])

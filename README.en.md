@@ -29,7 +29,7 @@ npx dsh-whale-post-cli pump --as bob # bob reads his mail (reading it consumes i
 ## Current state
 
 * **Six pieces are already implemented** under `packages/`: `bus` (the core: envelope / signature / handshake / idempotency / persist to disk) / `roster` (roster interface) / `types` (type registry interface) / `deliver` (delivery strategy) / `gate` (quota and billing gate + loop gate) / `cli` (zero-dependency command line); `example/` is a composition example of "**how to wire them together**".
-* **Run the whole self-test in one go**: `node scripts/selftest-all.mjs` —— **exit code 0 = all six passed** (97 criteria).
+* **Run the whole self-test in one go**: `node scripts/selftest-all.mjs` —— **exit code 0 = all six passed** (it prints the criteria count itself; this file does not hard-code a number).
 * Every piece passes three gates: **it loads + it runs + it goes red when it is wrong** (acceptance specification in [`docs/ACCEPTANCE.md`](docs/ACCEPTANCE.en.md)).
 * Version `0.1.0`; the interfaces carry `apiVersion`, and **types can be extended at any time** (adding a type does not require touching the core).
 

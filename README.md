@@ -29,7 +29,7 @@ npx dsh-whale-post-cli pump --as bob # bob 读信（读走即消费）
 ## 现状
 
 * `packages/` 里**六件已落地**：`bus`（核心：信封／签名／握手／幂等／落盘）／`roster`（名单接口）／`types`（类型注册表接口）／`deliver`（投递策略）／`gate`（配额与计费闸 ＋ 回环闸）／`cli`（零依赖命令行）；`example/` 是一份"**怎么把它们接起来**"的组合示例。
-* **一把跑完自测**：`node scripts/selftest-all.mjs` —— **退出码 0 ＝ 六件全过**（97 条判据）。
+* **一把跑完自测**：`node scripts/selftest-all.mjs` —— **退出码 0 ＝ 六件全过**（条数由它自己打出来，不在本文件里写死）。
 * 每件都过三关：**能加载 ＋ 能跑 ＋ 跑错会红**（验收规格见 [`docs/ACCEPTANCE.md`](docs/ACCEPTANCE.md)）。
 * 版本 `0.1.0`；接口带 `apiVersion`，**类型可以随时扩充**（加类型不用动核心）。
 

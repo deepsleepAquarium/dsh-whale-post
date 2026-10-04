@@ -32,10 +32,14 @@ const flag = (name) => argv.includes(`--${name}`)
 const die = (code, msg) => { if (msg) console.error(msg); process.exit(code) }
 
 /** 把四个接口件拼起来（★核心只认接口，这里就是"接线"） */
-function wire({ root, live = [] } = {}) {
-  const r = root ?? opt('root') ?? process.env.WHALE_POST_ROOT ?? join(process.cwd(), 'whale-mail')
+function wire({ root, live } = {}) {
+  const r = root ?? opt('root') ?? process.env.WHALE_POST_ROOT ?? join(process.cwd(), '.whale-mail')
   const injected = []
-  const liveSet = new Set(live)
+  // ★`--live a,b` 声明"这些人此刻有活体会话"（独立审计 2026-10-05：原来它只在自测里被用到 ⇒ 死参数 ✗）
+  const liveList = (Array.isArray(live) && live.length)
+    ? live
+    : String(opt('live', '')).split(',').map((s) => s.trim()).filter(Boolean)
+  const liveSet = new Set(liveList)
   const services = {
     roster: createRoster({ file: opt('roster') ?? join(r, 'roster.json') }),
     types: createTypes(),
@@ -71,12 +75,12 @@ function selftest() {
     check('离线件：投进对方信箱', existsSync(join(tmp, 'inbox', 'bob', `${s1.id}.msg.json`)))
     check('离线件：判 kept（不叫醒）', s1.verdict === 'kept', s1.verdict)
 
-    // ② 收信＝消费 ＋ 写回执 ＋ 幂等
-    const got = w.pump({ as: 'bob' })
+    // ② 收信＝消费 ＋ 写回执 ＋ 幂等（★要**声明读者**才会消费：会话活着不算 —— 见收信侧闭环判据）
+    const got = w.pump({ as: 'bob', reader: true })
     check('收信：拉到 1 封', got.length === 1 && got[0].ok, JSON.stringify(got.map((g) => g.handled)))
     check('收信：离线件标着 [离线]', String(got[0]?.handled ?? '').startsWith('[离线]'), got[0]?.handled)
     check('回执：写了 ack', ls(join(tmp, 'ack', 'alice')).length === 1, JSON.stringify(ls(join(tmp, 'ack', 'alice'))))
-    check('幂等：再 pump 一次拿到 0 封（不会重复消费）', w.pump({ as: 'bob' }).length === 0)
+    check('幂等：再 pump 一次拿到 0 封（不会重复消费）', w.pump({ as: 'bob', reader: true }).length === 0)
 
     // ③ 在线件：有活体会话 ⇒ 当场投出去
     const s2 = w.send({ as: 'alice', to: 'bob', mode: 'online', subject: '在线件', body: '请你现在动手：这封是要叫醒你的信' })
@@ -178,7 +182,11 @@ function main() {
       const as = opt('as') || die(2, 'send 需要 --as')
       const to = opt('to') || die(2, 'send 需要 --to')
       const bodyFile = opt('body-file')
-      const body = bodyFile ? readFileSync(bodyFile, 'utf8') : opt('body', '')
+      const bodyRaw = opt('body', '')
+      // ★拒绝"参数冒充正文"（独立审计 2026-10-05）：`--body --force` 原来会被当成"正文＝--force 且带 force"
+      //   ⇒ 顺手把三道闸全绕过去 ✗。选项值以 `--` 开头一律当写错。
+      if (String(bodyRaw).startsWith('--')) die(2, '--body 的值看起来是个参数（以 -- 开头）—— 拒绝把参数当正文（否则 --force 之类会被一起吃掉）')
+      const body = bodyFile ? readFileSync(bodyFile, 'utf8') : bodyRaw
       const r = bus.send({
         as, to,
         subject: opt('subject', ''),
