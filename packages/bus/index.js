@@ -153,6 +153,13 @@ export function createBus(config = {}) {
     } catch { return false }
   }
 
+  // ★组员名单（给闸算"一个组算 1 单位"用）：roster 有 group() 才有；没有就返回 undefined（⇒ 逐人计）
+  //   ⚠️ 这段必须在**核心**里做 —— 闸不认识名字，只认"这些人是同一组"这件事
+  function groupMembersOf(to) {
+    const R = services.roster
+    const g = R && typeof R.group === 'function' ? R.group(to) : undefined
+    return Array.isArray(g) && g.length ? g.map(String) : undefined
+  }
   // ── 收件人解析（★只问 roster 接口，核心不认识名字）─────────────────────
   function resolveTargets(to, { as, force }) {
     const roster = services.roster
@@ -202,11 +209,13 @@ export function createBus(config = {}) {
           `协议不许"像 UDP 那样"直接发。让对方先跑 hello；确需强发用 --force（收信侧只认签名与摘要、不看握手，会照收）。`)
       }
     }
-    // ★闸：只问接口（闸可以拒，也可以记账）—— 把它判断需要的东西都给出去（含 force 与链深）
+    // ★闸：只问接口（闸可以拒，也可以记账）—— 把它判断需要的东西都给出去（含 force／链深／组员名单）
+    //   ⚠️ `groupMembers` 必须由**核心**解析后传下去：闸不认识名字，它只知道"这些人算一个组"
     const hop0 = (re === undefined || re === '') ? undefined : hopOf(re)
+    const groupMembers = groupMembersOf(to)
     const gate = services.gate
     if (gate && typeof gate.check === 'function') {
-      const r = gate.check({ as, to, targets, subject, body, mode: m, type, re, force, hop: hop0 })
+      const r = gate.check({ as, to, targets, subject, body, mode: m, type, re, force, hop: hop0, groupMembers })
       if (r && typeof r === 'object' && r.reject) throw new Error(`闸拒发：${r.reason}`)
     }
     const seq = claimSeq(as)
@@ -219,7 +228,7 @@ export function createBus(config = {}) {
     if (services.deliver && typeof services.deliver.deliver === 'function') {
       verdict = services.deliver.deliver(env, { bus: api, probes, targets }) ?? verdict
     }
-    if (gate && typeof gate.record === 'function') gate.record({ ...env, as: env.from }, targets)
+    if (gate && typeof gate.record === 'function') gate.record({ ...env, as: env.from, groupMembers }, targets)
     const st = loadState(as)
     st.recent = [...(st.recent ?? []), { to, atMs: env.sentAtMs, subject: String(subject).slice(0, 40) }].slice(-200)
     saveState(as, st)

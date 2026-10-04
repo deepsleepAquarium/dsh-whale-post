@@ -63,7 +63,7 @@ function selftest() {
       groups: { all: ['alice', 'bob', 'carol'], club: ['alice', 'bob'] },
     }, null, 2), 'utf8')
 
-    const { bus: w, injected } = wire({ root: tmp, live: ['bob'] })   // ★只有 bob 有"活体会话"
+    const { bus: w, services, injected } = wire({ root: tmp, live: ['bob'] })   // ★只有 bob 有"活体会话"
     w.hello({ as: 'alice' }); w.hello({ as: 'bob' }); w.hello({ as: 'carol' })
 
     // ① 离线件：落在对方信箱、不叫醒
@@ -129,6 +129,13 @@ function selftest() {
     check('配额：在线件按收件人数计单位', r2.units === 3, JSON.stringify(r2))
     const rep = g.report({ as: 'dave' })
     check('配额：离线条**不并进**"单位"（计费口径分开）', rep.today.units === 3 && rep.today.offlineLetters === 1, JSON.stringify(rep.today))
+
+    // ⑪ ★组名配额要**真的接线**（pro姐 2026-10-05 复核抓出的死分支：闸读了 groupMembers，但没人传给它）
+    //    ⇒ 这条判据走**真 send 路径**：只要核心忘了把组员名单传下去，它立刻变红
+    const sGroup = w.send({ as: 'carol', to: 'all', mode: 'online', subject: '组发计费', body: '组发计费：组内成员合成 1 单位、组外按户算（正文有货，不是回执）' })
+    const repGroup = services.gate.report({ as: 'carol' })
+    check('配额接线：发给组 ⇒ 组内合成 1 单位（groupMembers 真传下去了）',
+      repGroup.today.units === 1 && sGroup.targets.length === 2, JSON.stringify({ units: repGroup.today.units, targets: sGroup.targets }))
   } catch (err) {
     check('自测没有抛异常', false, err && err.stack ? err.stack.split('\n')[0] : err)
   }
