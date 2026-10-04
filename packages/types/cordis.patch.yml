@@ -1,0 +1,5 @@
+# dsh-whale-post-types —— 挂载声明：把本插件插入 profile 的配置树
+# 安装：dsh plugin --profile <profile> add dsh-whale-post-types
+- insert:
+    - id: dsh-whale-post-types
+      name: dsh-whale-post-types

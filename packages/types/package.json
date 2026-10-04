@@ -1,0 +1,23 @@
+{
+  "name": "dsh-whale-post-types",
+  "version": "0.1.0",
+  "description": "邮件类型注册表接口 ＋ 样例类型（direct／broadcast／club）",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "index.js",
+    "selftest.mjs",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "scripts": {
+    "selftest": "node selftest.mjs"
+  }
+}

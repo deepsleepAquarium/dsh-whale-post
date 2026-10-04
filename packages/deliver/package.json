@@ -1,0 +1,23 @@
+{
+  "name": "dsh-whale-post-deliver",
+  "version": "0.1.0",
+  "description": "投递策略：离线留在信箱等人／在线立刻投出（示例①的挂点）",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "index.js",
+    "selftest.mjs",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "scripts": {
+    "selftest": "node selftest.mjs"
+  }
+}

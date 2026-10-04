@@ -1,0 +1,11 @@
+{
+  "apiVersion": 1,
+  "members": [
+    { "id": "alice", "label": "Alice" },
+    { "id": "bob", "label": "Bob" }
+  ],
+  "groups": {
+    "all": ["alice", "bob"],
+    "club": ["alice"]
+  }
+}

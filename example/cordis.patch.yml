@@ -1,0 +1,32 @@
+# 最小组合示例：五个插件 ＋ 一个 CLI（顺序无关 —— 核心只认接口）
+# 用法：dsh plugin --profile <profile> add link:<本仓目录>/packages/<件名>
+- insert:
+    - id: whale-roster-json
+      name: dsh-whale-post-roster
+      config:
+        file: '~/.dsh/whale-mail/roster.json'
+
+    - id: whale-types-sample
+      name: dsh-whale-post-types
+      config:
+        types: [direct, broadcast, club]
+
+    - id: whale-bus
+      name: dsh-whale-post-bus
+      config:
+        root: '~/.dsh/whale-mail'
+        requireHello: true
+
+    - id: whale-deliver
+      name: dsh-whale-post-deliver
+
+    - id: whale-gate
+      name: dsh-whale-post-gate
+      config:
+        quota:
+          onOver: reject
+          types:
+            direct: { label: 'direct', limit: 100 }
+            broadcast: { label: 'broadcast', limit: 20 }
+            club: { label: 'club', limit: 40 }
+            offline: { label: '离线', limit: 50, perSend: true }

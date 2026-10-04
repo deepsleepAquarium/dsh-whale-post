@@ -1,0 +1,26 @@
+{
+  "name": "dsh-whale-post-cli",
+  "version": "0.1.0",
+  "description": "零依赖命令行：hello／send／pump／quota／roster／types／selftest",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "index.js",
+    "selftest.mjs",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "scripts": {
+    "selftest": "node selftest.mjs"
+  },
+  "bin": {
+    "whale-post": "./index.js"
+  }
+}

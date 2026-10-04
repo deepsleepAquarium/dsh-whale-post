@@ -1,0 +1,5 @@
+# dsh-whale-post-roster —— 挂载声明：把本插件插入 profile 的配置树
+# 安装：dsh plugin --profile <profile> add dsh-whale-post-roster
+- insert:
+    - id: dsh-whale-post-roster
+      name: dsh-whale-post-roster
