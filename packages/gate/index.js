@@ -11,12 +11,15 @@
  *      回执本来就该由收信方自动写 ack，不必再发一封信把人家叫醒。
  *   ② **同对回环闸**：同一对（你→对方）在 N 分钟内已发 M 封 ⇒ 拒发，先合并成一封。
  *   ③ **链深闸**：带 `re` 的信按父信 hop 递推，到第 K 跳 ⇒ 拒发（链条必须落地成结论）。
- *   ④ **配额**：分桶计额度；离线件**独立计**（按发信次数，1 次发信＝1 条，组发不翻倍）。
- *      ★`quota.onOver` 决定越额时怎么办：
+ *   ④ **配额**：分桶计额度；离线件**独立计**（按发信次数，1 次发信＝1 条，组发不翻倍）。 *      ★`quota.onOver` 决定越额时怎么办：
  *        · `'reject'`（默认）＝ **拒发**（退出码非 0、不落信箱）——"多发一封＝多烧一份，省着点"；
  *        · `'price'`       ＝ **价格闸**：照发，但记账计费（"闸是价格闸，不是封嘴闸"）。
  *
  * ★闸只认接口：类型表从 `ctx.whale.types` 取，名字从 `ctx.whale.roster` 取 —— 核心没有一行名字。
+ *
+ * ⚠️ 两条老实话（免得下一个人把它当安全边界）：
+ *   · ③ **链深闸依赖回信人老实带 `re`** —— 不带就重置链深 ⇒ 它是**礼貌闸／省米闸**，**不是安全边界**；
+ *   · `force: true` 会**整条绕过**这三道（这是有意留的），但**留痕**：台账当日记 `forced` 计数（`report()` 看得到）。
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from 'node:fs'
 import { join, dirname } from 'node:path'
@@ -142,6 +145,7 @@ export function createGate(config = {}) {
     const bytes = Buffer.byteLength(letter.body ?? '', 'utf8')
     const feeCent = Number.isFinite(cap.limit) ? charge * cfg.quota.feePerUnitCent + (bytes * charge / Math.max(1, units) / 200) * cfg.quota.feePer200BCent : 0
     d.letters += 1
+    if (letter.force) d.forced = (d.forced ?? 0) + 1      // ★--force 绕过三道闸 ⇒ 留痕（幽灵 2026-10-05 建议）
     if (bucket === 'offline') d.offlineLetters = (d.offlineLetters ?? 0) + 1     // ★离线条**不并进** units（单位是计费口径）
     else d.units += units
     d.bytes = (d.bytes ?? 0) + bytes

@@ -49,7 +49,7 @@ export function createDeliver(config = {}) {
     log.push({ id: letter.id, verdict: 'kept', why: '对方没有活体会话 ⇒ 不投也不消费（信只会晚到，不会不到）' })
     return 'kept'
   }
-  return { apiVersion, deliver, blocked: (id) => blocked.has(String(id)), log }
+  return { apiVersion, deliver, blocked: (id) => blocked.has(String(id)), sessionOf, log }
 }
 
 export function apply(ctx, config = {}) {

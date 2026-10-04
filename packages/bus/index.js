@@ -83,7 +83,12 @@ export function createBus(config = {}) {
   }
   const canonical = (env) => JSON.stringify(FIELD_ORDER.filter((k) => env[k] !== undefined).map((k) => [k, env[k]]))
   const sign = (env) => createHmac('sha256', Buffer.from(keyHex(), 'hex')).update(canonical(env), 'utf8').digest('hex')
+  /** ★fail-closed：没登记的字段一律不许封（否则"加字段忘了进签名域"＝那个字段可被随便改、验签照样过） */
   const seal = (fields) => {
+    const unknown = Object.keys(fields).filter((k) => !FIELD_ORDER.includes(k) && k !== 'mac')
+    if (unknown.length) {
+      throw new Error(`seal() 收到没登记的字段：${unknown.join('、')} —— 请先把它加进 FIELD_ORDER（签名域＝信封的语义面）`)
+    }
     const env = { ...fields }
     env.mac = sign(env)
     return env
@@ -113,6 +118,10 @@ export function createBus(config = {}) {
       const a = Buffer.from(env.mac, 'hex'); const b = Buffer.from(want, 'hex')
       if (a.length !== b.length || !timingSafeEqual(a, b)) e.push('MAC 不符（伪造，或密钥不同）')
     } else e.push('mac 缺失')
+    // ★fail-closed：不在签名域里的字段 ⇒ **拒**（否则"加字段忘了进 FIELD_ORDER"＝那个字段可被悄悄改）
+    const known = new Set([...FIELD_ORDER, 'mac'])
+    const unknown = Object.keys(env).filter((k) => !known.has(k))
+    if (unknown.length) e.push(`信封里有**没进签名域**的字段：${unknown.join('、')} —— 加字段必须同时加进 FIELD_ORDER`)
     return e
   }
 
@@ -248,10 +257,28 @@ export function createBus(config = {}) {
     try { return readdirSync(join(paths().root, kind)) } catch { return [] }
   }
 
-  // ── 收信（消费＝搬进 seen ＋ 写 ack；keep=true 则原样留在信箱）──────────
-  function pump({ as, keep = false } = {}) {
+  // ── 收信（★"不投也不消费"必须在**收信侧**落实 —— 发信侧的判定拦不住收信侧）──
+  //   keep 四种形态：
+  //     · 不传（默认）⇒ ★**没有读者就不消费**：收信人此刻没有活体会话、也没给 `inject`／`reader`
+  //       ⇒ 信**原样留在 `inbox/`**（不搬 seen、不删原件、不写 ack）⇒ **信只会晚到，不会不到**
+  //     · `keep: true` ⇒ 全都不消费（只看一眼）
+  //     · `keep: false` ⇒ **显式**要求消费（调用方自己保证读得到）
+  //     · `keep: (env) => boolean` ⇒ 逐封判（和我们线上邮差插件的写法一致）
+  //   `reader: true` ＝ "我就是那个读者"（例如 CLI 把信打进终端）⇒ 允许消费
+  function pump({ as, keep, reader = false, inject } = {}) {
     ensure()
     if (!as) throw new Error('pump 需要 as（收件人）')
+    const sessionOf = probes.sessionOf ?? services.deliver?.sessionOf
+    const liveNow = () => {
+      try { const s = typeof sessionOf === 'function' ? sessionOf(as) : undefined; return !!(s && s.live) } catch { return false }
+    }
+    const canRead = reader === true || typeof inject === 'function' || liveNow()
+    const keepThis = (env) => {
+      if (keep === true) return true
+      if (keep === false) return false
+      if (typeof keep === 'function') return !!keep(env)
+      return !canRead                                   // ★默认：没有读者 ⇒ 不消费
+    }
     const dir = paths().inbox(as)
     const files = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.msg.json')).sort() : []
     const out = []
@@ -275,19 +302,25 @@ export function createBus(config = {}) {
       const dup = (st.seen ?? []).includes(env.id)
       const mode = env.mode ?? 'online'                    // 老信没有 mode ⇒ 按"在线"（不把旧信闷死）
       const label = mode === 'offline' ? '[离线]' : '[在线]'
-      if (!keep) {
-        atomicWrite(join(paths().seen(as), f), JSON.stringify(env, null, 2))
-        unlinkSync(p)
-        if (!dup) {
-          const ack = seal({ v: V, kind: 'ack', id: env.id, from: as, to: env.from, seq: env.seq ?? 0, body: '', sha256: '', sentAtMs: Date.now(), re: env.id })
-          atomicWrite(join(paths().ack(env.from), `${env.id}.${as}.ack.json`), JSON.stringify(ack, null, 2))
-        }
-        if (!dup) saveState(as, { ...st, seen: [...(st.seen ?? []), env.id] })
-      }
-      out.push({
+      const row = {
         ok: true, file: f, id: env.id, from: env.from, subject: env.subject, body: env.body,
         mode, dup, handled: `${label} ${env.from} → ${as}：《${env.subject ?? ''}》`,
-      })
+      }
+      if (keepThis(env)) {
+        out.push({
+          ...row, kept: true,
+          why: keep === true ? 'keep=true：只看不消费' : '★没有读者（没有活体会话／没给 inject）⇒ 不投也不消费，原样留在信箱里',
+        })
+        continue
+      }
+      atomicWrite(join(paths().seen(as), f), JSON.stringify(env, null, 2))
+      unlinkSync(p)
+      if (!dup) {
+        const ack = seal({ v: V, kind: 'ack', id: env.id, from: as, to: env.from, seq: env.seq ?? 0, body: '', sha256: '', sentAtMs: Date.now(), re: env.id })
+        atomicWrite(join(paths().ack(env.from), `${env.id}.${as}.ack.json`), JSON.stringify(ack, null, 2))
+        saveState(as, { ...st, seen: [...(st.seen ?? []), env.id] })
+      }
+      out.push({ ...row, kept: false })
     }
     return out
   }

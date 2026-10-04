@@ -42,12 +42,12 @@ try {
   check('信封：改正文 ⇒ 不过', bus.verify({ ...raw, body: raw.body + 'X' }).some((x) => /摘要不符|MAC/.test(x)))
   check('信封：改 mode ⇒ 不过（模式进签名）', bus.verify({ ...raw, mode: 'online' }).some((x) => /MAC/.test(x)))
 
-  // ③ 收信：消费 ＋ ack ＋ 幂等
-  const got = bus.pump({ as: 'bob' })
+  // ③ 收信：消费 ＋ ack ＋ 幂等（★要声明 reader：CLI 把信打到终端时才敢消费）
+  const got = bus.pump({ as: 'bob', reader: true })
   check('收信：拉到 1 封', got.length === 1 && got[0].ok)
   check('收信：原信搬进 seen', existsSync(join(tmp, 'seen', 'bob', `${r.id}.msg.json`)))
   check('收信：写了 ack', ls(join(tmp, 'ack', 'alice')).length === 1)
-  check('幂等：再 pump ⇒ 0 封', bus.pump({ as: 'bob' }).length === 0)
+  check('幂等：再 pump ⇒ 0 封', bus.pump({ as: 'bob', reader: true }).length === 0)
 
   // ④ keep：原样留在信箱（不消费）
   const r2 = bus.send({ as: 'alice', to: 'bob', subject: '第二封', body: '第二封：用来验证 keep 不消费（正文有货）' })
@@ -72,8 +72,24 @@ try {
 
   // ⑦ 坏信：挪进"退信"，不炸
   writeFileSync(join(tmp, 'inbox', 'bob', 'garbage.msg.json'), '{ 这不是 JSON', 'utf8')
-  const bad = bus.pump({ as: 'bob' })
+  const bad = bus.pump({ as: 'bob', reader: true })
   check('坏信：挪进退信并如实报告', bad.some((x) => x.ok === false && /读不成信/.test(x.why)), JSON.stringify(bad.map((x) => x.why)))
+  // ⑧ ★★收信侧闭环（幽灵 2026-10-05 复核抓出）：**没有读者 ⇒ 不消费** —— 这一条是"信不丢"的收信侧那一半
+  const nr = join(tmp, 'no-reader')
+  const bus2 = createBus({ root: nr, services: { roster } })        // ★故意不给 sessionOf／deliver
+  bus2.hello({ as: 'alice' }); bus2.hello({ as: 'bob' })
+  const r3 = bus2.send({ as: 'alice', to: 'bob', subject: '没人读', body: '收件人此刻没有读者：这封信必须留在信箱里（不投也不消费）' })
+  const got3 = bus2.pump({ as: 'bob' })                              // ★不传 reader ⇒ 默认"没有读者就不消费"
+  check('收信侧闭环：没有读者 ⇒ 不消费（kept）', got3.length === 1 && got3[0].kept === true, JSON.stringify(got3.map((x) => x.why)))
+  check('收信侧闭环：信仍在 inbox 里', existsSync(join(nr, 'inbox', 'bob', `${r3.id}.msg.json`)))
+  check('收信侧闭环：seen 里没有它、也没写 ack', ls(join(nr, 'seen', 'bob')).length === 0 && ls(join(nr, 'ack', 'alice')).length === 0,
+    JSON.stringify({ seen: ls(join(nr, 'seen', 'bob')), ack: ls(join(nr, 'ack', 'alice')) }))
+  const got4 = bus2.pump({ as: 'bob', reader: true })                // ★声明"我就是读者"（CLI 把信打到终端）⇒ 这次才消费
+  check('收信侧闭环：声明是读者 ⇒ 才消费（搬进 seen）', got4.length === 1 && got4[0].kept === false && existsSync(join(nr, 'seen', 'bob', `${r3.id}.msg.json`)))
+
+  // ⑨ ★签名 fail-closed（幽灵建议）：没进签名域的字段 ⇒ 拒（防"加了字段忘进 FIELD_ORDER"）
+  check('签名：未知字段 ⇒ 验不过（fail-closed）', bus.verify({ ...raw, urgent: true }).some((x) => /没进签名域/.test(x)))
+  check('签名：seal() 收到未登记字段 ⇒ 当场抛', (() => { try { bus.seal({ ...raw, urgent: true }); return false } catch { return true } })())
 } catch (err) {
   check('自测没有抛异常', false, err && err.stack ? err.stack.split('\n')[0] : err)
 }

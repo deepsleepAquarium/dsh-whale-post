@@ -200,10 +200,13 @@ function main() {
     }
     if (cmd === 'pump') {
       const as = opt('as') || die(2, 'pump 需要 --as')
-      const rs = bus.pump({ as, keep: flag('keep') })
+      // ★reader：CLI 把信打进终端 ⇒ 它**就是读者**。不这样声明，默认规则是"没有读者就不消费"
+      //   （信会一直留在信箱里 —— 这是"信只会晚到，不会不到"的收信侧那一半）
+      const rs = bus.pump({ as, keep: flag('keep') ? true : undefined, reader: !flag('keep') })
       if (rs.length === 0) console.log('（信箱是空的）')
       for (const r of rs) {
         console.log(`${r.ok ? 'OK  ' : '退信'} ${r.file}${r.ok ? ' :: ' + r.handled : ' :: ' + r.why}`)
+        if (r.ok && r.kept) console.log(`    ↳ ★未消费（${r.why}）`)
         if (r.ok && r.body) console.log(r.body.split('\n').map((l) => '    | ' + l).join('\n'))
       }
       return 0
