@@ -145,7 +145,7 @@ export function createGate(config = {}) {
     const bytes = Buffer.byteLength(letter.body ?? '', 'utf8')
     const feeCent = Number.isFinite(cap.limit) ? charge * cfg.quota.feePerUnitCent + (bytes * charge / Math.max(1, units) / 200) * cfg.quota.feePer200BCent : 0
     d.letters += 1
-    if (letter.force) d.forced = (d.forced ?? 0) + 1      // ★--force 绕过三道闸 ⇒ 留痕（幽灵 2026-10-05 建议）
+    if (letter.force) d.forced = (d.forced ?? 0) + 1      // ★--force 绕过三道闸 ⇒ 留痕（独立复核建议）
     if (bucket === 'offline') d.offlineLetters = (d.offlineLetters ?? 0) + 1     // ★离线条**不并进** units（单位是计费口径）
     else d.units += units
     d.bytes = (d.bytes ?? 0) + bytes

@@ -130,7 +130,7 @@ function selftest() {
     const rep = g.report({ as: 'dave' })
     check('配额：离线条**不并进**"单位"（计费口径分开）', rep.today.units === 3 && rep.today.offlineLetters === 1, JSON.stringify(rep.today))
 
-    // ⑪ ★组名配额要**真的接线**（pro姐 2026-10-05 复核抓出的死分支：闸读了 groupMembers，但没人传给它）
+    // ⑪ ★组名配额要**真的接线**（独立复核抓出的死分支：闸读了 groupMembers，但没人传给它）
     //    ⇒ 这条判据走**真 send 路径**：只要核心忘了把组员名单传下去，它立刻变红
     const sGroup = w.send({ as: 'carol', to: 'all', mode: 'online', subject: '组发计费', body: '组发计费：组内成员合成 1 单位、组外按户算（正文有货，不是回执）' })
     const repGroup = services.gate.report({ as: 'carol' })

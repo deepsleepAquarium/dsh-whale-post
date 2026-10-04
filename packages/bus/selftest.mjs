@@ -74,7 +74,7 @@ try {
   writeFileSync(join(tmp, 'inbox', 'bob', 'garbage.msg.json'), '{ 这不是 JSON', 'utf8')
   const bad = bus.pump({ as: 'bob', reader: true })
   check('坏信：挪进退信并如实报告', bad.some((x) => x.ok === false && /读不成信/.test(x.why)), JSON.stringify(bad.map((x) => x.why)))
-  // ⑧ ★★收信侧闭环（幽灵 2026-10-05 复核抓出）：**没有读者 ⇒ 不消费** —— 这一条是"信不丢"的收信侧那一半
+  // ⑧ ★★收信侧闭环（独立复核抓出）：**没有读者 ⇒ 不消费** —— 这一条是"信不丢"的收信侧那一半
   const nr = join(tmp, 'no-reader')
   const bus2 = createBus({ root: nr, services: { roster } })        // ★故意不给 sessionOf／deliver
   bus2.hello({ as: 'alice' }); bus2.hello({ as: 'bob' })
@@ -87,7 +87,7 @@ try {
   const got4 = bus2.pump({ as: 'bob', reader: true })                // ★声明"我就是读者"（CLI 把信打到终端）⇒ 这次才消费
   check('收信侧闭环：声明是读者 ⇒ 才消费（搬进 seen）', got4.length === 1 && got4[0].kept === false && existsSync(join(nr, 'seen', 'bob', `${r3.id}.msg.json`)))
 
-  // ⑨ ★签名 fail-closed（幽灵建议）：没进签名域的字段 ⇒ 拒（防"加了字段忘进 FIELD_ORDER"）
+  // ⑨ ★签名 fail-closed（独立复核建议）：没进签名域的字段 ⇒ 拒（防"加了字段忘进 FIELD_ORDER"）
   check('签名：未知字段 ⇒ 验不过（fail-closed）', bus.verify({ ...raw, urgent: true }).some((x) => /没进签名域/.test(x)))
   check('签名：seal() 收到未登记字段 ⇒ 当场抛', (() => { try { bus.seal({ ...raw, urgent: true }); return false } catch { return true } })())
 } catch (err) {

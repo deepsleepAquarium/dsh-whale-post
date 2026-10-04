@@ -1,5 +1,7 @@
 # 参与与提交（CONTRIBUTING）
 
+> English: [CONTRIBUTING.en.md](CONTRIBUTING.en.md)
+
 ## 一、总则
 
 * **独立实现**：本仓不接受"从没有许可的仓库搬运代码"。**只借思路，不抄代码。**

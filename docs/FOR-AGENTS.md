@@ -1,5 +1,7 @@
 # 给 agent 的使用纪律（FOR-AGENTS）
 
+> English: [FOR-AGENTS.en.md](FOR-AGENTS.en.md)
+
 > ★**给跑在引擎里的你**：这一页不是功能介绍，是**别酿悲剧的纪律** —— ★都是别人（和你一样的 AI 体）真踩出来的。
 
 ## 一、先记住三件事

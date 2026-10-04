@@ -3,7 +3,7 @@
 > 中文: [INSTALL.md](INSTALL.md)
 
 ## 0. Prerequisites
-* An engine that supports plugins and dependency injection (this repository is written in the Cordis style: `cordis.patch.yml` ＋ `ctx` services).
+* An engine that supports plugins and dependency injection (this repository is written in the Cordis style: `cordis.patch.yml` + `ctx` services).
 * **Node ≥ 20**. This repository has **zero runtime dependencies** (it only uses `node:` built-in modules).
 
 ## 1. Installing
@@ -15,7 +15,7 @@ dsh plugin --profile <profile> add dsh-whale-post
 dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post
 ```
 ★**Two honest truths (we bought them with blood)**:
-1. ★Installing a local package with `file:` ＝ **copying a snapshot** ⇒ your source edits **do not take effect**; if you want to change the code, use `link:` (or a directory junction).
+1. ★Installing a local package with `file:` = **copying a snapshot** ⇒ your source edits **do not take effect**; if you want to change the code, use `link:` (or a directory junction).
 2. ★A running engine **caches ESM by URL** ⇒ **after changing code you must restart the engine** (restart even for a one-line change, otherwise you are testing the old code).
 
 ## 2. Minimal wiring (`cordis.patch.yml`)
@@ -61,20 +61,24 @@ npx dsh-whale-post-cli selftest # ★look only at the exit code: 0 = pass; non-z
 npx dsh-whale-post-cli send --as alice --to bob --subject 'hello' --body 'first letter'
 npx dsh-whale-post-cli pump --as bob # read through bob's mailbox once (★this consumes the letters)
 ```
-★**Three hard rules**: ① **look only at the exit code** (do not match on the Chinese text); ② **it can be re-run in place** (two runs give the same result); ③ ★**negative test**: **deliberately break one line ⇒ the self-test must turn red** (not turning red ＝ the self-test is decoration).
+★**Three hard rules**: ① **look only at the exit code** (do not match on the Chinese text); ② **it can be re-run in place** (two runs give the same result); ③ ★**negative test**: **deliberately break one line ⇒ the self-test must turn red** (not turning red = the self-test is decoration).
 
-★**The runner that ships with this repository** (you can verify it before installing anything): `node scripts/selftest-all.mjs` ⇒ **exit code 0 ＝ all six passed** (97 criteria); to run a single piece, `node packages/<package-name>/selftest.mjs`.
+★**The runner that ships with this repository** (you can verify it before installing anything): `node scripts/selftest-all.mjs` ⇒ **exit code 0 = all six passed**; to run a single piece, `node packages/<package-name>/selftest.mjs`.
+
+★★**Collecting mail (important — do not skip)**: `pump` **consumes by default** (it moves letters into `seen/` and writes an ack) — **but** when the recipient has **no live session** right now and nothing has declared itself a reader, `pump` **consumes nothing**: letters stay exactly where they are in `inbox/` (not moved to `seen/`, not unlinked, no ack written).
+★To keep undeliverable mail in the mailbox, use `keep`: `keep: true` (look but do not consume) or `keep: (letter) => boolean` (decide per letter); from the command line, pass `--keep`. ★To consume, you have to **declare yourself a reader**: `reader: true` (that is what the CLI does when it prints letters to the terminal).
+★This is the **receiving half** of "**mail may arrive late, but it never goes missing**" — without it, letters get silently eaten while the recipient is away.
 
 ## 4. Packages and interfaces at a glance
 | Package | Role | Interfaces provided / used |
 |---|---|---|
-| `dsh-whale-post-bus` | Core: envelope / digest ＋ HMAC signature / handshake / idempotency / persist to disk | provides `ctx.whale.bus` |
-| `dsh-whale-post-roster` | **Who receives** (the interface piece ＋ a sample that reads JSON) | provides `ctx.whale.roster` |
-| `dsh-whale-post-types` | **What type a letter is** (the interface piece ＋ a sample) | provides `ctx.whale.types` |
-| `dsh-whale-post-deliver` | **Delivery strategy** (＝ the hook point of example ①) | uses `bus` / `roster` |
-| `dsh-whale-post-gate` | **Gate** (＝ the hook point of example ②) | uses `bus` / `types` |
+| `dsh-whale-post-bus` | Core: envelope / digest + HMAC signature / handshake / idempotency / persist to disk | provides `ctx.whale.bus` |
+| `dsh-whale-post-roster` | **Who receives** (the interface piece + a sample that reads JSON) | provides `ctx.whale.roster` |
+| `dsh-whale-post-types` | **What type a letter is** (the interface piece + a sample) | provides `ctx.whale.types` |
+| `dsh-whale-post-deliver` | **Delivery strategy** (= the hook point of example ①) | uses `bus` / `roster` |
+| `dsh-whale-post-gate` | **Gate** (= the hook point of example ②) | uses `bus` / `types` |
 | `dsh-whale-post-cli` | Entry-point tool (★**not a plugin**) | uses `bus` |
-| `example/` | Composition example: a minimal `cordis.patch.yml` ＋ the criteria for one run | everything |
+| `example/` | Composition example: a minimal `cordis.patch.yml` + the criteria for one run | everything |
 
 ★The minimal method set of the interfaces (★**carries `apiVersion`**; types may be extended at any time):
 
@@ -88,7 +92,7 @@ npx dsh-whale-post-cli pump --as bob # read through bob's mailbox once (★this 
 
 ## 5. ★Rules for writing a plugin (follow them; do not step in the pits we fell into)
 1. ★**Know interfaces, not names**: the core code must not hard-code **any** member name / type identifier / internal path (rosters and types are always registered in).
-2. ★Shape: `export const name = '...'` ＋ `export function apply(ctx, config = {})`.
+2. ★Shape: `export const name = '...'` + `export function apply(ctx, config = {})`.
 3. ★**Zero I/O and zero side effects at the top level**: at the moment the module is `import`ed it must not read from disk, must not send letters and must not start timers (put everything inside `apply`).
 4. ★**Do not use `inject`** (when it is not satisfied it **hangs silently**, and you will not even see a log line) ⇒ instead **fetch the service at runtime**: `ctx.get('whale.bus')`.
 5. ★**A missing service must not blow up**: if you cannot get it, log a line and **try again on the next tick** (a plugin loading before its service is registered is the normal case).
@@ -96,18 +100,18 @@ npx dsh-whale-post-cli pump --as bob # read through bob's mailbox once (★this 
 7. ★**Swallow your own exceptions**: never throw an exception back into the engine (one error that escapes can take the whole engine down).
 8. ★**Everything is configurable**: root directory / interval / signer name / paths all come from `config`; do not hard-code them in the code.
 9. ★**Carry `apiVersion`**: both type identifiers and the envelope format reserve a version slot ("extensible at any time" is a hard requirement).
-10. ★**Atomic persist to disk**: write a temporary file ＋ `rename` (a half-written file ＝ one fake hang).
-11. ★★**The signature must cover every semantic field**: leaving one field unsigned (for example `mode` / priority) ＝ someone else can silently rewrite it (★this is exactly the hole we closed with "`mode` goes into the signature too").
+10. ★**Atomic persist to disk**: write a temporary file + `rename` (a half-written file = one fake hang).
+11. ★★**The signature must cover every semantic field**: leaving one field unsigned (for example `mode` / priority) = someone else can silently rewrite it (★this is exactly the hole we closed with "`mode` goes into the signature too").
 12. ★**Idempotent**: the same letter is consumed only once (deduplicated by message id); ★a replay must not deliver twice.
 13. ★**Offline by default**: waking the other side requires an **explicit** `online` —— ★do not let "online by default" flood someone else's session.
-14. ★**Before handing in**: a **load-level self-test** ＋ `selftest` turning green ＋ **one real launch to check the log for load errors** —— ★passing syntax and passing module-level self-tests **do not count** (this is exactly how we went down: 7 entry points all crashed on the same line).
+14. ★**Before handing in**: a **load-level self-test** + `selftest` turning green + **one real launch to check the log for load errors** —— ★passing syntax and passing module-level self-tests **do not count** (this is exactly how we went down: 7 entry points all crashed on the same line).
 
 ## 6. Common failures
 | Symptom | Most likely cause | What to do |
 |---|---|---|
-| The plugin is installed but "does nothing" | You used `inject` / you fetched the service at the top level | Fetch the service at runtime ＋ retry every tick |
-| You changed the code and nothing changed | ESM is cached by URL / `file:` installed a snapshot | Restart the engine ＋ switch to a `link:` install |
-| The engine will not start; the log shows one `ReferenceError` | A constant is not defined (we really did this) | Run the load-level self-test ＋ the negative test |
+| The plugin is installed but "does nothing" | You used `inject` / you fetched the service at the top level | Fetch the service at runtime + retry every tick |
+| You changed the code and nothing changed | ESM is cached by URL / `file:` installed a snapshot | Restart the engine + switch to a `link:` install |
+| The engine will not start; the log shows one `ReferenceError` | A constant is not defined (we really did this) | Run the load-level self-test + the negative test |
 | The recipient "did not receive it" | The other side **has no live session** | Normal: the letter **stays in the mailbox waiting for a person** and **is not lost** |
 | The log writes one line every 4 seconds | The logging does not test for state changes | See rule 6 |
 
