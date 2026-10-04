@@ -45,14 +45,14 @@ const DEFAULTS = {
     feePer200BCent: 0.1,     // 越额字节费率（示例值）
     types: {
       // 样例桶：数值都是**示例值**，按需要自己定
-      direct: { label: 'direct', limit: 100 },
-      broadcast: { label: 'broadcast', limit: 20 },
-      club: { label: 'club', limit: 40 },
-      offline: { label: '离线', limit: 50, perSend: true },
+      direct: { label: 'direct', limit: 120 },
+      broadcast: { label: 'broadcast', limit: 45 },
+      club: { label: 'club', limit: 60 },
+      offline: { label: '离线', limit: 80, perSend: true },
     },
     // ★没在本表里的类型 ⇒ 落这个**默认桶**（独立审计 2026-10-05：原来直接判"配额桶不认识"⇒ 拒发，
     //   于是"注册一个新类型"在闸这一层根本不成立 ✗ —— 闸的类型表**不该**变成第二套真相）
-    defaultLimit: 100,
+    defaultLimit: 120,
   },
 }
 
@@ -128,7 +128,7 @@ export function createGate(config = {}) {
     const over = Number.isFinite(cap.limit) && used + units > cap.limit
     if (over && cfg.quota.onOver === 'reject') {
       return { reject: true, reason: `配额（${cap.label}）：今日已用 ${used}/${cap.limit}，本封要 ${units} ⇒ 越额拒发。` +
-        `要少花就**合并成一封**再发；离线件有独立额度（默认 50 条/天）；确需照发可把闸设成 price 档（照发但计费）。` }
+        `要少花就**合并成一封**再发；离线件可以配成**独立额度**（条数自己定，示例见下）；确需照发可把闸设成 price 档（照发但计费）。` }
     }
     return 'pass'
   }

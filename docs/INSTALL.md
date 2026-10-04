@@ -43,7 +43,7 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post
  - id: whale-gate
  name: dsh-whale-post-gate # 示例②：配额与计费闸
  config:
- dailyUnits: 100 # ★ 数值自定（示例值，别照抄）
+ dailyUnits: 120 # ★ 数值自定（示例值，别照抄）
 ```
 ★**接线要点**：五个插件之间**只靠接口**（`ctx.whale.*`）⇒ **书写顺序无关**；★核心**不认识任何名字与类型** —— 你换掉名单实现、改掉类型表，核心一行都不用动。
 

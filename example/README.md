@@ -33,9 +33,9 @@
           onOver: reject                         # reject 拒发 ＋ 退出码非 0 ／ price 照发但计费
           types:
             direct:    { label: 'direct',    limit: 100 }
-            broadcast: { label: 'broadcast', limit: 20 }
+            broadcast: { label: 'broadcast', limit: 45 }
             club:      { label: 'club',      limit: 40 }
-            offline:   { label: '离线',      limit: 50, perSend: true }   # ★离线件按发信次数计
+            offline:   { label: '离线',      limit: 80, perSend: true }   # ★离线件按发信次数计
 ```
 
 ★**顺序无关**：五个插件之间只靠接口（`ctx.whale.*`）—— 核心不认识任何名字与类型标识。

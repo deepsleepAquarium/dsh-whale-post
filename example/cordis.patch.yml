@@ -26,7 +26,7 @@
         quota:
           onOver: reject
           types:
-            direct: { label: 'direct', limit: 100 }
-            broadcast: { label: 'broadcast', limit: 20 }
-            club: { label: 'club', limit: 40 }
-            offline: { label: '离线', limit: 50, perSend: true }
+            direct: { label: 'direct', limit: 120 }
+            broadcast: { label: 'broadcast', limit: 45 }
+            club: { label: 'club', limit: 60 }
+            offline: { label: '离线', limit: 80, perSend: true }

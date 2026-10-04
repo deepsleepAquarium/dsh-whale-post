@@ -43,7 +43,7 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post
  - id: whale-gate
   name: dsh-whale-post-gate # example ②: quota and billing gate
   config:
-  dailyUnits: 100 # ★ your own value (an example value, do not copy it verbatim)
+  dailyUnits: 120 # ★ your own value (an example value, do not copy it verbatim)
 ```
 ★**Wiring points**: the five plugins rely on each other **only through interfaces** (`ctx.whale.*`) ⇒ **the order in which they are written does not matter**; ★the core **does not know any names or types** —— you can replace the roster implementation or change the type table without touching a single line of the core.
 
