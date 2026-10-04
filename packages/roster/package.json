@@ -2,14 +2,18 @@
   "name": "dsh-whale-post-roster",
   "version": "0.1.0",
   "description": "名单接口（谁在名单里）＋ 读 JSON 的样例实现",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "mailbox",
+    "post-office",
+    "offline-first"
+  ],
   "type": "module",
   "main": "index.js",
   "exports": {
     ".": "./index.js"
-  },
-  "license": "MIT",
-  "engines": {
-    "node": ">=20"
   },
   "files": [
     "index.js",
@@ -17,6 +21,15 @@
     "cordis.patch.yml",
     "README.md"
   ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "selftest": "node selftest.mjs"
   }

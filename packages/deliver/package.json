@@ -2,14 +2,18 @@
   "name": "dsh-whale-post-deliver",
   "version": "0.1.0",
   "description": "投递策略：离线留在信箱等人／在线立刻投出（示例①的挂点）",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "mailbox",
+    "post-office",
+    "offline-first"
+  ],
   "type": "module",
   "main": "index.js",
   "exports": {
     ".": "./index.js"
-  },
-  "license": "MIT",
-  "engines": {
-    "node": ">=20"
   },
   "files": [
     "index.js",
@@ -17,6 +21,15 @@
     "cordis.patch.yml",
     "README.md"
   ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "selftest": "node selftest.mjs"
   }
