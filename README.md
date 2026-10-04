@@ -19,7 +19,7 @@
 
 ## 快速开始
 
-> ★**本仓尚未发 npm** ⇒ 下面一律用**仓内路径**跑（`node packages/cli/index.js …`）。装到 profile 之后，也可以用包名调用（`dsh-whale-post-cli`）。
+> ★**已发 npm** ⇒ 直接用 `npx dsh-whale-post-cli …`（或先 `npm i -D dsh-whale-post-cli`）；想在仓内开发，用 `node packages/cli/index.js …` 也一样。
 ```bash
 dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post # 或用 registry 名
 node packages/cli/index.js selftest # ★看退出码

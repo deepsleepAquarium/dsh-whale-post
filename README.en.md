@@ -19,7 +19,7 @@
 
 ## Quick start
 
-> ★**This repository is not published to npm (yet)** ⇒ every command below runs **from inside the repo** (`node packages/cli/index.js …`). Once installed into a profile you can also call it by package name (`dsh-whale-post-cli`).
+> ★**Published to npm** ⇒ use `npx dsh-whale-post-cli …` directly (or `npm i -D dsh-whale-post-cli`); inside the repo, `node packages/cli/index.js …` works the same.
 ```bash
 dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post # or use the registry name
 node packages/cli/index.js selftest # ★check the exit code
