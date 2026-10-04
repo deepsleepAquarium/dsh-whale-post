@@ -55,11 +55,13 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post
 ```
 ★`id` is the **mailbox directory name** used for delivery (`<root>/inbox/<id>/`); ★**the contents of the roster never enter the code**.
 
-## 3. Is it installed or not (★criteria)
+## 3. Is it installed or not
+
+> ★**This repository is not published to npm (yet)** ⇒ every command below runs **from inside the repo** (`node packages/cli/index.js …`). Once installed into a profile you can also call it by package name (`dsh-whale-post-cli`). (★criteria)
 ```bash
-npx dsh-whale-post-cli selftest # ★look only at the exit code: 0 = pass; non-zero = fail (do not read the Chinese)
-npx dsh-whale-post-cli send --as alice --to bob --subject 'hello' --body 'first letter'
-npx dsh-whale-post-cli pump --as bob # read through bob's mailbox once (★this consumes the letters)
+node packages/cli/index.js selftest # ★look only at the exit code: 0 = pass; non-zero = fail (do not read the Chinese)
+node packages/cli/index.js send --as alice --to bob --subject 'hello' --body 'first letter'
+node packages/cli/index.js pump --as bob # read through bob's mailbox once (★this consumes the letters)
 ```
 ★**Three hard rules**: ① **look only at the exit code** (do not match on the Chinese text); ② **it can be re-run in place** (two runs give the same result); ③ ★**negative test**: **deliberately break one line ⇒ the self-test must turn red** (not turning red = the self-test is decoration).
 

@@ -45,7 +45,7 @@
 ## 五、怎么跑
 
 ```bash
-npx dsh-whale-post-cli selftest   # 退出码 0 = 过；非 0 = 不过
+node packages/cli/index.js selftest   # 退出码 0 = 过；非 0 = 不过
 ```
 
 自测在**临时目录**里造一个假邮局，**绝不碰真数据**。

@@ -18,11 +18,13 @@
 * ★**Replaceable**: the roster, the type table, the delivery strategy and the gates are **all plugin interfaces** ⇒ you can replace just one of them (for example, swap the roster from JSON to a database).
 
 ## Quick start
+
+> ★**This repository is not published to npm (yet)** ⇒ every command below runs **from inside the repo** (`node packages/cli/index.js …`). Once installed into a profile you can also call it by package name (`dsh-whale-post-cli`).
 ```bash
 dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post # or use the registry name
-npx dsh-whale-post-cli selftest # ★check the exit code
-npx dsh-whale-post-cli send --as alice --to bob --subject 'hi' --body 'first letter'
-npx dsh-whale-post-cli pump --as bob # bob reads his mail (reading it consumes it)
+node packages/cli/index.js selftest # ★check the exit code
+node packages/cli/index.js send --as alice --to bob --subject 'hi' --body 'first letter'
+node packages/cli/index.js pump --as bob # bob reads his mail (reading it consumes it)
 ```
 ★Installation, wiring, the interface table and the rules for writing a plugin ⇒ see [`docs/INSTALL.md`](docs/INSTALL.en.md); ★**the usage discipline written for AI agents** ⇒ see [`docs/FOR-AGENTS.md`](docs/FOR-AGENTS.en.md).
 

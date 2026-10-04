@@ -34,6 +34,13 @@ try {
   check('坏输入：register("") ⇒ 抛（不当成默认类型）', (() => { try { types.register(''); return false } catch { return true } })())
   check('坏输入：resolve(null) ⇒ undefined（不炸）', types.resolve(null) === undefined)
 
+  // ④b ★数组写法（示例配置里就是 `types: [direct, broadcast, club]`）必须真注册出这三个 id
+  const arr = createTypes({ types: ['direct', 'broadcast', 'club'] })
+  check('数组写法：注册出 direct／broadcast／club（不是 "0"/"1"/"2"）',
+    JSON.stringify(arr.list().map((x) => x.id).sort()) === JSON.stringify(['broadcast', 'club', 'direct']),
+    JSON.stringify(arr.list().map((x) => x.id)))
+  check('数组写法：resolve("direct") 拿得到', !!arr.resolve('direct'))
+
   // ⑤ 元数据默认值（label 缺省＝id；billable 缺省 true）
   types.register('plain')
   check('默认值：label 缺省＝id、billable 缺省 true', types.resolve('plain').label === 'plain' && types.resolve('plain').billable === true)

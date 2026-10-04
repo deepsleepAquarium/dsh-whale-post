@@ -26,7 +26,13 @@ export function createTypes(config = {}) {
     table.set(id, m)
     return m
   }
-  for (const [id, meta] of Object.entries(config.types ?? SAMPLES)) put(id, meta)
+  // ★两种写法都收：对象 { id: meta } ／ 数组 ['id1','id2']（示例配置里写的是数组 ⇒ 必须认）
+  //   数组里某一项写成 [id, meta] 也认（想给元数据又嫌对象啰嗦时用）
+  const spec = config.types ?? SAMPLES
+  const entries = Array.isArray(spec)
+    ? spec.map((x) => (Array.isArray(x) ? [String(x[0]), x[1]] : [String(x), undefined]))
+    : Object.entries(spec)
+  for (const [id, meta] of entries) put(id, meta)
   if (Array.isArray(config.extra)) for (const [id, meta] of config.extra) put(id, meta)
 
   const register = (id, meta) => put(id, meta)

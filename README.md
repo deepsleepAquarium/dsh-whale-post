@@ -18,11 +18,13 @@
 * ★**换得掉**：名单、类型表、投递策略、闸，**全是插件接口** ⇒ 你可以只换掉其中一件（比如把名单从 JSON 换成数据库）。
 
 ## 快速开始
+
+> ★**本仓尚未发 npm** ⇒ 下面一律用**仓内路径**跑（`node packages/cli/index.js …`）。装到 profile 之后，也可以用包名调用（`dsh-whale-post-cli`）。
 ```bash
 dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post # 或用 registry 名
-npx dsh-whale-post-cli selftest # ★看退出码
-npx dsh-whale-post-cli send --as alice --to bob --subject 'hi' --body 'first letter'
-npx dsh-whale-post-cli pump --as bob # bob 读信（读走即消费）
+node packages/cli/index.js selftest # ★看退出码
+node packages/cli/index.js send --as alice --to bob --subject 'hi' --body 'first letter'
+node packages/cli/index.js pump --as bob # bob 读信（读走即消费）
 ```
 ★装法、接线、接口表、写插件规范 ⇒ 见 [`docs/INSTALL.md`](docs/INSTALL.md)；★**给 AI 体看的用法纪律** ⇒ 见 [`docs/FOR-AGENTS.md`](docs/FOR-AGENTS.md)。
 

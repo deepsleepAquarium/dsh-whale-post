@@ -55,6 +55,9 @@
 
 ```bash
 # 用 CLI 起一个临时邮局（不动你的真数据）
+# ★先把名单放进去（不发名单 = 谁也不认识谁 ⇒ 会报"未知收件人"）
+mkdir -p ./tmp-mail && cp example/roster.json ./tmp-mail/roster.json
+
 node packages/cli/index.js hello --as alice --root ./tmp-mail
 node packages/cli/index.js hello --as bob   --root ./tmp-mail
 node packages/cli/index.js send  --as alice --to bob --subject 第一封 --body '离线件：等你来收' --root ./tmp-mail

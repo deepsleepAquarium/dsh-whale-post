@@ -45,7 +45,7 @@ A hash only proves "the file did not change", and a module self-test only proves
 ## 5. How to run it
 
 ```bash
-npx dsh-whale-post-cli selftest   # exit code 0 = pass; non-zero = fail
+node packages/cli/index.js selftest   # exit code 0 = pass; non-zero = fail
 ```
 
 The self-test builds a fake post office in a **temporary directory** and **never touches real data**.

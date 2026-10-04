@@ -55,11 +55,13 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post
 ```
 ★`id` 是投递用的**信箱目录名**（`<root>/inbox/<id>/`）；★**列表内容不进代码**。
 
-## 三、装上了没有（★判据）
+## 三、装上了没有
+
+> ★**本仓尚未发 npm** ⇒ 下面一律用**仓内路径**跑（`node packages/cli/index.js …`）。装到 profile 之后，也可以用包名调用（`dsh-whale-post-cli`）。（★判据）
 ```bash
-npx dsh-whale-post-cli selftest # ★只看退出码：0 = 过；非 0 = 不过（别看中文）
-npx dsh-whale-post-cli send --as alice --to bob --subject 'hello' --body 'first letter'
-npx dsh-whale-post-cli pump --as bob # 把 bob 的信箱读一遍（★消费掉）
+node packages/cli/index.js selftest # ★只看退出码：0 = 过；非 0 = 不过（别看中文）
+node packages/cli/index.js send --as alice --to bob --subject 'hello' --body 'first letter'
+node packages/cli/index.js pump --as bob # 把 bob 的信箱读一遍（★消费掉）
 ```
 ★**三条硬规矩**：① **只看退出码**（不匹配中文）；② **能原地重复跑**（两次结果一致）；③ ★**负向测试**：**故意改坏一行 ⇒ 自测必须变红**（不红＝自测是摆设）。
 
