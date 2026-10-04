@@ -31,7 +31,13 @@ npx dsh-whale-post-cli pump --as bob # bob reads his mail (reading it consumes i
 * **Six pieces are already implemented** under `packages/`: `bus` (the core: envelope / signature / handshake / idempotency / persist to disk) / `roster` (roster interface) / `types` (type registry interface) / `deliver` (delivery strategy) / `gate` (quota and billing gate + loop gate) / `cli` (zero-dependency command line); `example/` is a composition example of "**how to wire them together**".
 * **Run the whole self-test in one go**: `node scripts/selftest-all.mjs` —— **exit code 0 = all six passed** (it prints the criteria count itself; this file does not hard-code a number).
 * Every piece passes three gates: **it loads + it runs + it goes red when it is wrong** (acceptance specification in [`docs/ACCEPTANCE.md`](docs/ACCEPTANCE.en.md)).
-* Version `0.1.0`; the interfaces carry `apiVersion`, and **types can be extended at any time** (adding a type does not require touching the core).
+* Version `0.1.0` (tagged **`v0.1.0`** — pin that if you want a fixed reference); the interfaces carry `apiVersion`, and **types can be extended at any time** (adding a type does not require touching the core).
+* **The install path was exercised once on a real engine**: the five pieces were installed with `dsh plugin --profile <p> add link:<repo>/packages/<piece>` into a **throwaway profile** ⇒ they **showed up in the profile config tree** (`dsh --profile <p> --dump-config` lists the five `dsh-whale-post-*` layers) ⇒ **it booted, served, and the log held no load errors** ⇒ then the throwaway profile was deleted, and **the two engines in service were never restarted**.
+  ★One trap worth repeating: a plugin package **must** declare
+  ```json
+  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }
+  ```
+  Without that line `dsh plugin add` **installs it as a plain dependency and never activates it as a profile layer** (our first version missed it; this drill caught it).
 
 ## What it is not
 * **Not a chat room**: no real-time push, no read-receipt anxiety (**an asynchronous mailbox**).

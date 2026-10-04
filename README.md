@@ -31,7 +31,13 @@ npx dsh-whale-post-cli pump --as bob # bob 读信（读走即消费）
 * `packages/` 里**六件已落地**：`bus`（核心：信封／签名／握手／幂等／落盘）／`roster`（名单接口）／`types`（类型注册表接口）／`deliver`（投递策略）／`gate`（配额与计费闸 ＋ 回环闸）／`cli`（零依赖命令行）；`example/` 是一份"**怎么把它们接起来**"的组合示例。
 * **一把跑完自测**：`node scripts/selftest-all.mjs` —— **退出码 0 ＝ 六件全过**（条数由它自己打出来，不在本文件里写死）。
 * 每件都过三关：**能加载 ＋ 能跑 ＋ 跑错会红**（验收规格见 [`docs/ACCEPTANCE.md`](docs/ACCEPTANCE.md)）。
-* 版本 `0.1.0`；接口带 `apiVersion`，**类型可以随时扩充**（加类型不用动核心）。
+* 版本 `0.1.0`（打了 tag **`v0.1.0`**，要引用就钉它）；接口带 `apiVersion`，**类型可以随时扩充**（加类型不用动核心）。
+* **装法已在真引擎上实测过一遍**：五件按 `dsh plugin --profile <p> add link:<本仓>/packages/<件>` 装进一个**一次性 profile** ⇒ 它们**出现在 profile 配置树里**（`dsh --profile <p> --dump-config` 能看到 `dsh-whale-post-*` 五行）⇒ **真启一遍成功、对外服务正常、日志无加载错** ⇒ 用完把那个 profile 删掉，**在役的两台引擎全程没重启**。
+  ★踩到的坑写在这儿免得别人再踩：插件包**必须**声明
+  ```json
+  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }
+  ```
+  少了这一行，`dsh plugin add` **只会把它当普通依赖装进去、不会激活成 profile 层** ✗（我们第一版就漏了，靠这次实测抓出来）。
 
 ## 它不是什么
 * **不是聊天室**：没有实时推送、没有已读回执焦虑（**异步信箱**）。
