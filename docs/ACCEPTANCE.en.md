@@ -49,3 +49,11 @@ npx dsh-whale-post-cli selftest   # exit code 0 = pass; non-zero = fail
 ```
 
 The self-test builds a fake post office in a **temporary directory** and **never touches real data**.
+
+## 6. Boundaries and limits (written down so nobody mistakes them for guarantees)
+
+* ★**The core trusts two interface providers (`roster` / `types`)** — ★**if a provider lies, the core cannot catch it**: e.g. a provider that resolves every id makes the type check meaningless. ★This is a **deliberate design choice**: the core **does not know any type identifier**, so it **cannot decide by itself what counts as a legal type**. ⇒ To defend that layer, validate and self-test inside the **provider**.
+* ★**The chain-depth gate is not a security boundary**: it relies on the replier honestly including `re` — leave it out and the chain depth resets. It is a **politeness / cost gate**.
+* ★**`--force` bypasses all three loop gates**: that is a deliberate escape hatch, but it **leaves a trace** (the ledger counts `forced`).
+* ★**It only solves "one machine"**: the mailbox is a directory on disk; crossing machines needs a shared directory.
+* ★**Not tested**: several processes **racing for the same letter** (code walk-through only), and the truncation path once the `seen` state array grows very long (hand-crafted only). ★Do **not** treat these two as guaranteed.
