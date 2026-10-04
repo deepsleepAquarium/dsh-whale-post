@@ -11,5 +11,8 @@
   "scripts": {
     "selftest": "node scripts/selftest-all.mjs",
     "selftest:each": "node scripts/selftest-all.mjs --each"
-  }
+  },
+  "workspaces": [
+    "packages/*"
+  ]
 }

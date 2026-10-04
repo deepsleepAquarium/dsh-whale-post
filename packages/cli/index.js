@@ -16,11 +16,11 @@
  */
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { createBus } from '../bus/index.js'
-import { createRoster } from '../roster/index.js'
-import { createTypes } from '../types/index.js'
-import { createDeliver } from '../deliver/index.js'
-import { createGate } from '../gate/index.js'
+import { createBus } from 'dsh-whale-post-bus'
+import { createRoster } from 'dsh-whale-post-roster'
+import { createTypes } from 'dsh-whale-post-types'
+import { createDeliver } from 'dsh-whale-post-deliver'
+import { createGate } from 'dsh-whale-post-gate'
 
 const argv = process.argv.slice(2)
 const cmd = argv[0]

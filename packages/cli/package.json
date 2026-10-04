@@ -13,7 +13,6 @@
   },
   "files": [
     "index.js",
-    "selftest.mjs",
     "cordis.patch.yml",
     "README.md"
   ],
@@ -22,5 +21,24 @@
   },
   "bin": {
     "whale-post": "./index.js"
+  },
+  "dependencies": {
+    "dsh-whale-post-bus": "^0.1.0",
+    "dsh-whale-post-roster": "^0.1.0",
+    "dsh-whale-post-types": "^0.1.0",
+    "dsh-whale-post-deliver": "^0.1.0",
+    "dsh-whale-post-gate": "^0.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepsleepAquarium/dsh-whale-post.git"
+  },
+  "homepage": "https://github.com/deepsleepAquarium/dsh-whale-post#readme",
+  "bugs": {
+    "url": "https://github.com/deepsleepAquarium/dsh-whale-post/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
   }
 }

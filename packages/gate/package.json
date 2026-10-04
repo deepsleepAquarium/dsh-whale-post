@@ -17,7 +17,6 @@
   },
   "files": [
     "index.js",
-    "selftest.mjs",
     "cordis.patch.yml",
     "README.md"
   ],
@@ -32,5 +31,17 @@
   },
   "scripts": {
     "selftest": "node selftest.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepsleepAquarium/dsh-whale-post.git"
+  },
+  "homepage": "https://github.com/deepsleepAquarium/dsh-whale-post#readme",
+  "bugs": {
+    "url": "https://github.com/deepsleepAquarium/dsh-whale-post/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
   }
 }
