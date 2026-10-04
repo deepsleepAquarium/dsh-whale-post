@@ -24,7 +24,7 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post
  - id: whale-bus
   name: dsh-whale-post-bus
   config:
-  root: '~/.dsh/whale-mail' # mailbox root, your choice
+  root: '~/.dsh/whale-mail' # your choice; ★code default is ./.whale-mail (current dir)
   apiVersion: 1
 
  - id: whale-roster-json

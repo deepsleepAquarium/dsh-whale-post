@@ -10,7 +10,7 @@
  *   whale-post quota  --as alice [--days 7]
  *   whale-post roster / types / key / selftest
  *
- * 通用参数：`--root <目录>`（默认 `./whale-mail`，或环境变量 `WHALE_POST_ROOT`）
+ * 通用参数：`--root <目录>`（★默认 `./.whale-mail`，或环境变量 `WHALE_POST_ROOT`）
  * 退出码：0 ＝ 成功；2 ＝ 拒发／输入不合法；1 ＝ 没料到的错。
  * ★判据看**退出码**，不要看输出里的中文。
  */
@@ -152,7 +152,23 @@ function selftest() {
 
 // ── 命令 ───────────────────────────────────────────────────────────────
 function main() {
-  if (!cmd) die(2, '用法：whale-post <hello|send|pump|quota|roster|types|key|selftest> [--as …]')
+  // ★--help／-h／help 一律当"打用法"（陌生人第一下就敲这个）
+  if (!cmd || cmd === '--help' || cmd === '-h' || cmd === 'help') {
+    console.log([
+      'whale-post <命令> [选项]        ★六件已发 npm：npx -y dsh-whale-post-cli <命令>',
+      '',
+      '  hello   --as <谁>                  握手（没握过手不许发信）',
+      '  send    --as <谁> --to <谁|组> --subject <题> --body <正文> [--mode online|offline] [--type <类型>] [--re <父信 id>] [--force] [--live a,b]',
+      '  pump    --as <谁> [--keep]         收信（默认消费；没有读者时一封都不消费）',
+      '  quota   --as <谁> [--days N]       查配额（离线件按"条"、不计单位）',
+      '  roster  / types / key              看名单 / 看类型 / 看密钥指纹',
+      '  selftest                           自测（★只看退出码：0 过 / 非 0 不过）',
+      '',
+      '通用：--root <目录>（★默认 ./.whale-mail，或环境变量 WHALE_POST_ROOT）   --roster <名单 json>',
+    ].join('\n'))
+    return 0
+  }
+  if (!cmd) die(2, '用法：whale-post --help')
   const { bus, services } = wire()
   try {
     if (cmd === 'key') {

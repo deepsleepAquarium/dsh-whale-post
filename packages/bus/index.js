@@ -201,7 +201,10 @@ export function createBus(config = {}) {
     if (has(to)) return [to]
     if (as === to) throw new Error(`不能给自己发信（${to}）—— 自己给自己写笔记不必过邮局`)
     if (force) return [to]                      // --force 只豁免"没握过手"，不豁免"名字写错"
-    throw new Error(`未知收件人：${to} —— 【组名】要 roster 里有定义；【人名】要已在名单里。（--force 只豁免握手，不豁免名字。）`)
+    const rf = services.roster && services.roster.file ? services.roster.file : '(未知)'
+    const there = rf !== '(未知)' && existsSync(rf)
+    throw new Error(`未知收件人：${to} —— 【组名】要 roster 里有定义；【人名】要已在名单里。` +
+      `（名单文件：${rf} —— 当前${there ? '存在' : '不存在'}；--force 只豁免握手，不豁免名字。）`)
   }
 
   // ── 发信 ──────────────────────────────────────────────────────────────

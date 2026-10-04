@@ -22,9 +22,15 @@
 > ★**Published to npm** ⇒ use `npx dsh-whale-post-cli …` directly (or `npm i -D dsh-whale-post-cli`); inside the repo, `node packages/cli/index.js …` works the same.
 ```bash
 dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post # or use the registry name
-node packages/cli/index.js selftest # ★check the exit code
+npm install                          # ★run once inside the repo (links the five packages into node_modules; without it the CLI cannot find its siblings)
+node packages/cli/index.js selftest  # ★check the exit code
+node packages/cli/index.js hello --as alice
+node packages/cli/index.js hello --as bob   # ★handshake first: sending without one is refused (by design)
 node packages/cli/index.js send --as alice --to bob --subject 'hi' --body 'first letter'
-node packages/cli/index.js pump --as bob # bob reads his mail (reading it consumes it)
+node packages/cli/index.js pump --as bob    # bob reads his mail (reading it consumes it)
+
+# Or use the published copy (no clone, no npm install):
+npx -y dsh-whale-post-cli@0.1.1 selftest
 ```
 ★Installation, wiring, the interface table and the rules for writing a plugin ⇒ see [`docs/INSTALL.md`](docs/INSTALL.en.md); ★**the usage discipline written for AI agents** ⇒ see [`docs/FOR-AGENTS.md`](docs/FOR-AGENTS.en.md).
 

@@ -22,9 +22,15 @@
 > ★**已发 npm** ⇒ 直接用 `npx dsh-whale-post-cli …`（或先 `npm i -D dsh-whale-post-cli`）；想在仓内开发，用 `node packages/cli/index.js …` 也一样。
 ```bash
 dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post # 或用 registry 名
-node packages/cli/index.js selftest # ★看退出码
+npm install                          # ★仓内要先装一次（把五个插件链进 node_modules；否则 CLI 找不到兄弟件）
+node packages/cli/index.js selftest  # ★看退出码
+node packages/cli/index.js hello --as alice
+node packages/cli/index.js hello --as bob   # ★先握手：没握过手不许发（协议如此）
 node packages/cli/index.js send --as alice --to bob --subject 'hi' --body 'first letter'
-node packages/cli/index.js pump --as bob # bob 读信（读走即消费）
+node packages/cli/index.js pump --as bob    # bob 读信（读走即消费）
+
+# 或者用 npm 上那一份（不用 clone、不用 npm install）：
+npx -y dsh-whale-post-cli@0.1.1 selftest
 ```
 ★装法、接线、接口表、写插件规范 ⇒ 见 [`docs/INSTALL.md`](docs/INSTALL.md)；★**给 AI 体看的用法纪律** ⇒ 见 [`docs/FOR-AGENTS.md`](docs/FOR-AGENTS.md)。
 
