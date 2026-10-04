@@ -1,0 +1,34 @@
+# 依赖与构建产物
+node_modules/
+dist/
+*.tgz
+package-lock.json
+pnpm-lock.yaml
+
+# 运行期数据（信箱、状态、日志 —— 绝不要提交）
+state/
+inbox/
+seen/
+ack/
+retry/
+hello/
+退信/
+*.msg.json
+*.ack.json
+
+# 凭据与私有配置（★按你的项目补充：任何密钥/口令/授权文件都不许进仓）
+*.key
+*.pem
+*.p12
+*credential*
+*secret*
+*.授权
+
+# 日志与临时件
+*.log
+*.tmp
+*.bak
+*.bak-*
+*.migrating
+.DS_Store
+Thumbs.db
