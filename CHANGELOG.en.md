@@ -337,6 +337,24 @@
   ★it is the **layer below** item ③ ✓: ★item ③ only checks "**is the field there**" ✓; ★but **the field is there and `files` omits the file** ⇒
   ★**the tarball carries no patch ⇒ a real engine still says "it installed but does nothing"** ✗✓ (★**same symptom, two layers** ✓).
   ★Negative test: ★deleting that entry from `bus`'s `files` ⇒ **2 criteria genuinely red** ✓ (★⑥ shape + ③b naming `bus` ✓).
+* ★★★ **A release checklist, `docs/RELEASE` (CN/EN ✗✓)** —— ★**"when you ship a new version, which steps, in what order"** ✓
+  ★★**Why it exists** ✗: ★**publishing is irreversible** (★a version on npm cannot be withdrawn, only `deprecate`d ✓) ⇒
+  ★**and "what to do" used to live in a few people's memory** ✗ —— ★★**which is exactly the stretch "works out of the box" should cover** ✓.
+  ★**Six steps** ✗ (★each stating **why** ✓ —— ★otherwise the next person will skip it ✓):
+    ★0 ★**four green + boot it once** (★"green self-tests ≠ the engine can load" ✓ —— ★we hit that ✓);
+    ★★1 ✗✓ ★**ship the six plugins first, `cli` last** (★`cli`'s dependencies pin `^<this version>` ⇒ ★**publishing it first asks for a version that does not exist yet** ✓);
+    ★★2 ✗ ★**wait for sync + install it for real** (★"green self-tests ≠ someone else can install it" ✓);
+    ★3 ★tag and push the tag (★the README says "do not pin the old tag" ⇒ ★**every usable version needs a tag you can pin** ✓);
+    ★★4 ✗ ★**update "what is latest on npm"** (★before the release it says "in preparation" ⇒ ★those two sentences go stale the moment you ship ✓);
+    ★5 ★run step 0 once more after the edits ✓.
+  ★★**Two pits are stated up front** ✗: ★**you must pass `--registry https://registry.npmjs.org` explicitly** ✓
+  (★this repository's `.npmrc` defaults to a mirror, ★**and a mirror cannot publish** ✓ —— ★you see 404 / 403, **not** "no permission" ✓).
+  ★**Linked from both READMEs** ✓ (★right next to "how to install it" ✓ —— ★**easy to find** ✓).
+  ★★★**`pkgcheck` gained item ⑪** ✗✓: ★**a release checklist must not hard-code a version** ✓ (★use the `<this version>` placeholder ✓)——
+    ★★**because a hard-coded one must be edited for every release** ✓, ★and **forgetting means "you followed the checklist and shipped the wrong version"** ✗✓
+    (★the only case where **following the docs makes things worse** ✓, ★worse than a missing paragraph ✓).
+    ★Negative test: writing a `v0.3.0` into it ⇒ **turns red immediately** ✓ (★and points at line 29 ✓).
+  ★ⓘ ★`doccheck` **found the new pair automatically** (★6 pairs → **7** ✓) —— ★and CN/EN matched on the **first try** ✓.
 * ★**`cli`: `--only-offline <attribute>` / `--dormant <attribute>`** —— ★both rules can finally be switched on from the command line ✓.
 * ★**`cli`: `verify` / `nag` subcommands** —— ★the three-state design is finally visible from the command line
   (★`verify --enable` / `--disable` / `--allow a,b`; `nag` tells you whether a notice is due ✓).

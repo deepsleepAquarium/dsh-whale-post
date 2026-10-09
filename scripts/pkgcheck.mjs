@@ -115,6 +115,26 @@ const missingPatch = PLUGINS.filter((p) => {
 check('③b ★★`dsh.bundle.patch` 指的文件**在 `files` 里** ✗（★否则 tarball 里没补丁 ⇒ 真引擎里"什么都不做" ✓）',
   missingPatch.length === 0, missingPatch.length ? `缺：${missingPatch.join('、')}` : '六件都带上')
 
+// ★★⑪ **发行清单里不许写死版本号** ✗✓（2026-10-10 加）——
+//   ★`docs/RELEASE.md` 是"**怎么做**"的说明书 ✓ ⇒ ★**该用 `<本版>` 占位** ✓。
+//   ★★★**写死的后果** ✗✓：★**每发一版都要回去改它** ✓ —— ★而**漏改的后果是"照着清单发错版本"** ✗✓
+//     （★这是**唯一一种**"照文档做反而做错"的情形 ✓，★比文档缺一段更坏 ✓）。
+//   ⓘ ★判据方向是**反的** ✗：★不是"清单里的版本要和 `package.json` 一致" ✓，★而是"**清单里不该有具体版本**" ✓ ——
+//     ★因为清单是**长期**文档，★而版本号是**每版都变**的东西 ✓。
+const relFiles = ['docs/RELEASE.md', 'docs/RELEASE.en.md']
+const hardcoded = []
+for (const f of relFiles) {
+  if (!existsSync(join(repo, f))) { hardcoded.push(`★${f} 不存在`); continue }
+  const text = readFileSync(join(repo, f), 'utf8')
+  // ★只抓"像是要发的那一版"的写法：★`v0.3.0`／`@0.3.0`／`0.3.0`（★而 `<本版>` 这类占位符不算 ✓）
+  for (const m of text.matchAll(/\bv?\d+\.\d+\.\d+\b/g)) {
+    const line = text.slice(0, m.index).split('\n').length
+    hardcoded.push(`${f}:${line} 里的「${m[0]}」`)
+  }
+}
+check('⑪ ★★发行清单里**不许写死版本号** ✗（★该用 `<本版>` 占位 —— ★写死了每版都要改，漏改就发错 ✓）',
+  hardcoded.length === 0, hardcoded.slice(0, 4).join('、'))
+
 // ★⑦ `private`：★**七个包都不许 private** ✗（★private 的包发不出去 ✓）；★而根**该** private ✓
 const priv = ALL.filter((p) => pkgs[p]?.private === true)
 check('⑦ ★七个包都**不是** `private` ✗（★private 的包发不出去 ✓）', priv.length === 0, priv.join('、'))

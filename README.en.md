@@ -91,6 +91,7 @@ node packages/cli/index.js selftest  # ★check the exit code
 | `dsh-whale-post-gate` | ★**the gate**: quota and billing + loop gate ✓ | [`packages/gate/README.md`](packages/gate/README.md) |
 | `dsh-whale-post-verify` | ★**security check**: envelope signature + allow-list (★**disabled by default** ✓) | [`packages/verify/README.md`](packages/verify/README.md) |
 
+★★**How to ship a new version** ✗✓ ⇒ [`docs/RELEASE.en.md`](docs/RELEASE.en.md) ✓ (★**the steps plus why** ✓ —— ★★**publishing is irreversible**, slow beats wrong ✓).
 ★**How to wire them together** ⇒ [`docs/INSTALL.en.md`](docs/INSTALL.en.md) ✓; ★**a composition example** ⇒ [`example/`](example/README.md) ✓.
 
 ### Other

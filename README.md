@@ -89,6 +89,7 @@ node packages/cli/index.js selftest  # ★看退出码
 | `dsh-whale-post-gate` | ★**闸**：配额与计费 ＋ 回环闸 ✓ | [`packages/gate/README.md`](packages/gate/README.md) |
 | `dsh-whale-post-verify` | ★**安全校验**：验签 ＋ 白名单（★**默认禁用** ✓） | [`packages/verify/README.md`](packages/verify/README.md) |
 
+★★**怎么发一个新版本** ✗✓ ⇒ [`docs/RELEASE.md`](docs/RELEASE.md) ✓（★**步骤 ＋ 为什么** ✓ —— ★★**发布是不可逆的**，宁慢勿错 ✓）。
 ★**怎么把它们接起来** ⇒ [`docs/INSTALL.md`](docs/INSTALL.md) ✓；★**组合示例** ⇒ [`example/`](example/README.md) ✓。
 
 ### 别的
