@@ -2,7 +2,7 @@
  * dsh-whale-post-bus 的**加载级自测**：真的 import、真的 apply、真的发一封、真的收一封。
  * 判据看退出码：0 过／非 0 不过。临时根，真数据零接触。
  */
-import { mkdirSync, writeFileSync, existsSync, readFileSync, readdirSync } from 'node:fs'
+import { mkdirSync, writeFileSync, existsSync, readFileSync, readdirSync, unlinkSync } from 'node:fs'
 import { join } from 'node:path'
 import { apply, createBus, apiVersion } from './index.js'
 import { createRoster } from '../roster/index.js'
@@ -281,6 +281,48 @@ try {
     (() => {
       const b0 = createBus({ root: skewRoot, helloClockSkewMs: 0 })
       return b0.helloFresh('ok') === false
+    })())
+
+  // ★★★结构化回执（2026-10-10 从正本移植；★"主人 2026-10-06 01:5x 令"＋正本判据 87-90 ✓）——
+  //   ★★一张回执说清**两件事** ✗✓：① `recipientState`（**我＝收件人**当时的状态 ✓）
+  //     ② `disposition`（这封信的**去向** ✓）—— ★★`disposition` **优先取发件人写下的投递说明** ✓
+  const ackRoot = join(process.env.TEMP ?? '/tmp', `whale-bus-ack-${Date.now()}`)
+  mkdirSync(ackRoot, { recursive: true })
+  const ackRosterFile = join(ackRoot, 'roster.json')
+  writeFileSync(ackRosterFile, JSON.stringify({ apiVersion: 1,
+    members: [{ id: 'alice' }, { id: 'bob' }, { id: 'carol', onlyoff: true }, { id: 'dave' }] }), 'utf8')
+  const bAck = createBus({ root: ackRoot, services: { roster: createRoster({ file: ackRosterFile }), types }, offlineOnlyFlag: 'onlyoff' })
+  for (const w of ['alice', 'bob', 'carol', 'dave']) bAck.hello({ as: w })
+  const ackOf = (to, id) => {
+    for (const f of ls(join(ackRoot, 'ack', to))) {
+      if (f.startsWith(`${id}.`)) return JSON.parse(readFileSync(join(ackRoot, 'ack', to, f), 'utf8'))
+    }
+    return null
+  }
+  const sendAndAck = (letter, who = 'bob') => { const r = bAck.send(letter); bAck.pump({ as: who, reader: true }); return ackOf('alice', r.id) }
+  check('★★回执①：**在线签收** ⇒ `accepted-online` ＋ `recipientState: "online"`',
+    (() => { const a = sendAndAck({ as: 'alice', to: 'bob', mode: 'online', subject: 'a', body: '在线件（正文有货，别当回执）' }); return a?.disposition === 'accepted-online' && a?.recipientState === 'online' })(),
+    '')
+  check('★回执：**离线件** ⇒ `delivered-offline`（★"本来就没降级" ✓）',
+    sendAndAck({ as: 'alice', to: 'bob', mode: 'offline', subject: 'b', body: '离线件（正文有货，别当回执）' })?.disposition === 'delivered-offline')
+  check('★★回执②：**未握手发在线** ⇒ `delivered-offline-by-stale`（★因在线声明过期 ⇒ 降级 ✓）',
+    (() => {
+      unlinkSync(join(ackRoot, 'hello', 'dave.json'))
+      return sendAndAck({ as: 'alice', to: 'dave', mode: 'online', subject: 'd', body: '对方没握手（正文有货，别当回执）' }, 'dave')?.disposition === 'delivered-offline-by-stale'
+    })())
+  check('★★回执③：对"只收离线"者发**在线** ⇒ `delivered-offline-by-declaration`（★因对方声明 ⇒ 按离线寄达 ✓）',
+    sendAndAck({ as: 'alice', to: 'carol', mode: 'online', subject: 'c', body: '发给只收离线的人（正文有货，别当回执）' }, 'carol')?.disposition === 'delivered-offline-by-declaration')
+  check('★回执③的**反面**：对"只收离线"者发**离线** ⇒ `delivered-offline`（★别判过头 ✓）',
+    sendAndAck({ as: 'alice', to: 'carol', mode: 'offline', subject: 'c2', body: '离线件给只收离线者（正文有货，别当回执）' }, 'carol')?.disposition === 'delivered-offline')
+  check('★回执：结构字段齐全（★`by`／`ok`／`note`／`recipientState`／`disposition` 都在 ✓）',
+    (() => {
+      const a = sendAndAck({ as: 'alice', to: 'bob', mode: 'offline', subject: 'e', body: '看字段（正文有货，别当回执）' })
+      return a && a.by === 'bob' && a.ok === true && 'note' in a && !!a.recipientState && !!a.disposition
+    })())
+  check('★回执：`recipientState` 是**收件人自己**算的（★`dave` 刚报过到 ⇒ online ✓）',
+    (() => {
+      bAck.hello({ as: 'dave' })
+      return sendAndAck({ as: 'alice', to: 'dave', mode: 'offline', subject: 'f', body: '收件人状态（正文有货，别当回执）' }, 'dave')?.recipientState === 'online'
     })())
 
   // ⑦ 坏信：挪进"退信"，不炸

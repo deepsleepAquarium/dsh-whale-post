@@ -22,7 +22,15 @@ import { join, dirname } from 'node:path'
 export const name = 'whale-bus'
 export const apiVersion = 1
 export const V = 1
-const FIELD_ORDER = ['v', 'kind', 'id', 'from', 'to', 'seq', 'subject', 'body', 'sha256', 'sentAtMs', 'type', 'mode', 're', 'hop', 'onlineCapPerDay']
+const FIELD_ORDER = ['v', 'kind', 'id', 'from', 'to', 'seq', 'subject', 'body', 'sha256', 'sentAtMs', 'type', 'mode', 're', 'hop', 'onlineCapPerDay',
+  // ★★结构化回执的字段（2026-10-10，正本"主人 2026-10-06 01:5x 令"✓）——
+  //   ★它们**必须进签名域** ✓：★"一张回执说清两件事"是要**能验出改过**的 ✓。
+  //   ★对老 ack **无影响** ✓（canonical 只收**出现过的**字段 ✓）。
+  'by', 'ok', 'note', 'recipientState', 'disposition', 'peerStateAtSend',
+  // ★★发件人写下的"投递说明"（2026-10-10）✗✓ —— ★正本说"**`disposition` 优先取发件人写下的投递说明**" ✓，
+  //   而★"**发件人写下的**"⇒ ★**它必须随信过去** ✓（★收信侧光看 `mode` 推不出"**为什么**走了离线" ✓）。
+  //   ★取值（本仓约定）：★`'offline-only'`（对方声明仅收离线 ✓）／`'no-handshake'`（未握手 ⇒ 会留箱等人 ✓）。
+  'deliveryNote']
 /**
  * ★★**已知但已废弃**的信封字段 ✗（2026-10-10 从共享邮局根里真信上学到的）：
  *
@@ -442,7 +450,11 @@ export function createBus(config = {}) {
     const seq = claimSeq(as)
     const id = `${Date.now().toString(36)}-${as}-${String(seq).padStart(4, '0')}-${randomUUID().slice(0, 8)}`
     const hop = hop0
-    const env = seal({ v: V, kind: 'msg', id, from: as, to, seq, subject, body, sha256: digest(body), sentAtMs: Date.now(), type, mode: m, ...(hop === undefined ? {} : { re, hop }) })
+    const env = seal({ v: V, kind: 'msg', id, from: as, to, seq, subject, body, sha256: digest(body), sentAtMs: Date.now(), type, mode: m,
+      // ★★"投递说明"随信过去 ✗✓（★收信侧才知道"**为什么**走了离线" ✓）——
+      //   ★`offlineOnly`（对方声明仅收离线 ✓）优先于 `willWait`（未握手 ✓）：★前者是**对方的属性**，更根本 ✓。
+      ...(offlineOnly.length ? { deliveryNote: 'offline-only' } : (willWait.length ? { deliveryNote: 'no-handshake' } : {})),
+      ...(hop === undefined ? {} : { re, hop }) })
     // ★★★S11：收件人**全休眠** ⇒ **退信** ✗✓（2026-10-10 从正本移植；正本判据 100-104 ＋「主人 2026-10-06 02:5x 令」✓）
     //   ★五条口径 ✗：① ★**不落它信箱** ✓（它不会有人来取 ⇒ 落进去就是永远堆着 ✓）
     //     ② ★**进缸里 `退信/`** ✓（★**没删** ✗ —— 发信人还能找回来 ✓）
@@ -594,8 +606,48 @@ export function createBus(config = {}) {
       atomicWrite(join(paths().seen(as), f), JSON.stringify(env, null, 2))
       unlinkSync(p)
       if (!dup) {
-        const ack = seal({ v: V, kind: 'ack', id: env.id, from: as, to: env.from, seq: env.seq ?? 0, body: '', sha256: '', sentAtMs: Date.now(), re: env.id })
-        atomicWrite(join(paths().ack(env.from), `${env.id}.${as}.ack.json`), JSON.stringify(ack, null, 2))
+        // ★★★结构化回执（2026-10-10 从正本移植；★"主人 2026-10-06 01:5x 令"＋正本判据 87-90 ✓）——
+        //   ★一张回执说清**两件事** ✗✓：
+        //     ① ★`recipientState` ✗：★**我（收件人）当时的状态** ✓ —— `online`／`stale-online`／`offline`
+        //        （★"我在不在线"＝★**我自己发出去的 `hello` 新不新鲜** ✓ —— 收信侧能自己算 ✓）
+        //     ② ★`disposition` ✗：★这封信的**去向** ✓ ——
+        //        `refused`（拒收 ✓）／`accepted-online`（在线签收 ✓）／
+        //        `delivered-offline-by-declaration`（★**因发件人说过"对方仅收离线"** ⇒ 按离线寄达 ✓）／
+        //        `delivered-offline-by-stale`（★**因在线声明过期** ⇒ 降级为离线寄达 ✓）／
+        //        `delivered-offline`（★本来就是离线件 ✓）
+        //   ★★`disposition` **优先取发件人写下的投递说明** ✗✓（★"那才是**当时怎么判的**"✓ ——
+        //      ★收信侧自己推的话，只能推出"这封信是离线的"，推不出"**为什么**走了离线" ✓）。
+        //   ★★护栏 ✗（正本原话）：★"**坏信封（没 `from`／`id` ⇒ 连回执都不知道写给谁）绝不许把邮局搞崩**"
+        //      ⇒ ★**直接不写回执** ✓（★那封信本来就会被挪进退信 ✓，不必也不能回执 ✓）。
+        //   ⚠️ ★这里**不判 `refused`** ✗ —— ★能走到这一行的信**验签已经过了** ✓（验不过的早被挪进退信 ✓）；
+        //      ★"拒收"那份回执要写在**验签不过那一条路上** ✓（★下一版补 —— 正本判据 90 ✓）。
+        //   ★★读**信封里的投递说明** ✗✓（★不是读"发信时的返回值" —— ★那个**没随信过来** ✓；
+        //      ★我第一版就写成读 `env.wakePrediction.offlineOnly` ⇒ ★那是 `send` 的**返回值**、不在信封里 ⇒
+        //      ★对"只收离线"者发在线**错判成 `accepted-online`** ✗ ⇒ 现场抓出来，改成读 `deliveryNote` ✓）。
+        //   ★★**投递说明优先** ✗✓（正本原话："★`disposition` **优先取发件人写下的投递说明**"✓ ——
+        //      ★"那才是**当时怎么判的**" ✓）—— ★但**只在"这封信是在线件"时才谈得上"降级"** ✗✓：
+        //      ★发件人**自己写的** `mode: 'offline'` ⇒ ★那本来就是离线件 ⇒ ★`delivered-offline` ✓
+        //      （★"降级"这个词只对**在线件**有意义 ✓）。
+        //      ⚠️ ★"对方只收离线"要看，但**必须和 `mode === 'online'` 一起判** ✗ ——
+        //        ★我前两版都栽在这儿：先是漏了它（★错判成 `accepted-online` ✓），
+        //        后是判过头（★把"显式离线件"也判成 `by-declaration` ✓）—— ★两次都是**现场抓出来**的 ✓。
+        const disposition = env.mode === 'online'
+          ? (env.deliveryNote === 'offline-only'
+            ? 'delivered-offline-by-declaration'
+            : (env.deliveryNote === 'no-handshake' ? 'delivered-offline-by-stale' : 'accepted-online'))
+          : 'delivered-offline'
+        const myHello = paths().hello(as)
+        const meState = (() => {
+          try {
+            const h = JSON.parse(readFileSync(myHello, 'utf8'))
+            const age = Date.now() - Number(h.sentAtMs ?? 0)
+            if (!Number.isFinite(age) || age < -60000) return 'offline'
+            return age < cfg.helloMaxAgeMs ? 'online' : 'stale-online'
+          } catch { return 'offline' }
+        })()
+        const ackEnv = seal({ v: V, kind: 'ack', id: env.id, from: as, to: env.from, seq: env.seq ?? 0, body: '', sha256: '', sentAtMs: Date.now(), re: env.id,
+          by: as, ok: true, note: '', recipientState: meState, disposition })
+        atomicWrite(join(paths().ack(env.from), `${env.id}.${as}.ack.json`), JSON.stringify(ackEnv, null, 2))
         saveState(as, { ...st, seen: [...(st.seen ?? []), env.id] })
       }
       out.push({ ...row, kept: false, ...(hasInject ? { injected: true } : {}) })

@@ -128,6 +128,18 @@
   ★The cost of not cleaning it ✗: ★idempotency marks it "skipped" ⇒ ★**the mailbox copy stays in `inbox/` forever** ✓ (one receipt missing, one letter that can never leave ✓).
   ⇒ ★**do the MOVE** ✓ plus ★★**no accounting** ✗ (it was accounted when first imported ⇒ accounting again would double-count ✓).
   ★Criteria: a fresh half-file is left alone / a stale one goes to `垃圾/` (**not deleted**) / the scene is set up correctly / **the convergent MOVE happens** / **nothing is imported twice**.
+* ★★★ **Structured acknowledgements** ✗✓ (ported from the original on 2026-10-10; ★"the keeper's order of 2026-10-06 01:5x" plus its criteria 87-90 ✓) ——
+  ★★**One receipt states two things** ✗✓: ① ★`recipientState` (**my state as the recipient** ✓: `online` / `stale-online` / `offline`;
+  ★"am I online" = ★**is the `hello` I myself sent still fresh** ✓ —— the receiving side can work that out alone ✓);
+  ② ★`disposition` (where the letter **went** ✓): `accepted-online` / `delivered-offline-by-stale` (**no fresh hello** ⇒ downgraded ✓) /
+  `delivered-offline-by-declaration` (**I declared offline-only** ⇒ this **online** letter was delivered as offline ✓) / `delivered-offline` (★nothing was downgraded ✓) / `refused`.
+  ★★**`disposition` prefers the delivery note written by the sender** ✗✓ (verbatim: ★"that is **how it was judged at the time**" ✓) ——
+  ★so **the envelope carries a `deliveryNote`** ✓ (`'offline-only'` / `'no-handshake'`): ★what "**the sender wrote down**" must **travel with the letter** ✓;
+  ★`mode` alone cannot tell you **why** it went offline ✓ (★the first trap I fell into this round ✓).
+  ★New signature-domain fields: `by` / `ok` / `note` / `recipientState` / `disposition` / `peerStateAtSend` / `deliveryNote`
+  (★they **must** be in the domain —— "one receipt states two things" has to be **detectable if altered** ✓; ★old acknowledgements are unaffected ✓).
+  ★Criteria 88 → 95: one per state plus ★**a criterion for the opposite mistake** (an offline letter to an offline-only member stays `delivered-offline` ✓), field completeness, and `recipientState` being computed by the recipient.
+  ★Negative test: breaking the "offline letter" branch turns **2 criteria genuinely red** ✓.
 * ★**`cli`: `--only-offline <attribute>` / `--dormant <attribute>`** —— ★both rules can finally be switched on from the command line ✓.
 * ★★★ **No handshake no longer means "refused"** ✗✓ (ported from the original on 2026-10-10; ★its criteria 1-3 plus "**the keeper's order of 2026-10-06 01:5x**" ✓)
   —— ★**another "opposite direction"** ✗: ★it used to throw and refuse when there was no handshake ✓; the new rule is
