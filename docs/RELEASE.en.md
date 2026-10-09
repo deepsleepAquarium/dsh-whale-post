@@ -86,11 +86,17 @@ npx -y dsh-whale-post-cli@<new> pump --as a --root <temp root>   # ★this direc
 ★★**Why do it separately** ✗: `npm run compat` runs **checkout vs the previous published version** ✓;
 ★★whereas "two published versions" adds one more layer of reality: the copy `npx` installs **is what other people actually get** ✓.
 
-★Measured (when releasing `0.3.0`, 2026-10-10 ✓):
+★★Measured (★**at the 2026-10-10 release** ✓ —— ★see the `CHANGELOG` for exactly which version ✓):
 | Direction | Result |
 |---|---|
-| `0.2.0` sends ⇒ `0.3.0` receives | **works** ✓ |
-| `0.3.0` sends ⇒ `0.2.0` receives | **bounces** ✓ (reports "a field **not in the signature domain**: `peerStateAtSend`" ✓) |
+| `<old>` sends ⇒ `<new>` receives | **works** ✓ |
+| `<new>` sends ⇒ `<old>` receives | **bounces** ✓ |
+
+★**Why the two directions differ** ✗✓: ★**the new version added fields to the signature domain** ✓ ⇒ ★**the old version’s fail-closed rule does not recognise them** ✓
+(★and "new fields cannot enter the old signature domain" **cannot be fixed** ✗ —— ★the old code is already published ✓).
+★␈ ★**Which versions exactly, and the bounce text** ⇒ see the `CHANGELOG` "Read first (2): mixed versions are not compatible" ✓
+(★**that is where history is recorded** ✓; ★this checklist keeps only "what to do" ✓ —— ★**which is also what `pkgcheck` item ⑪ wants** ✗:
+★**a checklist must not hard-code a version** ✓, ★otherwise every release needs an edit here and a missed edit ships the wrong version ✓).
 
 ★★The conclusion **goes into the `CHANGELOG` "Read first (2)"** ✗✓ (★"upgrade both sides first, then start sending" ✓).
 ---
