@@ -39,6 +39,11 @@ const DEFAULTS = {
     //   非 0 退出 ＋ 不落信箱 ＋ 不许静默降级 ＋ 文案带出路（缸里 2026-10-06 定的口径）。
     //   ★不配（默认）⇒ 这一条完全不启用（向后兼容：老部署行为一字不变）。
     offlineOnlyFlag: undefined,
+    // ★★被**明确**标成休眠的成员（2026-10-10 缸内口径移植）：属性名由配置给 ——
+    //   核心不认识它 ✓；★**不根据"多久没 hello"自己猜休眠** ✗（那是猜，缸里明说"明确的 dormant 才退"✓）。
+    //   配了它 ⇒ 对带该属性的成员**当场拒发**（非 0 ＋ 信不进它的信箱 ＋ 文案带出路）；
+    //   ★只部分休眠（发给组）⇒ 只投给醒着的，并把剔掉谁如实带回去 ✓。★不配 ⇒ 这一条完全不启用 ✓。
+    dormantFlag: undefined,
 }
 
 const sha256 = (s) => createHash('sha256').update(String(s), 'utf8').digest('hex')
@@ -250,7 +255,8 @@ export function createBus(config = {}) {
     if (services.types && typeof services.types.resolve === 'function' && !services.types.resolve(type)) {
       throw new Error(`未注册的邮件类型：${type}（先用 types.register('${type}', { … }) 注册）`)
     }
-    const targets = resolveTargets(to, { as, force })
+    let targets = resolveTargets(to, { as, force })
+    let skippedDormant = []          // ★被明确标成休眠、因此**没投**的收件人（如实带回去 ✓）
     if (targets.length === 0) throw new Error(`收件人算出来是空的（to=${to}）—— 别发没有收件人的信`)
     // ★★"只收离线"的成员：属性名**由配置给**（★核心不认识任何具体属性名 ✓）——
     //   对它们发在线 ⇒ **拒发**：非 0 ＋ 不落信箱 ＋ 不许静默降级 ✗ ＋ 文案**必须带出路** ✓
@@ -262,6 +268,23 @@ export function createBus(config = {}) {
       if (stuck.length) {
         throw new Error(`拒发：${stuck.join('、')} 只收离线件（配置 offlineOnlyFlag='${cfg.offlineOnlyFlag}'）—— ` +
           `请用 --mode offline 重发。★这不是故障，--force 也不豁免：它们收不到在线件。`)
+      }
+    }
+    // ★★被**明确**标成休眠的成员（2026-10-10 缸内口径移植：**明确的 `dormant` 才退，不猜** ✗）——
+    //   ★属性名由配置给（`dormantFlag`），核心不认识它 ✓。
+    //   ★★**不许根据"多久没 hello"自己猜休眠** ✗ —— 那是猜；**必须有明确标记** ✓。
+    //   ★对它们发信 ⇒ **当场拒发**（非 0 ＋ 信**不进它的信箱** ＋ 文案带出路 ✓）——
+    //   否则信会**永远堆在一个不会有人来的信箱里**，而发信人还以为发成功了 ✗。
+    //   ★部分休眠 ⇒ 只投给醒着的，并把"剔掉了谁"**如实带回去** ✓（不许静默 ✓）。
+    if (cfg.dormantFlag && services.roster && typeof services.roster.flag === 'function') {
+      const asleep = targets.filter((t) => services.roster.flag(t, cfg.dormantFlag))
+      if (asleep.length === targets.length) {
+        throw new Error(`拒发：${asleep.join('、')} 被明确标成休眠（配置 dormantFlag='${cfg.dormantFlag}'）—— ` +
+          `信不会有人来取，所以不合信箱。★换个人发，或先让它醒（把名单里那个标记去掉再发）；--force 也不豁免。`)
+      }
+      if (asleep.length) {
+        targets = targets.filter((t) => !asleep.includes(t))
+        skippedDormant = asleep
       }
     }
     if (cfg.requireHello && !force) {
@@ -295,7 +318,7 @@ export function createBus(config = {}) {
     const st = loadState(as)
     st.recent = [...(st.recent ?? []), { to, atMs: env.sentAtMs, subject: String(subject).slice(0, 40) }].slice(-200)
     saveState(as, st)
-    return { id, seq, to, targets, mode: m, type, verdict, hop, env }
+    return { id, seq, to, targets, mode: m, type, verdict, hop, env, ...(skippedDormant.length ? { skippedDormant } : {}) }
   }
   // 回环链深：数一数这封信是本链第几跳（父信读不到 ⇒ 当第 1 跳，不冤枉人）
   function hopOf(parentId) {

@@ -164,6 +164,7 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* 把这段文字送进那�
 | | `helloMaxAgeMs` | `24 小时` | ★握手多旧算过期 ✓ |
 | | `defaultType` | `'direct'` | ★★配 `null` ⇒ **没写类型的信直接拒发**（不替调用方猜 ✓） |
 | | `offlineOnlyFlag` | 不配 | ★对带此属性的成员**发在线即拒发** ✓（见 §七） |
+| | ★★`dormantFlag` ✗ | 不配 | ★★对**被明确标成休眠**的成员**当场拒发** ✗（信**不进它的信箱**；`--force` 不豁免 ✓）。★**不许自己猜休眠** ✗（不按"多久没 hello"判 ✓ —— 缸里口径："**明确的 dormant 才退，不猜**"✓） |
 | `roster` | `file` | `<root>/roster.json` | ★名单文件 ✓ |
 | | `groupWithout` | 不配 | ★**群发默认剔掉**带此属性的成员 ✓（见 §七） |
 | | `sample` | `false` | ★`true` ⇒ 文件不存在时用内置样例（只为试跑 ✓） |
@@ -196,6 +197,7 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* 把这段文字送进那�
 | ★群发 | ★`send({ to: 'all' })` 或 `to: '<组名>'` ✓ |
 | ★让某人不收群发 | ★`roster` 的 **`groupWithout`** ✓（点名照样到 ✓） |
 | ★让某人只收离线 | ★`bus` 的 **`offlineOnlyFlag`** ✓（发在线会**拒发并告诉你怎么办** ✓） |
+| ★★**某人长期不来（明确休眠）** ✗ | ★★`bus` 的 **`dormantFlag`** ✓（★发信**当场拒发、不合信箱** ✓ —— 免得信永远堆在一个没人来的信箱里；★**不按时间猜** ✗） |
 | ★限制一天能发多少 | ★`gate` 的 **`quota.types`** ✓ |
 | ★防对发死循环 | ★`gate` 的 **`loop.*`**（默认就开 ✓） |
 | ★要求验签＋白名单 | ★`verify` 的 **`enabled: true` ＋ `allow`** ✓ |

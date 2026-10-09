@@ -73,6 +73,14 @@
 * ★★ **`roster`: `groupWithout`** ✗ —— broadcasts (both "by group" and "the whole roster") drop members carrying that attribute by default;
   ★**addressing someone by name is unaffected** ✗ (the rule from the tank: "broadcasts skip it, naming it gets through").
   An explicit `without: null` means "do not drop anyone this time".
+* ★★**`bus`: `dormantFlag` (only an explicit dormant bounces; we do not guess)** ✗✓ —— ★a member carrying this attribute is
+  **explicitly marked dormant**: sending to them is **refused on the spot** (non-zero + **the letter never enters their mailbox** +
+  a message showing the way out ✓; `--force` does **not** exempt it ✓).
+  ★★**Never guess dormancy from "how long since their last hello"** ✗ —— ★that is guessing; **there must be an explicit mark** ✓.
+  ★Partially dormant (sending to a group) ⇒ **only the awake ones receive it**, and those dropped are returned in `skippedDormant` ✓
+  (the CLI prints **"not delivered to: …"** ✓ —— **no silence** ✓).
+  ★The attribute name comes from **configuration** ✓; unset ⇒ the rule is entirely off (backward compatible ✓).
+* ★**`cli`: `--only-offline <attribute>` / `--dormant <attribute>`** —— ★both rules can finally be switched on from the command line ✓.
 * ★**`cli`: `verify` / `nag` subcommands** —— the three-state design is finally visible from the command line.
 * ★★**`cli`: `pickup` (remote root)** ✗✓ —— ★**go to another mailbox root and fetch your own letters** ✓ (★**it works offline** ✓ ——
   this is the step to take once the bell in "3 offline : 1 online" has rung ✓). The remote root comes from `--remote <dir>` or `WHALE_POST_REMOTE_ROOT` ✓.

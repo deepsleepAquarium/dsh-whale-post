@@ -117,6 +117,40 @@ try {
   check('群发：没配 groupWithout ⇒ 谁都到（向后兼容）',
     createBus({ root: tmpOff, services: { roster: createRoster({ file: offFile }), types } }).send({ as: 'alice', to: 'all', mode: 'offline', subject: 's', body: '群发：没配' }).targets.includes('carol'))
 
+  // ★★被**明确**标成休眠的成员（2026-10-10 缸内口径移植：**明确的 dormant 才退，不猜** ✗）——
+  //   ★属性名由配置给（dormantFlag），核心不认识它 ✓；★**不根据"多久没 hello"自己猜** ✓
+  const dormFile = join(tmpOff, 'roster-dormant.json')
+  writeFileSync(dormFile, JSON.stringify({ apiVersion: 1,
+    members: [{ id: 'alice' }, { id: 'bob' }, { id: 'sleepy' }],
+    groups: { all: ['alice', 'bob', 'sleepy'], pair: ['bob', 'sleepy'] },
+    zzz: ['sleepy'] }, null, 2), 'utf8')
+  const rosterDorm = createRoster({ file: dormFile })
+  const busDorm = createBus({ root: tmpOff, services: { roster: rosterDorm, types }, dormantFlag: 'zzz' })
+  busDorm.hello({ as: 'alice' }); busDorm.hello({ as: 'bob' }); busDorm.hello({ as: 'sleepy' })
+  const beforeSleepy = lsInbox('sleepy')
+  let eDorm = ''
+  try { busDorm.send({ as: 'alice', to: 'sleepy', mode: 'offline', subject: 's', body: '发给明确休眠的人（正文有货）' }) } catch (e) { eDorm = e.message }
+  check('★休眠：对**明确**标成休眠的成员发信 ⇒ 当场拒发', /休眠/.test(eDorm), eDorm.slice(0, 60))
+  check('★休眠：拒发**不落信箱**（信不会永远堆着）', lsInbox('sleepy') === beforeSleepy, `${beforeSleepy} ⇒ ${lsInbox('sleepy')}`)
+  check('★休眠：文案带出路（换人／先让它醒）', /换个人|先让它醒/.test(eDorm))
+  let eDormForce = ''
+  try { busDorm.send({ as: 'alice', to: 'sleepy', mode: 'offline', subject: 's', body: '休眠＋force（正文有货）', force: true }) } catch (e) { eDormForce = e.message }
+  check('★★休眠：--force 也不豁免（那是"信到不了"，不是"闸"）', /休眠/.test(eDormForce), eDormForce.slice(0, 50))
+  // ★部分休眠（发给组）⇒ 只投醒着的，并把剔掉谁**如实带回去** ✓
+  const rDormG = busDorm.send({ as: 'alice', to: 'pair', mode: 'offline', subject: 's', body: '发给组：组里有休眠的（正文有货）' })
+  check('★休眠：部分休眠 ⇒ 只投醒着的', rDormG.targets.includes('bob') && !rDormG.targets.includes('sleepy'), JSON.stringify(rDormG.targets))
+  check('★★休眠：剔掉谁**如实带回去**（不许静默）', JSON.stringify(rDormG.skippedDormant) === '["sleepy"]', JSON.stringify(rDormG.skippedDormant))
+  check('★休眠：不配 dormantFlag ⇒ 照发（向后兼容）',
+    !!createBus({ root: tmpOff, services: { roster: rosterDorm, types } }).send({ as: 'alice', to: 'sleepy', mode: 'offline', subject: 's', body: '没配就照发（正文有货）' }).id)
+  check('★休眠：属性名换了照样工作（★属性名不进核心）',
+    (() => {
+      writeFileSync(join(tmpOff, 'roster-dormant2.json'), JSON.stringify({ apiVersion: 1, members: [{ id: 'alice' }, { id: 'sleepy', zzz2: true }] }), 'utf8')
+      const r2 = createRoster({ file: join(tmpOff, 'roster-dormant2.json') })
+      let m = ''
+      try { createBus({ root: tmpOff, services: { roster: r2, types }, dormantFlag: 'zzz2' }).send({ as: 'alice', to: 'sleepy', mode: 'offline', subject: 's', body: 'x' }) } catch (e) { m = e.message }
+      return /休眠/.test(m)
+    })())
+
   // ③ 收信：消费 ＋ ack ＋ 幂等（★要声明 reader：CLI 把信打到终端时才敢消费）
   const got = bus.pump({ as: 'bob', reader: true })
   check('收信：拉到 1 封', got.length === 1 && got[0].ok)

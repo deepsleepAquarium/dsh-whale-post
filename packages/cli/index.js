@@ -14,6 +14,8 @@
  *   whale-post roster / types / key / selftest
  *
  * 通用参数：`--root <目录>`（★默认 `./.whale-mail`，或环境变量 `WHALE_POST_ROOT`）
+ *          `--only-offline <属性名>`：带此属性的成员**只收离线**（对它发在线 ⇒ 拒发）
+ *          `--dormant <属性名>`：带此属性的成员被**明确**标成休眠（发信 ⇒ 当场拒发，不合信箱）
  * 退出码：0 ＝ 成功；2 ＝ 拒发／输入不合法；1 ＝ 没料到的错。
  * ★判据看**退出码**，不要看输出里的中文。
  */
@@ -58,7 +60,15 @@ function wire({ root, live, allow: allowIn, verifyEnabled } = {}) {
       sessionOf: (id) => (liveSet.has(id) ? { live: true, inject: (text) => injected.push({ id, text }) } : undefined),
     }),
   }
-  const bus = createBus({ root: r, services })
+  const bus = createBus({
+    root: r,
+    services,
+    // ★★两个"按属性拦"的开关：属性名**从命令行给**，核心不认识任何具体名字 ✓
+    //   `--only-offline <属性名>`：带此属性的成员**只收离线**（对它发在线 ⇒ 拒发）
+    //   `--dormant <属性名>`：带此属性的成员被**明确**标成休眠（发信 ⇒ 当场拒发，不合信箱）
+    ...(opt('only-offline') ? { offlineOnlyFlag: opt('only-offline') } : {}),
+    ...(opt('dormant') ? { dormantFlag: opt('dormant') } : {}),
+  })
   return { root: r, bus, services, injected, liveSet, allow }
 }
 
@@ -231,6 +241,10 @@ function main() {
       const verdictTxt = r.verdict === 'delivered' ? 'delivered（投出去了）'
         : r.verdict === 'kept' ? 'kept（留在信箱里等人来收）' : String(r.verdict)
       console.log(`已投递 ${r.id} → ${r.targets.join(',')}（seq ${r.seq}）【${modeTxt}】`)
+      // ★★没投给谁，也要说出来 ✗ —— 部分收件人被明确标成休眠时，核心把它带回来了（不许静默 ✓）
+      if (Array.isArray(r.skippedDormant) && r.skippedDormant.length) {
+        console.log(`★没投：${r.skippedDormant.join('、')} 被明确标成休眠 ⇒ 信没进它们的信箱（换人或先让它们醒）`)
+      }
       console.log(`投递策略：${verdictTxt}`)
       const bucket = r.mode === 'offline' ? 'offline' : r.type
       const b = services.gate.report({ as }).buckets.find((x) => x.bucket === bucket)

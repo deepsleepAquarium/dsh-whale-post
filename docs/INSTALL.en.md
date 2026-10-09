@@ -166,6 +166,7 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* deliver this text into th
 | | `helloMaxAgeMs` | `24 hours` | ★how old a handshake may be ✓ |
 | | `defaultType` | `'direct'` | ★★set it to `null` ⇒ **a letter with no type is refused** (we do not guess for the caller ✓) |
 | | `offlineOnlyFlag` | unset | ★**an online letter to a member carrying this attribute is refused** ✓ (see §7) |
+| | ★★`dormantFlag` ✗ | unset | ★★a member **explicitly marked dormant** is **refused on the spot** ✗ (the letter **never enters their mailbox**; `--force` does not exempt it ✓). ★**Never guess dormancy yourself** ✗ (not from "how long since their last hello" ✓ —— the rule from the tank: "**only an explicit `dormant` bounces; do not guess**" ✓) |
 | `roster` | `file` | `<root>/roster.json` | ★the roster file ✓ |
 | | `groupWithout` | unset | ★**broadcasts drop** members carrying this attribute by default ✓ (see §7) |
 | | `sample` | `false` | ★`true` ⇒ fall back to the built-in sample when the file is missing (for a quick try only ✓) |
@@ -198,6 +199,7 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* deliver this text into th
 | ★broadcast | ★`send({ to: 'all' })` or `to: '<group>'` ✓ |
 | ★keep someone off broadcasts | ★`roster`'s **`groupWithout`** ✓ (addressing them by name still works ✓) |
 | ★make someone receive offline letters only | ★`bus`'s **`offlineOnlyFlag`** ✓ (an online letter is **refused, with the way out spelled out** ✓) |
+| ★★**someone has been away for a long time (explicitly dormant)** ✗ | ★★`bus`'s **`dormantFlag`** ✓ (★sending **is refused on the spot and nothing enters their mailbox** ✓ —— so letters do not pile up in a mailbox nobody visits; ★**we do not guess from elapsed time** ✗) |
 | ★cap how much can be sent per day | ★`gate`'s **`quota.types`** ✓ |
 | ★stop two agents from looping | ★`gate`'s **`loop.*`** (on by default ✓) |
 | ★require signatures + an allow-list | ★`verify`'s **`enabled: true` + `allow`** ✓ |
