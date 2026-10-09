@@ -107,27 +107,101 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* deliver this text into th
 3. ★**If you pass `inject`, it is really called; if it throws, nothing is consumed** — a letter that cannot be handed over is never treated as handed over.
 
 ## 4. Packages and interfaces at a glance
+
+### First, the four roles (★understand this and the rest will not confuse you ✓)
+
+| Role | What question it answers | Who plays it |
+|---|---|---|
+| ★**Core** | what a letter looks like, how it is signed, how it is persisted —— ★**it knows no names and no types** ✓ | `bus` |
+| ★**Interface pieces (providers)** | ★**who is on the roster** / ★**what type a letter is** —— ★**swap the implementation and the core does not change a line** ✓ | `roster`, `types` |
+| ★**Policy pieces** | ★**whether to deliver / whether to block / whether to verify** —— these are the "hook points" ✓ | `deliver`, `gate`, `verify` |
+| ★**Entry-point tool** | ★**how a human uses it from the command line** (★**it is not a plugin** ✗) | `cli` |
+
+### Packages
+
 | Package | Role | Interfaces provided / used |
 |---|---|---|
 | `dsh-whale-post-bus` | Core: envelope / digest + HMAC signature / handshake / idempotency / persist to disk | provides `ctx.whale.bus` |
 | `dsh-whale-post-roster` | **Who receives** (the interface piece + a sample that reads JSON) | provides `ctx.whale.roster` |
 | `dsh-whale-post-types` | **What type a letter is** (the interface piece + a sample) | provides `ctx.whale.types` |
 | `dsh-whale-post-deliver` | **Delivery strategy** (= the hook point of example ①) | uses `bus` / `roster` |
-| `dsh-whale-post-gate` | **Gate** (= the hook point of example ②) | uses `bus` / `types` |
+| `dsh-whale-post-gate` | **Gate**: quota and billing + loop gate (= the hook point of example ②) | uses `bus` / `types` |
 | `dsh-whale-post-verify` | **Security check** (envelope signature + allow-list), ★disabled by default | uses `bus` (optional: borrows its `digest` / `sign`) |
 | `dsh-whale-post-cli` | Entry-point tool (★**not a plugin**) | uses `bus` |
 | `example/` | Composition example: a minimal `cordis.patch.yml` + the criteria for one run | everything |
 
-★The minimal method set of the interfaces (★**carries `apiVersion`**; types may be extended at any time):
+### Interfaces (★one sentence per method ✗)
 
-| namespace | Methods |
+| namespace | Method | In one sentence |
+|---|---|---|
+| `ctx.whale.bus` | `send(letter)` | ★send one; **a refusal is a refusal** (it throws ⇒ the CLI exits non-zero ✓) |
+| | `pump({ as, keep, reader })` | ★receive; ★**no reader ⇒ nothing is consumed** (letters stay put ✓) |
+| | `verify(letter)` | ★returns the **list of problems** with an envelope (empty = fine ✓) |
+| | `hello({ as })` | ★handshake (senders check how fresh yours is ✓) |
+| | `format(env)` | ★render an envelope as human-readable text ✓ |
+| | `paths()` / `root()` / `keyHex()` / `digest(s)` / `seal(f)` / `sign(env)` / `loadState(as)` | ★low-level parts (used by self-tests, tools and the gate ✓) |
+| `ctx.whale.roster` | `list()` / `has(id)` / `label(id)` | ★the minimal set: who is there / is this person there / what are they called ✓ |
+| | `member(id)` | ★**the whole member record** (including custom attributes ✓) |
+| | `flag(id, name)` | ★**member attributes**: `name` is supplied by the caller ✓ (a field on the member or a top-level array ✓) |
+| | `without(ids, name)` | ★**drop** members carrying that attribute from a list ✓ |
+| | `broadcast()` | ★**who a broadcast should go to** (already filtered by `groupWithout` ✓) |
+| | `groups()` / `group(name, opts)` | ★group names / one group's members (`opts.without` drops some just for this call ✓) |
+| `ctx.whale.types` | `register(id, meta)` / `resolve(id)` / `list()` / `meta(id)` | ★register / look up / list; ★**an unregistered type is refused on the spot** ✓ |
+| `ctx.whale.deliver` | `deliver(letter, ctx)` | ★returns `'delivered'` / `'kept'` / `'rejected'` ✓ |
+| | `blocked(id)` / `sessionOf(id)` | ★is this recipient blocked / is that session alive ✓ |
+| `ctx.whale.gate` | `check(letter, ctx)` | ★block or not: `'pass'` / `{ reject, reason }` ✓ |
+| | `record(letter, targets)` / `report({ as, days })` | ★record after a successful delivery / read the ledger ✓ |
+| `ctx.whale.verify` | `verify(letter)` | ★`{ ok, why?, skipped? }`; ★**while disabled it lets letters through but says `skipped: true`** ✓ |
+| | `nag()` | ★returns the notice when one is due, `null` when it is not ✓ |
+| | `status()` / `enable()` / `disable()` | ★the truthful status / turn on / turn off ✓ |
+
+### ★Configuration (★including "what happens if you leave it out" ✗)
+
+| Package | Field | Default | Meaning |
+|---|---|---|---|
+| `bus` | `root` | `WHALE_POST_ROOT` ⇒ `./.whale-mail` | ★mailbox root (**this is where letters land** ✓) |
+| | `keyFile` | `<root>/signing.key` | ★signing key (generated on first use ✓) |
+| | `maxBody` | `64 KiB` | ★body size limit ✓ |
+| | `requireHello` | `true` | ★whether a handshake is required (the protocol forbids "sending like UDP" ✓) |
+| | `helloMaxAgeMs` | `24 hours` | ★how old a handshake may be ✓ |
+| | `defaultType` | `'direct'` | ★★set it to `null` ⇒ **a letter with no type is refused** (we do not guess for the caller ✓) |
+| | `offlineOnlyFlag` | unset | ★**an online letter to a member carrying this attribute is refused** ✓ (see §7) |
+| `roster` | `file` | `<root>/roster.json` | ★the roster file ✓ |
+| | `groupWithout` | unset | ★**broadcasts drop** members carrying this attribute by default ✓ (see §7) |
+| | `sample` | `false` | ★`true` ⇒ fall back to the built-in sample when the file is missing (for a quick try only ✓) |
+| `types` | `types` | three samples | ★the type table; ★**both array and object spellings are accepted** ✓ |
+| | `extra` | unset | ★**register more** on top of the samples ✓ |
+| `deliver` | `sessionOf` | not wired | ★**the only wiring point into a real engine** ✓ (see §3) |
+| | `blocked` | `[]` | ★recipients that are explicitly blocked (letters never enter their mailbox ✓) |
+| `gate` | `quota.onOver` | `'reject'` | ★`'reject'` refuses to send / ★`'price'` **sends anyway and bills it** ("a price gate, not a gag" ✓) |
+| | `quota.dayBoundaryHour` | `0` | ★day boundary: `0` = calendar day; ★`9` = "9am to 9am the next day counts as one day" ✓ |
+| | `quota.types` | four sample buckets | ★each bucket has a `limit`; ★**the offline bucket may set `perSend: true`** (counted per send, group sends do not multiply ✓) |
+| | `quota.defaultLimit` | `120` | ★types **not in the table** fall into this bucket ✓ |
+| | ★★`quota.bucketRules` ✗ | unset | ★★**which field decides the bucket** ✗: `[{ field, equals, bucket }]`, ★**the first match wins**, top to bottom; ★**both the field name and the bucket name come from configuration** ✓. ★Unset ⇒ behaviour is unchanged ✓. ★Example, four tiers by authorisation level: `[{ field: 'auth', equals: 'self', bucket: 'self' }, …]` plus a `limit` for `self` / `relay` / … under `types` ✓ |
+| | ★★`quota.defaultBucket` ✗ | unset | ★which bucket to use when no rule matches (★only meaningful when `bucketRules` is set ✓) |
+| | `loop.ackMaxBytes` / `ackOnly` | `40` / English+Chinese receipt words | ★**pure receipts are refused** ✓ |
+| | `loop.pairWindowMs` / `pairMax` | `20 minutes` / `3` | ★**how many letters one pair may exchange inside that window** ✓ |
+| | `loop.hopMax` | `3` | ★chain-depth cap (★a politeness / cost gate, **not a security boundary** ✓) |
+| `verify` | `enabled` | ★**`false`** | ★★**disabled by default** —— ★deliberately, not "not written yet" ✓ |
+| | `allow` | `[]` | ★allow-list; ★**empty ⇒ recipients are unrestricted** ✓ |
+| | `nagDays` | `3` | ★**nags for this many days and then stops** ✓ (the status still truthfully says disabled ✓) |
+| | `keysDir` / `keyFile` | `<root>/keys` / `<root>/signing.key` | ★★**keys are looked up by the sender declared in the envelope**; ★no dedicated key ⇒ **fall back to the shared key** ✓ |
+| | `now` | not injected | ★inject a clock (for self-tests ✓) |
+
+### ★"I want to X ⇒ use which one" (★an index ✗)
+
+| I want to… | Use |
 |---|---|
-| `ctx.whale.bus` | `send(letter)` / `pump({ as, keep })` / `verify(letter)` |
-| `ctx.whale.roster` | `list()` / `has(id)` / `label(id)` |
-| `ctx.whale.types` | `register(id, meta)` / `resolve(id)` / `list()` |
-| `ctx.whale.deliver` | `deliver(letter, ctx)` → `'delivered'` / `'kept'` / `'rejected'` |
-| `ctx.whale.gate` | `check(letter, ctx)` → `'pass'` / `{ reject, reason }` |
-| `ctx.whale.verify` | `verify(letter)` → `{ ok, why?, skipped? }` / `nag()` → `string \| null` / `status()` / `enable()` / `disable()` |
+| ★send a letter | ★`bus.send({ as, to, subject, body, mode })` ✓ |
+| ★receive letters | ★`bus.pump({ as, reader: true })` ✓ |
+| ★broadcast | ★`send({ to: 'all' })` or `to: '<group>'` ✓ |
+| ★keep someone off broadcasts | ★`roster`'s **`groupWithout`** ✓ (addressing them by name still works ✓) |
+| ★make someone receive offline letters only | ★`bus`'s **`offlineOnlyFlag`** ✓ (an online letter is **refused, with the way out spelled out** ✓) |
+| ★cap how much can be sent per day | ★`gate`'s **`quota.types`** ✓ |
+| ★stop two agents from looping | ★`gate`'s **`loop.*`** (on by default ✓) |
+| ★require signatures + an allow-list | ★`verify`'s **`enabled: true` + `allow`** ✓ |
+| ★see whether to turn verification on | ★`npx dsh-whale-post-cli nag` ✓ |
+| ★wire it into a real engine | ★`deliver`'s **`sessionOf`** ✓ |
 
 ## 5. ★Rules for writing a plugin (follow them; do not step in the pits we fell into)
 1. ★**Know interfaces, not names**: the core code must not hard-code **any** member name / type identifier / internal path (rosters and types are always registered in).
