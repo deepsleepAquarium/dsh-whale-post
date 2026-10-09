@@ -17,6 +17,8 @@
  *          `--only-offline <属性名>`：带此属性的成员**只收离线**（对它发在线 ⇒ 拒发）
  *          `--dormant <属性名>`：带此属性的成员被**明确**标成休眠（发信 ⇒ 当场拒发，不合信箱）
  *          `--no-gate`：★整套闸都不要（★并发压测用 ✓ —— 压测要看的是"发号撞不撞"，不是"闸拦不拦" ✓）
+ *          `--only-offline <属性名>`（pickup 用）：★只镜像"只收离线成员"的 hello ✓
+ *          `--account`（pickup 用）：★取件时**替发件人记账** ✓（★远端自己记过就别开 —— 那会**双记** ✗）
  * 退出码：0 ＝ 成功；2 ＝ 拒发／输入不合法；1 ＝ 没料到的错。
  * ★判据看**退出码**，不要看输出里的中文。
  */
@@ -268,34 +270,77 @@ function main() {
       return 0
     }
     if (cmd === 'pickup') {
-      // ★★去**别的信箱根**把我自己的信取回来 ✗（2026-10-10 缸内口径移植 ——
-      //   这正是"离 3 在 1"里那只铃响过之后该做的事：我人不在那儿，但信在）
-      //   ① 从远端读  ② **每封先验签**（不过的**不搬** ✗）  ③ 写进本地（先 .tmp 再 rename）
-      //   ④ ★★**写成功之后才删远端** ✗（否则就是丢信）  ⑤ 已在 seen／已有的**跳过**（幂等 ✓）
+      // ★★S6 取件 ＋ S7 到达侧记账（2026-10-10 从缸里正本移植的**完整版** ✓）——
+      //   场景：信箱在**别人那儿**（或共享目录的另一头 ✓）；我人不在，但信在 ✓
+      //   ① ★**镜像 hello** ✗：把远端 `hello/` 里"**只收离线成员**"的 hello 搬回本机
+      //      ⇒ ★**握手闸才看得见手机** ✓（★缸内成员的 hello **不搬** ✗；属性名由 `--only-offline <名>` 给 ✓）
+      //   ② 远端 `inbox/<我>/` 的信 ⇒ **验签** ⇒ 搬进本机 `inbox/`
+      //      ＋ ★远端那份 **`MOVE` 进 `seen/`** ✗（★**消费凭证** ✓ —— 不是删掉 ✓）
+      //   ③ ★**幂等认三处** ✗：本机 inbox ／ 本机 seen ／ **远端 seen** ⇒ 任一处有 ⇒ 跳过 ✓
+      //   ④ ★★**每"新搬进一封"才记一次账** ✗：按信封 `mode` 记 **发件人** 的配额
+      //      ⇒ ★到达侧记账 ✓、★**绝不双记** ✓（幂等拦在前面，两个记账点不会同时命中同一封 ✓）
+      //   ★验不过的信 ⇒ **不搬、不消费、不删** ✗（留在远端等人查 ✓）
       const as = opt('as') || die(2, 'pickup 需要 --as')
       const remote = opt('remote') ?? process.env.WHALE_POST_REMOTE_ROOT
       if (!remote) die(2, 'pickup 需要 --remote <远端信箱根>（或环境变量 WHALE_POST_REMOTE_ROOT）')
+      if (!existsSync(remote)) die(2, `远端根不存在：${remote}（★要指到"信箱根"那一层 ✓）`)
+      const onlyOffline = opt('only-offline')          // ★不配 ⇒ 一个 hello 都不镜像 ✓
       const rInbox = join(remote, 'inbox', as)
-      if (!existsSync(rInbox)) die(2, `远端没有这个收件箱：${rInbox}（★远端根要指到"信箱根"那一层 ✓）`)
+      const rSeenDir = join(remote, 'seen', as)
       const mine = bus.paths().inbox(as)
-      mkdirSync(mine, { recursive: true })
       const seenDir = bus.paths().seen(as)
-      const seen = existsSync(seenDir) ? new Set(readdirSync(seenDir).filter((x) => x.endsWith('.msg.json'))) : new Set()
+      mkdirSync(mine, { recursive: true })
+      const seenNames = (d) => (existsSync(d) ? new Set(readdirSync(d).filter((x) => x.endsWith('.msg.json'))) : new Set())
+      const mineSeen = seenNames(seenDir)
+      const remoteSeen = seenNames(rSeenDir)           // ★③ 第三处 ✓
+
+      // ① ★镜像 hello：只搬"只收离线成员"的 ✓（★核心/本件都不认识具体属性名 —— 由 --only-offline 给 ✓）
+      let mirrored = 0
+      if (onlyOffline) {
+        const rHello = join(remote, 'hello')
+        const myHello = join(bus.paths().root, 'hello')
+        if (existsSync(rHello)) {
+          mkdirSync(myHello, { recursive: true })
+          for (const f of readdirSync(rHello).filter((x) => x.endsWith('.json'))) {
+            const w = f.replace(/\.json$/, '')
+            if (!services.roster.flag(w, onlyOffline)) continue      // ★缸内成员不搬 ✓
+            try { writeFileSync(join(myHello, f), readFileSync(join(rHello, f), 'utf8'), 'utf8'); mirrored++ } catch { /* 单个失败不拦住别的 ✓ */ }
+          }
+        }
+      }
+
+      // ②③④ 搬信
       let took = 0, skipped = 0, bad = 0
-      for (const f of readdirSync(rInbox).filter((x) => x.endsWith('.msg.json'))) {
-        if (seen.has(f) || existsSync(join(mine, f))) { skipped++; continue }   // ★幂等：已经有 ⇒ 一律不动 ✓
+      const files = existsSync(rInbox) ? readdirSync(rInbox).filter((x) => x.endsWith('.msg.json')) : []
+      if (!existsSync(rInbox)) console.log(`ⓘ 远端没有这个收件箱：${rInbox}（★只做了 hello 镜像 ✓）`)
+      mkdirSync(rSeenDir, { recursive: true })          // ★准备"消费凭证"那一格 ✓
+      for (const f of files) {
+        // ★③ 幂等认三处 ✓
+        if (mineSeen.has(f) || remoteSeen.has(f) || existsSync(join(mine, f))) { skipped++; continue }
         let env = null
         try { env = JSON.parse(readFileSync(join(rInbox, f), 'utf8')) } catch { bad++; console.log(`坏件   ${f}（读不出来 ⇒ 不搬）`); continue }
         const probs = bus.verify(env)
-        if (probs.length) { bad++; console.log(`不过   ${f} :: ${probs.join('；')}（★不搬、远端那封留着 ✓）`); continue }
+        if (probs.length) { bad++; console.log(`不过   ${f} :: ${probs.join('；')}（★不搬、不消费、不删 —— 留在远端等人查 ✓）`); continue }
         const tmp = join(mine, `.${f}.tmp`)
         writeFileSync(tmp, JSON.stringify(env, null, 2), 'utf8')
-        renameSync(tmp, join(mine, f))          // ★落地（抛了就轮不到下一行 ✓）
-        unlinkSync(join(rInbox, f))             // ★★只有落地成功才删远端 ✗
+        renameSync(tmp, join(mine, f))                  // ★落地（抛了就轮不到下面两行 ✓）
+        renameSync(join(rInbox, f), join(rSeenDir, f))  // ★★远端那份 MOVE 进 seen ✗（消费凭证 ✓）
         took++
-        console.log(`取回   ${f} :: ${env.from} → ${as}《${env.subject ?? ''}》[${env.mode ?? 'online'}]`)
+        // ★★④ 到达侧记账：记**发件人**的配额 ✗ —— ★**默认不记，要 `--account` 显式开** ✓
+        //   ⚠️ 为什么默认关：★缸里的场景是"**手机**把信留在邮筒、**缸内成员取件时替它记**"（★手机自己不记 ✓）；
+        //      ★但如果**远端本身就是一台真邮局**（它有自己的 gate ✓），它**在发信时就记过了** ✗
+        //      ⇒ 我们再记一遍**就是双记** ✓。★"远端有没有账本"是**部署事实**，不是核心能猜的 ⇒ 交给使用者说 ✓。
+        let quota = ''
+        if (flag('account') && services.gate && typeof services.gate.record === 'function') {
+          try {
+            const rec = services.gate.record({ as: env.from, to: as, targets: [as], mode: env.mode ?? 'online', type: env.type ?? 'direct', subject: env.subject ?? '', body: env.body ?? '' })
+            if (rec) quota = `　配额（${rec.bucket}）：${env.from} 今日 ${rec.used + rec.units}/${Number.isFinite(rec.limit) ? rec.limit : '∞'}`
+          } catch { /* ★记账失败不该让信丢掉 ✓ */ }
+        }
+        console.log(`取回   ${f} :: ${env.from} → ${as}《${env.subject ?? ''}》[${env.mode ?? 'online'}]${quota}`)
       }
-      console.log(`\n取回 ${took} 封，跳过 ${skipped} 封（已有），没搬 ${bad} 封 —— ★远端没搬走的都还在那儿 ✓`)
+      console.log(`\n取回 ${took} 封，跳过 ${skipped} 封（已有），没搬 ${bad} 封，镜像 hello ${mirrored} 份`)
+      console.log('★远端没搬走的都还在那儿 ✓；搬走的留在它的 seen/ 里当消费凭证 ✓；★记账记在**发件人**名下 ✓')
       return bad > 0 && took === 0 ? 2 : 0
     }
     if (cmd === 'quota') {

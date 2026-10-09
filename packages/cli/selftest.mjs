@@ -9,7 +9,7 @@
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { mkdirSync, writeFileSync, readdirSync, readFileSync, unlinkSync } from 'node:fs'
+import { mkdirSync, writeFileSync, readdirSync, readFileSync, unlinkSync, existsSync } from 'node:fs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const bin = join(here, 'index.js')
@@ -106,6 +106,27 @@ unlinkSync(join(rInbox, victim))
 const pkEnv = spawnSync(process.execPath, [bin, 'pickup', '--as', 'bob', '--root', pLocal], { encoding: 'utf8', env: { ...process.env, WHALE_POST_REMOTE_ROOT: pRemote } })
 check('★pickup：环境变量 WHALE_POST_REMOTE_ROOT 也认（坏件已清 ⇒ 取回 0 封、退出码 0）',
   pkEnv.status === 0 && /取回 0 封/.test(pkEnv.stdout), `exit=${pkEnv.status} out=${String(pkEnv.stdout).slice(0, 40)}`)
+
+// ⑤ ★★S6 完整版（2026-10-10 从缸里正本移植）：镜像 hello ／ 远端那份 MOVE 进 seen ／ 到达侧记账（默认关）
+const s6Remote = join(process.env.TEMP ?? '/tmp', `whale-cli-s6-remote-${Date.now()}`)
+const s6Local = join(process.env.TEMP ?? '/tmp', `whale-cli-s6-local-${Date.now()}`)
+const s6Roster = JSON.stringify({ apiVersion: 1, members: [{ id: 'web' }, { id: 'phone', phone: true }, { id: 'qq' }] })
+for (const d of [s6Remote, s6Local]) { mkdirSync(d, { recursive: true }); writeFileSync(join(d, 'roster.json'), s6Roster, 'utf8') }
+run(['hello', '--as', 'phone', '--root', s6Remote])
+run(['hello', '--as', 'web', '--root', s6Remote])
+run(['send', '--as', 'phone', '--to', 'web', '--body', '手机在邮筒里留的离线件（正文有货，别当回执）', '--root', s6Remote])
+const pk6 = run(['pickup', '--as', 'web', '--root', s6Local, '--remote', s6Remote, '--only-offline', 'phone'])
+check('★S6：取回 1 封 ＋ 镜像 hello 1 份', pk6.status === 0 && /取回 1 封/.test(pk6.stdout) && /镜像 hello 1 份/.test(pk6.stdout), `exit=${pk6.status} out=${String(pk6.stdout).slice(0, 70)}`)
+check('★★S6：只镜像"只收离线"成员的 hello（★缸内成员 web 的 hello 不搬）',
+  existsSync(join(s6Local, 'hello', 'phone.json')) && !existsSync(join(s6Local, 'hello', 'web.json')),
+  JSON.stringify((() => { try { return readdirSync(join(s6Local, 'hello')) } catch { return [] } })()))
+check('★★S6：远端那份 **MOVE 进 seen/**（★消费凭证 —— 不是删掉）',
+  existsSync(join(s6Remote, 'seen', 'web', `${lsDir(join(s6Remote, 'seen', 'web'))[0] ?? 'x'}`)) && lsDir(join(s6Remote, 'inbox', 'web')).length === 0,
+  JSON.stringify(lsDir(join(s6Remote, 'seen', 'web'))))
+check('★★S6：**默认不记账**（★远端自己可能记过 ⇒ 再记就是双记 ✗）', !existsSync(join(s6Local, 'state', 'quota-phone.json')))
+run(['send', '--as', 'phone', '--to', 'web', '--body', '第二封离线件（正文有货，别当回执）', '--root', s6Remote])
+const pk6b = run(['pickup', '--as', 'web', '--root', s6Local, '--remote', s6Remote, '--only-offline', 'phone', '--account'])
+check('★S6：`--account` 开了才记，且**记在发件人名下**', pk6b.status === 0 && existsSync(join(s6Local, 'state', 'quota-phone.json')), String(pk6b.stdout).slice(0, 60))
 
 for (const c of checks) console.log(`${c.ok ? 'PASS' : 'FAIL'}  ${c.name}${c.ok ? '' : '  :: ' + c.extra}`)
 const pass = checks.filter((c) => c.ok).length
