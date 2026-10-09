@@ -58,6 +58,18 @@ try {
   check('策略：禁用时**形状校验照旧**（禁用 ≠ 什么都不查 —— 缺字段仍要报）',
     mk({ verify: () => ({ ok: true, skipped: true }) }).verify({ ...raw, from: undefined }).some((x) => /from/.test(x)))
 
+  // ★★已知但已废弃的字段（2026-10-10 从共享邮局根里真信上学到的）——
+  //   缸里的过渡期真把 `auth` 写进过信封；我们的 seal() 拒它（新信不许带），
+  //   但 verify() **该放行旧信** —— 否则缸友递的材料永远读不进来 ✗（我们真栽过：三封信被退）
+  check('★旧字段：带 auth 的旧信 ⇒ verify **不报"没进签名域"**（历史信要收得下）',
+    !bus.verify({ ...raw, auth: 'self' }).some((x) => /没进签名域/.test(x)), JSON.stringify(bus.verify({ ...raw, auth: 'self' })))
+  check('★★旧字段：auth 也**不进签名域** ⇒ 改它照样验得过（因为它已无语义，改了没用）',
+    !bus.verify({ ...raw, auth: 'relay' }).some((x) => /MAC/.test(x)))
+  check('★★旧字段：**seal() 仍然拒它** —— 新信里绝不许再出现（没登记字段一律抛）',
+    (() => { try { bus.seal({ ...raw, auth: 'self' }); return false } catch (e) { return /没登记/.test(e.message) } })())
+  check('★旧字段：**别的**未知字段仍然拒（别把 fail-closed 弄丢了）',
+    bus.verify({ ...raw, zzz: 1 }).some((x) => /没进签名域/.test(x)))
+
   // ★★"只收离线"的成员（2026-10-10 缸内口径移植）：
   //   属性名**由配置给**（offlineOnlyFlag）—— ★核心不认识任何具体属性名 ✓；
   //   对它们发在线 ⇒ 拒发（非 0 ＋ 不落信箱 ＋ 不许静默降级 ＋ 文案带出路），★且 --force 不豁免（物理约束 ≠ 闸）

@@ -23,6 +23,21 @@ export const name = 'whale-bus'
 export const apiVersion = 1
 export const V = 1
 const FIELD_ORDER = ['v', 'kind', 'id', 'from', 'to', 'seq', 'subject', 'body', 'sha256', 'sentAtMs', 'type', 'mode', 're', 'hop']
+/**
+ * ★★**已知但已废弃**的信封字段 ✗（2026-10-10 从共享邮局根里真信上学到的）：
+ *
+ *   ★来源 ✗：缸里那套的**更晚决定**是"**桶分只看信封 `mode`，不看 `auth`** ⇒ **信封格式一字未改、老信与收端全兼容**"，
+ *   ⚠️ 但 `auth`（`self`／`relay`／`authorized`）**在过渡期真被写进过信封** ⇒ 共享根里躺着三封这样的信。
+ *
+ *   ★为什么"放过它"是安全的 ✗：
+ *     · 它**不进签名域** ⇒ **改它不影响签名** —— 这本来是危险信号；
+ *     · 但**它现在没有任何语义**（那一套的桶分已经改用 `mode` 了）⇒ ★**改它也没用** ✓；
+ *     · ★★**关键是：`seal()` 仍然拒它** ✗ ⇒ **新信里绝不许再出现**（没登记字段一律抛 ✓）。
+ *
+ *   ★★所以这里的口径是：**旧信放行（当它是历史），新信照样 fail-closed** ✓。
+ *   ⚠️ 别的实现看到这个：★**别照抄着往信封里加字段** ✗ —— 加字段必须同时进 `FIELD_ORDER` ✓。
+ */
+const LEGACY_FIELDS = ['auth']
 
 const DEFAULTS = {
   root: undefined,              // 信箱根（不传 ⇒ 环境变量 WHALE_POST_ROOT ⇒ 当前目录 .whale-mail）
@@ -143,7 +158,7 @@ export function createBus(config = {}) {
     }
     // ★fail-closed：不在签名域里的字段 ⇒ **拒**（否则"加字段忘了进 FIELD_ORDER"＝那个字段可被悄悄改）
     const known = new Set([...FIELD_ORDER, 'mac'])
-    const unknown = Object.keys(env).filter((k) => !known.has(k))
+    const unknown = Object.keys(env).filter((k) => !known.has(k) && !LEGACY_FIELDS.includes(k))
     if (unknown.length) e.push(`信封里有**没进签名域**的字段：${unknown.join('、')} —— 加字段必须同时加进 FIELD_ORDER`)
     return e
   }

@@ -43,7 +43,7 @@
 (its entry point is not on PATH ✓), so that side currently rests on **the three rules above** ——
 ★**it has not been boot-verified the way `0.1.5-rc.1` has** ✓.
 
-### ★ Fixes (the two that matter ✗)
+### ★ Fixes (three ✗ —— the third was found on 2026-10-10 in **real letters inside the shared post-office root**)
 
 1. ★★ **All six plugins failed to load in a real engine** ✗✓ —— `apply()` read the **`ctx.whale` property**,
    and in real Cordis reading it requires `inject` ⇒ it threw `cannot get property "whale" without inject`.
@@ -55,6 +55,14 @@
    ★and each side's self-tests were self-consistent (they also used the string form) ⇒ **all green, then it blew up on contact** ✓.
    It is now byte-for-byte identical to `bus`, with a "**cross-check against the real `bus`**" criterion
    (build an envelope with the real `bus`; `verify` must recognise it).
+3. ★★ **Letters from the transition period carrying `auth` could not be received** ✗✓ —— ★**this was found in real letters inside the shared post-office root** ✓:
+   the tank's engine **really did write `auth` into envelopes** during a transition (its later decision was "bucket by `mode`, not by `auth` ⇒ the envelope format is unchanged" ✓),
+   while our `verify()` treats any field **outside the signature domain** as a bounce ⇒ ★**those letters could not be received at all** ✓.
+   ★**Evidence** ✗: the shared root's `inbox/web` held **three** letters addressed to this whale (`潮信鲸`'s "formal check-in" ×2 plus
+   "**material: the DSHA porting issue collection (six items, with DNS-poisoning evidence)**") —— all three **were bounced into `退信/` by our implementation** ✓.
+   ⇒ `LEGACY_FIELDS = ['auth']` was added: ★**old letters pass (treated as history), new letters stay fail-closed** ✓
+   (★`seal()` **still rejects `auth`** ✗ ⇒ it must never appear in a new letter again; ★any other unknown field is still rejected ✓).
+   ★After the fix, ★**that "material" letter really was read** ✓ —— that is what the word "compatibility" means in practice.
 
 ### ★ Added
 
