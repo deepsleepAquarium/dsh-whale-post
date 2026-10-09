@@ -314,6 +314,17 @@ check('★★对**没新鲜握手**者发在线件 ⇒ 输出里**明说"没叫�
   rcSend2.status === 0 && String(rcSend2.stdout).includes('没叫醒'),
   String(rcSend2.stdout).slice(0, 80))
 
+// ★★★`hello --quiet 22:00-09:00` ⇒ ★勿扰时段进信封 ✗✓（2026-10-10）
+//   ★★这是“峰谷令”的邮局版 ✓；★跨午夜照写 ✓（★`from > to` 是正常写法 ✗）。
+//   ★两条判据：★输出里报出勿扰时段 ✓；★信封里真的有 `quiet` ✓。
+const qRoot = join(process.env.TEMP ?? '/tmp', `whale-cli-quiet-${Date.now()}`)
+mkdirSync(qRoot, { recursive: true })
+writeFileSync(join(qRoot, 'roster.json'), JSON.stringify({ apiVersion: 1, members: [{ id: 'alice' }] }), 'utf8')
+const qHello = run(['hello', '--as', 'alice', '--quiet', '22:00-09:00', '--root', qRoot])
+check('★★★`hello --quiet` ⇒ 输出里**报出勿扰时段** ✗✓',
+  qHello.status === 0 && String(qHello.stdout).includes('勿扰时段'), String(qHello.stdout).slice(0, 80))
+check('★★勿扰时段**真进了信封** ✗✓（★不是只打一行字 ✗）',
+  (() => { try { const env = JSON.parse(readFileSync(join(qRoot, 'hello', 'alice.json'), 'utf8')); return Array.isArray(env.quiet) && env.quiet[0] === '22:00' && env.quiet[1] === '09:00' } catch { return false } })())
 for (const c of checks) console.log(`${c.ok ? 'PASS' : 'FAIL'}  ${c.name}${c.ok ? '' : '  :: ' + c.extra}`)
 const pass = checks.filter((c) => c.ok).length
 console.log(`\n${pass}/${checks.length} 通过`)

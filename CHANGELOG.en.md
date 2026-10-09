@@ -479,6 +479,39 @@
   ★ⓘ ★★**The criterion-count baseline caught me on its very first real outing** ✗✓: ★I inserted the criterion in the wrong place
     (★`cli/selftest` has **no** `} catch (err) {` door ✓), ★**while the baseline had already been changed to 49** ✓ ⇒
     the run reported ★"criteria **shrank**: cli 49 → 48" ✓ —— ★★**the check installed in round 59 caught my ordering mistake in round 60** ✓✓.
+* ★★★ **Added `quiet` (do-not-disturb hours), the third field in the original's appendix three: this is the post-office edition of the peak/valley rule** ✗✓ (2026-10-10) ——
+  ★The original, in one line (★the same sentence ✓): `{ "recv": "offline-only | online-ok", "onlineCapPerDay": 3, "quiet": ["22:00","09:00"] }`
+  —— ★★last round I added `recv` and `onlineCapPerDay` ✓, ★**`quiet` was still missing** ✗.
+  ★★**What it means** ✗✓: ★"**do not wake me from 22:00 until 09:00 the next day**" ✓ —— ★★**the same shape as `recv:'offline-only'`** ✓:
+  ★it is **not** "no sending during quiet hours" ✗ (★**an offline letter wakes nobody anyway** ✓) ⇒
+  ★it governs **online letters only** ✓: ★inside the window, an online letter to that member ⇒ ★**delivered as offline + disclosed** ✓ (★the letter still lands in its slot ✓).
+
+  1. `bus`
+     · `hello({ as, onlineCapPerDay, recv, quiet })` ⇒ ★`quiet` **enters the signature domain** ✓ (★`['HH:MM','HH:MM']` ✓,
+       ★a malformed value ⇒ **absent from the envelope** ✗ —— ★**better to say nothing than to carry a broken one** ✓);
+     · ★`declaredQuiet(as)` ⇒ ★**only a fresh hello counts** ✓ (★same as `recv` ✓ —— ★otherwise "said last week that 22:00 onwards is off-limits" would hold forever ✗);
+     · ★★`inQuietHours(as, atMs)` ⇒ ★**midnight crossing must wrap** ✗✓:
+       ★`from < to` ⇒ ★the same-day `[from, to)` ✓; ★`from > to` ⇒ ★**crosses midnight** ✓; ★`from === to` ⇒ ★**empty range (not quiet)** ✓
+       (★"quiet all day" must be **said explicitly**, not fudged with equality ✗);
+     · ★`send`'s criterion grew from two sources to **three** ✓: ★the roster pin + ★the `recv` declaration + ★**quiet hours** ✓;
+     · ★`deliveryNote` gained a value `'quiet-hours'` ✗✓ (★it is **not** "offline-only" ✓ —— ★that member can normally be woken ✓,
+       ★**just not right now** ✓ ⇒ ★say it separately so the next person knows what to do ✓).
+     · ⚠️ ★**My first version declared `fromQuietNow` inside `if (m === 'online') { … }`** ✗ ⇒
+       ★invisible outside that block ⇒ ★`ReferenceError` ✓ —— ★**and syntax checking cannot see it** ✓, ★only actually running it explodes ✓ (★the second time tonight for this class ✓).
+     · ⚠️ ★**It uses local time** ✓ (★"do not wake me at 22:00" refers to **that member's own** clock ✓, ★and this post office lives on one machine anyway ✓)——
+       ★★across machines this needs rethinking ⇒ ★**recorded under "still untested"** ✓.
+
+  2. `cli`: `hello --quiet 22:00-09:00` ✓ (★`from-to` separated by a hyphen ✓, ★write a midnight-crossing range the same way ✓) plus the output reports "勿扰时段=…" ✓.
+
+  3. Criteria: `bus` 103 → **106** ✓ (★the four boundary points 21:59 not quiet / 22:00 quiet / 08:59 quiet / 09:00 not quiet ✓ /
+     ★an online letter inside the window is classed as "not woken" ✓ / ★non-declarers are unaffected ✓); `cli` 50 → **52** ✓ (★the output reports the quiet hours /
+     ★**the envelope really carries `quiet`** ✓ —— ★not just a printed line ✓). ★**351 criteria** in all ✓.
+     ★Negative test: ★breaking the midnight-crossing branch ⇒ **genuinely red** ✓.
+
+  ★ⓘ ★★**The criterion-count baseline caught me twice more this round** ✗✓ (★its second and third real outings ✓):
+    ① ★I inserted a criterion in the wrong place (★`cli/selftest` has no `} catch (err) {` door ✓);
+    ② ★★**I added a `--quiet` feature to `cli` and forgot the criterion** ✓ ⇒ ★the run reported "cli 51 → 50, shrank" ✓ ——
+    ★★**what it blocks is exactly "code changed, criteria did not follow"** ✓✓.
 * ★**`cli`: `--only-offline <attribute>` / `--dormant <attribute>`** —— ★both rules can finally be switched on from the command line ✓.
 * ★**`cli`: `verify` / `nag` subcommands** —— ★the three-state design is finally visible from the command line
   (★`verify --enable` / `--disable` / `--allow a,b`; `nag` tells you whether a notice is due ✓).

@@ -22,7 +22,7 @@ import { join, dirname } from 'node:path'
 export const name = 'whale-bus'
 export const apiVersion = 1
 export const V = 1
-const FIELD_ORDER = ['v', 'kind', 'id', 'from', 'to', 'seq', 'subject', 'body', 'sha256', 'sentAtMs', 'type', 'mode', 're', 'hop', 'onlineCapPerDay', 'recv',
+const FIELD_ORDER = ['v', 'kind', 'id', 'from', 'to', 'seq', 'subject', 'body', 'sha256', 'sentAtMs', 'type', 'mode', 're', 'hop', 'onlineCapPerDay', 'recv', 'quiet',
   // ★★结构化回执的字段（2026-10-10，正本"主人 2026-10-06 01:5x 令"✓）——
   //   ★它们**必须进签名域** ✓：★"一张回执说清两件事"是要**能验出改过**的 ✓。
   //   ★对老 ack **无影响** ✓（canonical 只收**出现过的**字段 ✓）。
@@ -244,15 +244,17 @@ export function createBus(config = {}) {
    *   ★正本还有两条护栏 ✓，**都已成立** ✗：★**声明只能更保守**（`min(自报, 天花板)` ✓）／
    *     ★**假声明骗不了别人**（hello 是**它自己签的** ✓）。
    */
-  function hello({ as, onlineCapPerDay, recv } = {}) {
+  function hello({ as, onlineCapPerDay, recv, quiet } = {}) {
     if (!as) throw new Error('hello 需要 as')
     ensure()
     const cap = Number(onlineCapPerDay)
     const rc = recv === 'offline-only' || recv === 'online-ok' ? recv : null
+    //   ★★`quiet` ✗✓：★**两个 `HH:MM` 的数组** ✓（★格式不对 ⇒ **不进信封** ✗ —— ★宁可不声明，不装一个坏的 ✓）
     const env = seal({
       v: V, kind: 'hello', id: `hello-${as}`, from: as, to: '*', seq: 0, body: '', sentAtMs: Date.now(),
       ...(Number.isFinite(cap) && cap >= 0 ? { onlineCapPerDay: Math.floor(cap) } : {}),
       ...(rc ? { recv: rc } : {}),
+      ...(Array.isArray(quiet) && quiet.length === 2 && quiet.every((x) => typeof x === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(x)) ? { quiet: [quiet[0], quiet[1]] } : {}),
     })
     atomicWrite(paths().hello(as), JSON.stringify(env, null, 2))
     return env
@@ -270,6 +272,45 @@ export function createBus(config = {}) {
       const v = env.recv
       return v === 'offline-only' || v === 'online-ok' ? v : null
     } catch { return null }
+  }
+  /**
+   * ★★★`quiet` ＝ **收件习惯的第三个声明位：勿扰时段** ✗✓
+   *   （2026-10-10 补；★正本附录三那句 `"quiet": ["22:00","09:00"]` ✓ —— ★★**这是"峰谷令"的邮局版** ✓）
+   *
+   *   ★**形状** ✗（★跟 `recv` 一样，★只是它**有时段** ✓）：★`['22:00','09:00']` ＝ **从 22:00 到次日 09:00 别叫醒我** ✓。
+   *   ★★**跨午夜要处理回绕** ✗✓（★`from > to` 是**正常**写法 ✓ —— ★不是配置错 ✓）：
+   *     · ★`from < to` ⇒ ★"当天的 `[from, to)`" ✓（★比如 `['12:00','14:00']` 午休 ✓）；
+   *     · ★`from > to` ⇒ ★"**跨午夜**" ✓（★`'22:00'–'09:00'` ✓）；
+   *     · ★`from === to` ⇒ ★**空区间** ✗（★"全天勿扰"这种要显式说 ✗ —— ★这里当**不静默** ✓）。
+   *   ★★★**只认新鲜 hello** ✗✓（★同 `recv` ✓ —— ★否则"上周说过 22:00 起别吵"会**永久**生效 ✗）。
+   *   ⚠️ ★它**不是**"静默期不许发信" ✗ —— ★★**离线件本来就不叫醒任何人** ✓ ⇒
+   *     ★它管的**只有在线件** ✓：★静默时段内对它的在线件 ⇒ ★**按离线寄达 ＋ 明示** ✓
+   *     （★同 `recv: offline-only` 那一支 ✓ —— ★**信照落它那一格，只是不叫醒** ✓）。
+   */
+  function declaredQuiet(as) {
+    try {
+      if (!helloFresh(as)) return null
+      const env = JSON.parse(readFileSync(paths().hello(as), 'utf8'))
+      const q = env.quiet
+      if (!Array.isArray(q) || q.length !== 2) return null
+      const ok = (s) => typeof s === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(s)
+      if (!ok(q[0]) || !ok(q[1])) return null
+      return { from: q[0], to: q[1] }
+    } catch { return null }
+  }
+  /**
+   * ★某个成员**此刻**是否在自己的勿扰时段里 ✓（★没有声明 ⇒ **false** ✗ —— ★**不替它猜** ✓）
+   *   ★**用本地时间** ✓（★"22:00 别吵我"说的是**它自己的**钟点 ✓ —— ★而这套邮局**本来就在一台机器上** ✓；
+   *     ★★跨机器时这条要重新想 ✓ —— ★**已记进「仍未测」** ✓）。
+   */
+  function inQuietHours(as, atMs = Date.now()) {
+    const q = declaredQuiet(as)
+    if (!q) return false                                       // ★没声明 ⇒ 不静默 ✓
+    if (q.from === q.to) return false                          // ★空区间 ⇒ 不静默 ✓（★"全天勿扰"要显式说 ✓）
+    const d = new Date(atMs)
+    const now = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+    // ★★跨午夜 ⇒ 判"**在外面那一段**" ✓（★`22:00–09:00` ⇒ `now >= 22:00` **或** `now < 09:00` ✓）
+    return q.from < q.to ? (now >= q.from && now < q.to) : (now >= q.from || now < q.to)
   }
   /** ★读某个成员**自己签的 hello** 里那份自报上限（没有 ⇒ `null` ✓ —— **不替它猜** ✗） */
   function declaredOnlineCap(as) {
@@ -472,6 +513,11 @@ export function createBus(config = {}) {
     //     配了（真值）⇒ **照发 ＋ 明示** ✓；★**配成 `'reject'` ⇒ 保留旧的"拒发"** ✓（老部署一字不变 ✓）。
     //   ⚠️ 用**展开后的 targets** ✓ ⇒ 发给一个组、组里有人只收离线，也一样能明示出来 ✓。
     let offlineOnly = []
+    //   ★★★`fromQuietNow` 必须在**这一层**声明 ✗✓（2026-10-10 修）——
+    //     ★我第一版把它写在 `if (m === 'online') { … }` **里面** ✓ ⇒ ★出了那个块就**看不见了** ✗
+    //     ⇒ ★`ReferenceError: fromQuietNow is not defined` ✓（★而**写 `deliveryNote` 的地方在块外面** ✓）。
+    //   ⚠️ ★又是"**声明的作用域**"这类错 ✗ —— ★**语法检查看不出来** ✓，★只有真跑才炸 ✓。
+    let fromQuietNow = []
     if (m === 'online') {
       //   ★★判据有**两个来源** ✗✓（2026-10-10 补；★正本附录三 ✓）：
       //     · ★**名册钉死位**（`offlineOnlyFlag` ✓ —— ★老配置照旧管用 ✓）；
@@ -482,7 +528,13 @@ export function createBus(config = {}) {
         ? targets.filter((t) => services.roster.flag(t, cfg.offlineOnlyFlag))
         : []
       const fromDecl = targets.filter((t) => declaredRecv(t) === 'offline-only')
-      const stuck = [...new Set([...fromRoster, ...fromDecl])]
+      //   ★★★**勿扰时段**（`quiet` ✓）—— ★它跟 `recv: 'offline-only'` **同一形状** ✓：
+      //     ★★**不拒发、只明示** ✓（★信照落它那一格，★**只是现在不叫醒** ✓）。
+      //   ★用**本地时间** ✓（★这套邮局本来就在一台机器上 ✓）。
+      const fromQuiet = targets.filter((t) => inQuietHours(t))
+      const stuck = [...new Set([...fromRoster, ...fromDecl, ...fromQuiet])]
+      //   ★★`fromQuiet` 单独留一份 ✗✓（★后面写 `deliveryNote` 要用 ✓）
+      fromQuietNow = fromQuiet
       if (stuck.length) {
         if (cfg.offlineOnlyMode === 'reject') {
           throw new Error(`拒发：${stuck.join('、')} 只收离线件（配置 offlineOnlyFlag='${cfg.offlineOnlyFlag}' ＋ offlineOnlyMode='reject'）—— ` +
@@ -547,7 +599,9 @@ export function createBus(config = {}) {
     const env = seal({ v: V, kind: 'msg', id, from: as, to, seq, subject, body, sha256: digest(body), sentAtMs: Date.now(), type, mode: m,
       // ★★"投递说明"随信过去 ✗✓（★收信侧才知道"**为什么**走了离线" ✓）——
       //   ★`offlineOnly`（对方声明仅收离线 ✓）优先于 `willWait`（未握手 ✓）：★前者是**对方的属性**，更根本 ✓。
-      ...(offlineOnly.length ? { deliveryNote: 'offline-only' } : (willWait.length ? { deliveryNote: 'no-handshake' } : {})),
+      //   ★★`quiet` 单独一档 ✗✓：★它不是“只收离线”（★对方本来是能被叫醒的 ✓）——
+      //     ★只是**现在是它的勿扰时段** ✓ ⇒ ★分开说，★下一个人才知道该怎么办 ✓。
+      ...(offlineOnly.length ? { deliveryNote: 'offline-only' } : (fromQuietNow.length ? { deliveryNote: 'quiet-hours' } : (willWait.length ? { deliveryNote: 'no-handshake' } : {}))),
       // ★★`peerStateAtSend` ✗✓（★正本判据 99：★回执带上「**发信人当时看到的状态**」✓）——
       //   ★「当时看到什么」**只有发信人能记** ✓（★事后谁也推不出来 ✓）⇒ ★**发信时就写进信封** ✓。
       //   ★只看**点名一个**收件人的场合（`targets.length === 1`）—— ★群发时不写它：
@@ -762,7 +816,7 @@ export function createBus(config = {}) {
     env.body,
   ].filter(Boolean).join('\n')
 
-  const api = { apiVersion, send, pump, verify, hello, helloFresh, declaredOnlineCap, declaredRecv, format, paths, root, keyHex, digest, seal, sign, loadState,
+  const api = { apiVersion, send, pump, verify, hello, helloFresh, declaredOnlineCap, declaredRecv, declaredQuiet, inQuietHours, format, paths, root, keyHex, digest, seal, sign, loadState,
     // ★★★签名域**必须暴露出来** ✗✓（2026-10-10 修）——
     //   ★"一套真相"的前提是**别人拿得到** ✓：★`verify` 包原来自己抄了一份 ⇒ 两边会漂移
     //     ⇒ ★我加 `peerStateAtSend` 之后，**完全合法的信被判"未登记字段"、当场挪进退信** ✗（实测抓出来的 ✓）。

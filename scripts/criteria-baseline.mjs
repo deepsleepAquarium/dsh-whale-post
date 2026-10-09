@@ -17,13 +17,13 @@
  */
 export const BASELINE = {
   // ★件名: 条数 ✓（★`static` 与三件跨包检查不在这里 —— ★它们各有各的说法 ✓）
-  bus: 103,
+  bus: 106,
   roster: 31,
   types: 14,
   deliver: 23,
   gate: 53,
   verify: 49,
-  cli: 50,
+  cli: 52,
   xcheck: 6,
   doccheck: 3,
   pkgcheck: 14,

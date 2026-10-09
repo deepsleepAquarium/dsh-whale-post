@@ -539,6 +539,47 @@ check('★♙离线件发给声明者 ⇒ **不提示** ✓（★它本来就收
       return JSON.stringify(s.wakePrediction ?? {}).includes('offlineOnly') === false
     } catch { return false }
   })())
+// ★★★`quiet`：**勿扰时段** ✗✓（2026-10-10 补；★正本附录三的第三个字段 ✓）——
+//   ★★**这是“峰谷令”的邮局版** ✓：★`['22:00','09:00']` ⇒ ★**跨午夜的勿扰窗口** ✓。
+//   ★★边界四点必须对 ✗✓：★21:59 → 不静 ✓；★22:00 → **静** ✓（★起点含 ✓）；
+//     ★08:59 → **静** ✓；★09:00 → 不静 ✓（★终点不含 ✓）。
+check('★★★`quiet`：跨午夜勿扰的**四个边界点**全对 ✗✓（21:59不静／22:00静／08:59静／09:00不静 ✓）',
+  (() => {
+    try {
+      const r = join(tmp, 'quiet-edge'); mkdirSync(r, { recursive: true })
+      const rf = join(r, 'roster.json')
+      writeFileSync(rf, JSON.stringify({ apiVersion: 1, members: [{ id: 'alice' }, { id: 'bob' }] }), 'utf8')
+      const bu = createBus({ root: r, services: { roster: createRoster({ file: rf }) } })
+      bu.hello({ as: 'bob', quiet: ['22:00', '09:00'] })
+      const at = (s) => bu.inQuietHours('bob', new Date(s).getTime())
+      return at('2026-10-10T21:59:00') === false && at('2026-10-10T22:00:00') === true &&
+        at('2026-10-11T08:59:00') === true && at('2026-10-11T09:00:00') === false
+    } catch { return false }
+  })())
+check('★★勿扰时段内发**在线件** ⇒ 归入“**不叫醒**”那一类 ✗✓（★不拒发、只不叫醒 ✓）',
+  (() => {
+    try {
+      const r = join(tmp, 'quiet-send'); mkdirSync(r, { recursive: true })
+      const rf = join(r, 'roster.json')
+      writeFileSync(rf, JSON.stringify({ apiVersion: 1, members: [{ id: 'alice' }, { id: 'bob' }] }), 'utf8')
+      const bu = createBus({ root: r, services: { roster: createRoster({ file: rf }) }, offlineOnlyMode: 'warn' })
+      bu.hello({ as: 'alice' }); bu.hello({ as: 'bob', quiet: ['00:00', '23:59'] })
+      const s = bu.send({ as: 'alice', to: 'bob', mode: 'online', type: 'direct', body: '勿扰测试（★正文有货，别当回执）' })
+      return JSON.stringify(s.wakePrediction ?? {}).includes('offlineOnly')
+    } catch { return false }
+  })())
+check('★♙**没声明勿扰的人不受影响** ✓（★不能误伤 ✗）',
+  (() => {
+    try {
+      const r = join(tmp, 'quiet-none'); mkdirSync(r, { recursive: true })
+      const rf = join(r, 'roster.json')
+      writeFileSync(rf, JSON.stringify({ apiVersion: 1, members: [{ id: 'alice' }, { id: 'bob' }] }), 'utf8')
+      const bu = createBus({ root: r, services: { roster: createRoster({ file: rf }) }, offlineOnlyMode: 'warn' })
+      bu.hello({ as: 'alice' }); bu.hello({ as: 'bob' })
+      const s = bu.send({ as: 'alice', to: 'bob', mode: 'online', type: 'direct', body: '没声明勿扰（★正文有货，别当回执）' })
+      return JSON.stringify(s.wakePrediction ?? {}).includes('offlineOnly') === false
+    } catch { return false }
+  })())
 } catch (err) {
   check('自测没有抛异常', false, err && err.stack ? err.stack.split('\n')[0] : err)
 }

@@ -333,8 +333,11 @@ function main() {
       //   ★两个都**进签名域** ✓（★"自报"也要能被验出改过 ✓）；不给 ⇒ 不进信封 ✓（老 hello 照旧 ✓）。
       const recv = opt('recv') || undefined
       const cap = opt('cap') ? Number(opt('cap')) : undefined
-      bus.hello({ as, recv, onlineCapPerDay: cap })
-      const extra = [recv ? `收件习惯=${recv}` : '', Number.isFinite(cap) ? `自报在线上限=${cap}` : ''].filter(Boolean).join('，')
+      //   ★★`--quiet 22:00-09:00` ✗✓：★勿扰时段（★“峰谷令”的邮局版 ✓）——
+      //     ★跨午夜照写 ✓（★`from > to` 是**正常**写法 ✗）。
+      const quietArg = opt('quiet') ? String(opt('quiet')).split('-').map((x) => x.trim()) : undefined
+      bus.hello({ as, recv, onlineCapPerDay: cap, quiet: quietArg && quietArg.length === 2 ? quietArg : undefined })
+      const extra = [recv ? `收件习惯=${recv}` : '', Number.isFinite(cap) ? `自报在线上限=${cap}` : '', quietArg && quietArg.length === 2 ? `勿扰时段=${quietArg[0]}–${quietArg[1]}` : ''].filter(Boolean).join('，')
       console.log(`hello 已写：${as}（这是"我活着、可以收信"的握手；别人发信前会看它新不新鲜）${extra ? '【' + extra + '】' : ''}`)
       return 0
     }
