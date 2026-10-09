@@ -70,7 +70,7 @@ node packages/cli/index.js pump --as bob # 把 bob 的信箱读一遍（★消�
 ```
 ★**三条硬规矩**：① **只看退出码**（不匹配中文）；② **能原地重复跑**（两次结果一致）；③ ★**负向测试**：**故意改坏一行 ⇒ 自测必须变红**（不红＝自测是摆设）。
 
-★**本仓自带的跑法**（还没装也能验）：`node scripts/selftest-all.mjs` ⇒ **退出码 0 ＝ 六件全过**；单件跑 `node packages/<件名>/selftest.mjs`。
+★**本仓自带的跑法**（还没装也能验）：`node scripts/selftest-all.mjs` ⇒ **退出码 0 ＝ 七件全过**；单件跑 `node packages/<件名>/selftest.mjs`。
 ★**从 npm 装**（已发布）：`npm i dsh-whale-post-cli` ⇒ `npx dsh-whale-post-cli selftest`。
 
 ★★**收信语义（重要，别跳过）**：`pump` 默认**会消费**（把信搬进 `seen/` ＋ 写 ack）—— **但**当收信人此刻**没有活体会话**、也没有任何东西声明"我就是读者"时，`pump` **一封都不消费**：信**原样留在 `inbox/`** 里（不搬 `seen`、不删原件、不写 ack）。

@@ -22,7 +22,7 @@
 > ★**已发 npm** ⇒ 直接用 `npx dsh-whale-post-cli …`（或先 `npm i -D dsh-whale-post-cli`）；想在仓内开发，用 `node packages/cli/index.js …` 也一样。
 ```bash
 dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post # 或用 registry 名
-npm install                          # ★仓内要先装一次（把五个插件链进 node_modules；否则 CLI 找不到兄弟件）
+npm install                          # ★仓内要先装一次（把六个插件链进 node_modules；否则 CLI 找不到兄弟件）
 node packages/cli/index.js selftest  # ★看退出码
 node packages/cli/index.js hello --as alice
 node packages/cli/index.js hello --as bob   # ★先握手：没握过手不许发（协议如此）
@@ -41,7 +41,7 @@ npx -y dsh-whale-post-cli@0.1.1 selftest
 * 每件都过三关：**能加载 ＋ 能跑 ＋ 跑错会红**（验收规格见 [`docs/ACCEPTANCE.md`](docs/ACCEPTANCE.md)）。
 * 版本 `0.1.0`（打了 tag **`v0.1.0`**，要引用就钉它）；接口带 `apiVersion`，**类型可以随时扩充**（加类型不用动核心）。
 * **装法已在真引擎上实测过一遍**：★**首批五件**按 `dsh plugin --profile <p> add link:<本仓>/packages/<件>` 装进一个**一次性 profile** ⇒ 它们**出现在 profile 配置树里**（`dsh --profile <p> --dump-config` 能看到 `dsh-whale-post-*` 五行）⇒ **真启一遍成功、对外服务正常、日志无加载错** ⇒ 用完把那个 profile 删掉，**在役的两台引擎全程没重启**。
-  ★**边界（别当成已实测）**：第六件 `verify` 与第七件（本次新增）**尚未走同一遍真引擎实测** ⇒ 它目前只过了"加载级自测 ＋ 负向测试"，**接真引擎那一关待补**。
+  ★**边界（别当成已实测）**：★**第六件 `verify`（本次新增）尚未走同一遍真引擎实测** ⇒ 它目前只过了"加载级自测 ＋ 负向测试"，**接真引擎那一关待补**。
   ★踩到的坑写在这儿免得别人再踩：插件包**必须**声明
   ```json
   "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }

@@ -155,7 +155,7 @@ function main() {
   // ★--help／-h／help 一律当"打用法"（陌生人第一下就敲这个）
   if (!cmd || cmd === '--help' || cmd === '-h' || cmd === 'help') {
     console.log([
-      'whale-post <命令> [选项]        ★六件已发 npm：npx -y dsh-whale-post-cli <命令>',
+      'whale-post <命令> [选项]        ★六件已发 npm：npx -y dsh-whale-post-cli <命令>（第七件 verify 在仓内，待发）',
       '',
       '  hello   --as <谁>                  握手（没握过手不许发信）',
       '  send    --as <谁> --to <谁|组> --subject <题> --body <正文> [--mode online|offline] [--type <类型>] [--re <父信 id>] [--force] [--live a,b]',
