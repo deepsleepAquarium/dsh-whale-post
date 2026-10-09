@@ -81,6 +81,37 @@ try {
 
   // ⑧ 台账落盘
   check('台账：state/quota-<谁>.json 落盘了', existsSync(join(tmp, 'state', 'quota-erin.json')))
+
+  // ★★分桶规则（2026-10-10 缸内口径移植：就是"按授权级别分四档"那种）——
+  //   ★字段名与桶名**全由配置给**，本件里不出现任何具体名字 ✓
+  const g4 = createGate({ root: tmp, quota: {
+    bucketRules: [
+      { field: 'lvl', equals: 'a', bucket: 'tierA' },
+      { field: 'lvl', equals: 'b', bucket: 'tierB' },
+      { field: 'mode', equals: 'offline', bucket: 'off' },
+    ],
+    defaultBucket: 'tierA',
+    types: {
+      tierA: { label: 'tierA', limit: 2 },
+      tierB: { label: 'tierB', limit: 5 },
+      off: { label: 'off', limit: 9, perSend: true },
+    },
+  } })
+  const rA = g4.record({ as: 'hank', to: 'bob', targets: ['bob'], mode: 'online', type: 'direct', body: '正文有货，别当回执', lvl: 'a' })
+  check('★分桶规则：命中的规则 ⇒ 落它指定的桶', rA.bucket === 'tierA', JSON.stringify(rA))
+  const rB = g4.record({ as: 'hank', to: 'bob', targets: ['bob'], mode: 'online', type: 'direct', body: '正文有货，别当回执', lvl: 'b' })
+  check('★分桶规则：第二条规则也认', rB.bucket === 'tierB', JSON.stringify(rB))
+  const rOff = g4.record({ as: 'hank', to: 'bob', targets: ['bob'], mode: 'offline', type: 'direct', body: '正文有货，别当回执' })
+  check('★分桶规则：从上往下第一个命中的赢（离线落 off 桶）', rOff.bucket === 'off', JSON.stringify(rOff))
+  const rOffG = g4.record({ as: 'hank', to: 'all', targets: ['x', 'y', 'z'], mode: 'offline', type: 'direct', body: '正文有货，别当回执' })
+  check('★分桶规则：落在 perSend 桶 ⇒ 组发也只算 1 条', rOffG.units === 1, JSON.stringify(rOffG))
+  const rNone = g4.record({ as: 'hank', to: 'bob', targets: ['bob'], mode: 'online', type: 'direct', body: '正文有货，别当回执', lvl: 'zzz' })
+  check('★分桶规则：都不命中 ⇒ 落 defaultBucket（不掉进"没有配额"）', rNone.bucket === 'tierA', JSON.stringify(rNone))
+  const g5 = createGate({ root: tmp, quota: { types: { direct: { label: 'direct', limit: 9 }, offline: { label: '离线', limit: 9, perSend: true } } } })
+  const rOld1 = g5.record({ as: 'iris', to: 'bob', targets: ['bob'], mode: 'online', type: 'direct', body: '正文有货，别当回执', lvl: 'a' })
+  const rOld2 = g5.record({ as: 'iris', to: 'bob', targets: ['bob'], mode: 'offline', type: 'direct', body: '正文有货，别当回执', lvl: 'a' })
+  check('★★分桶规则：不配 ⇒ 行为一字不变（在线按 type、离线走 offline 桶）',
+    rOld1.bucket === 'direct' && rOld2.bucket === 'offline', JSON.stringify([rOld1.bucket, rOld2.bucket]))
 } catch (err) {
   check('自测没有抛异常', false, err && err.stack ? err.stack.split('\n')[0] : err)
 }

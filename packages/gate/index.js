@@ -43,6 +43,15 @@ const DEFAULTS = {
     dayBoundaryHour: 0,      // 日界（0 ＝ 自然日；写成 9 就是"早九点到次日早九点算一天"）
     feePerUnitCent: 1,       // 越额费率（示例值，自己改）
     feePer200BCent: 0.1,     // 越额字节费率（示例值）
+    // ★★分桶规则（2026-10-10 缸内口径移植）：**默认不配 ⇒ 行为一字不变** ✓。
+    //   配了它 ⇒ 从上往下"**第一个命中的赢**"，按 `field` 取信里的值、`equals` 比对、命中就落 `bucket`。
+    //   ★字段名与桶名**全由配置给** —— 本件里不出现任何具体名字 ✓（守 ACCEPTANCE 的"戊"）。
+    //   例：按"授权级别"分四档 ⇒
+    //     bucketRules: [ { field: 'auth', equals: 'self',  bucket: 'self'  }, … ]
+    bucketRules: undefined,
+    // ★★一条规则都没命中时落哪个桶 ✗ —— **必须给**（配了 bucketRules 才有意义）：
+    //   不给的话，"带新字段的信"会掉回 type 桶（可能是对的，也可能是你没想到的）✓
+    defaultBucket: undefined,
     types: {
       // 样例桶：数值都是**示例值**，按需要自己定
       direct: { label: 'direct', limit: 120 },
@@ -87,10 +96,14 @@ export function createGate(config = {}) {
   }
   const save = (as, j) => { atomic(stateOf(as), JSON.stringify(j, null, 2)); return j }
 
-  /** 本封算几个"单位"：离线件按**发信次数**（1 条）；其余按收件人数（组名可以配成 1 单位） */
-  function quotaUnits(letter, types) {
-    const t = types?.resolve?.(letter.type)
+  /** 本封算几个"单位"：★落在 `perSend: true` 的桶 ⇒ 按**发信次数**（1 条）；其余按收件人数（组名可以配成 1 单位） */
+  function quotaUnits(letter, types, bucket) {
     const targets = letter.targets ?? [letter.to]
+    const t = types?.resolve?.(letter.type)
+    // ★2026-10-10：原来硬编码"离线 ⇒ 1"；现在**看它落在哪个桶**（桶可以按配置分，比如按授权级别 ✓）。
+    //   ★省略 bucket ⇒ 退回老逻辑（离线 ⇒ 1）✓ —— 老部署行为一字不变。
+    const b = bucket === undefined ? undefined : types?.resolve?.(bucket)
+    if (b && b.perSend === true) return 1
     if (letter.mode === 'offline') return 1
     if (t && t.perSend === true) return 1
     if (Array.isArray(letter.groupMembers) && letter.groupMembers.length) {
@@ -99,7 +112,24 @@ export function createGate(config = {}) {
     }
     return targets.length
   }
+  /**
+   * ★★把一封信映射到桶名 ✗ —— **规则由配置给**（`quota.bucketRules`）：本件里**不出现任何具体字段名／桶名** ✓。
+   *   · 不配（默认）⇒ 行为一字不变：离线走 `offline` 桶，其余按 `type` ✓
+   *   · 配了 ⇒ 从上往下**第一个命中的赢**；都不命中 ⇒ 落 `quota.defaultBucket`
+   *   ⚠️ 都不命中时**必须落一个桶** ✗ —— 否则"带新字段的信"会变成"没有配额"，那是静默放行 ✓
+   */
   function bucketOf(letter) {
+    const rules = cfg.quota.bucketRules
+    if (Array.isArray(rules) && rules.length) {
+      for (const r of rules) {
+        if (!r || typeof r !== 'object' || r.field === undefined || r.bucket === undefined) continue
+        const v = letter[r.field]
+        if (Object.prototype.hasOwnProperty.call(r, 'equals')) {
+          if (String(v) === String(r.equals)) return String(r.bucket)
+        } else if (v !== undefined && v !== null && v !== '') return String(r.bucket)
+      }
+      if (cfg.quota.defaultBucket !== undefined) return String(cfg.quota.defaultBucket)
+    }
     return letter.mode === 'offline' ? 'offline' : (letter.type ?? 'direct')
   }
 
@@ -124,7 +154,7 @@ export function createGate(config = {}) {
     const cap = cfg.quota.types[bucket] ?? { label: bucket, limit: cfg.quota.defaultLimit }
     const d = load(letter.as).days[localDay()] ?? { letters: 0, units: 0, byBucket: {}, recent: [] }
     const used = Number(d.byBucket?.[bucket]?.units ?? 0)
-    const units = quotaUnits(letter, { resolve: (id) => cfg.quota.types[id] })
+    const units = quotaUnits(letter, { resolve: (id) => cfg.quota.types[id] }, bucket)
     const over = Number.isFinite(cap.limit) && used + units > cap.limit
     if (over && cfg.quota.onOver === 'reject') {
       return { reject: true, reason: `配额（${cap.label}）：今日已用 ${used}/${cap.limit}，本封要 ${units} ⇒ 越额拒发。` +
@@ -143,7 +173,7 @@ export function createGate(config = {}) {
     const bucket = bucketOf(letter)
     const cap = cfg.quota.types[bucket] ?? { label: bucket, limit: cfg.quota.defaultLimit }
     const b = d.byBucket[bucket] ?? (d.byBucket[bucket] = { letters: 0, units: 0, over: 0, feeCent: 0 })
-    const units = quotaUnits({ ...letter, targets: tg }, { resolve: (id) => cfg.quota.types[id] })
+    const units = quotaUnits({ ...letter, targets: tg }, { resolve: (id) => cfg.quota.types[id] }, bucket)
     const over = Number.isFinite(cap.limit) ? Math.max(0, b.units + units - cap.limit) : 0
     const charge = Math.min(units, over)
     const bytes = Buffer.byteLength(letter.body ?? '', 'utf8')

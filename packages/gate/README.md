@@ -34,6 +34,8 @@
 | `quota.dayBoundaryHour` | `0` | ★日界：0 ＝ 自然日；★写 `9` ＝ 早九点到次日早九点算一天 ✓ |
 | `quota.types` | 四个样例桶 | ★每桶 `limit`；★**离线桶可 `perSend: true`**（按发信次数计 ✓） |
 | `quota.defaultLimit` | `120` | ★**没在表里的类型**落这个桶 ✓（★否则"注册一个新类型"在闸这层就不成立 ✗） |
+| ★★`quota.bucketRules` ✗ | 不配 | ★★**分桶规则**（数组）：`[{ field, equals, bucket }]` —— ★**从上往下第一个命中的赢** ✓；`equals` 不写 ⇒ "该字段有值就命中" ✓。★**字段名与桶名全由配置给** ✓（本件里不出现任何具体名字 ✓）。★不配 ⇒ 行为一字不变（离线走 `offline`、其余按 `type` ✓） |
+| ★★`quota.defaultBucket` ✗ | 不配 | ★一条规则都没命中时落哪个桶 ✓（★配了 `bucketRules` 才有意义 ✓ —— **必须有**，否则"带新字段的信"会掉回 type 桶 ✓） |
 | `loop.ackMaxBytes` | `40` | ★多长的正文才可能被当回执 ✓ |
 | `loop.ackOnly` | 中英回执词 | ★**中英都认** ✓（只认中文 ⇒ 英文回执成了绕过闸的后门 ✗） |
 | `loop.pairWindowMs` | `20 分钟` | ★同对回环的时间窗 ✓ |

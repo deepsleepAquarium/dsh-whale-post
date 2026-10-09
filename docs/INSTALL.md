@@ -175,6 +175,8 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* 把这段文字送进那�
 | | `quota.dayBoundaryHour` | `0` | ★日界：0 ＝ 自然日；★写 `9` ＝ 早九点到次日早九点算一天 ✓ |
 | | `quota.types` | 四个样例桶 | ★每桶 `limit`；★**离线桶可 `perSend: true`**（按发信次数计，组发不翻倍 ✓） |
 | | `quota.defaultLimit` | `120` | ★**没在表里的类型**落这个桶 ✓ |
+| | ★★`quota.bucketRules` ✗ | 不配 | ★★**按哪个字段分桶** ✗：`[{ field, equals, bucket }]`，★**从上往下第一个命中的赢**；★**字段名与桶名全由配置给** ✓。★不配 ⇒ 行为一字不变 ✓。★例：按"授权级别"分四档 ⇒ `[{ field: 'auth', equals: 'self', bucket: 'self' }, …]` ＋ 在 `types` 里给 `self`／`relay`／… 各自的 `limit` ✓ |
+| | ★★`quota.defaultBucket` ✗ | 不配 | ★一条规则都没命中时落哪个桶（★配了 `bucketRules` 才有意义 ✓） |
 | | `loop.ackMaxBytes`／`ackOnly` | `40`／中英回执词 | ★**纯回执拒发** ✓ |
 | | `loop.pairWindowMs`／`pairMax` | `20 分钟`／`3` | ★同一对**这个窗口内最多发几封** ✓ |
 | | `loop.hopMax` | `3` | ★链深上限（★礼貌闸／省米闸，**不是安全边界** ✓） |
