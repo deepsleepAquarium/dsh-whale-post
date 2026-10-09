@@ -117,11 +117,20 @@ export function createBus(config = {}) {
     if (env.type !== undefined && services.types && typeof services.types.resolve === 'function' && !services.types.resolve(env.type)) {
       e.push(`未注册的邮件类型：${env.type}`)
     }
-    if (typeof env.mac === 'string') {
-      const want = sign(env)
-      const a = Buffer.from(env.mac, 'hex'); const b = Buffer.from(want, 'hex')
-      if (a.length !== b.length || !timingSafeEqual(a, b)) e.push('MAC 不符（伪造，或密钥不同）')
-    } else e.push('mac 缺失')
+    // ★★ 安全校验的**策略**归 `whale.verify` 包（"默认禁用"是主人 2026-10-09 定的口径）：
+    //   · 装了且**开启** ⇒ 先按它的判断（含白名单）；它放行 ⇒ 下面照旧做 HMAC（双保险，无害）
+    //   · 装了但**禁用** ⇒ 它返回 `skipped` ⇒ ★跳过 HMAC（★这才让"默认禁用"真的生效 ✗）
+    //   · **没装** ⇒ 照旧验签（向后兼容：老部署行为一个字不变 ✓）
+    const vPolicy = services.verify
+    const vRes = (vPolicy && typeof vPolicy.verify === 'function') ? vPolicy.verify(env) : null
+    if (vRes && vRes.ok === false) e.push(`安全校验不过：${vRes.why}`)
+    if (!(vRes && vRes.skipped)) {
+      if (typeof env.mac === 'string') {
+        const want = sign(env)
+        const a = Buffer.from(env.mac, 'hex'); const b = Buffer.from(want, 'hex')
+        if (a.length !== b.length || !timingSafeEqual(a, b)) e.push('MAC 不符（伪造，或密钥不同）')
+      } else e.push('mac 缺失')
+    }
     // ★fail-closed：不在签名域里的字段 ⇒ **拒**（否则"加字段忘了进 FIELD_ORDER"＝那个字段可被悄悄改）
     const known = new Set([...FIELD_ORDER, 'mac'])
     const unknown = Object.keys(env).filter((k) => !known.has(k))
@@ -406,6 +415,9 @@ export function apply(ctx, config = {}) {
     types: ctx?.get?.('whale.types') ?? ctx?.whale?.types,
     gate: ctx?.get?.('whale.gate') ?? ctx?.whale?.gate,
     deliver: ctx?.get?.('whale.deliver') ?? ctx?.whale?.deliver,
+    // ★安全校验的**策略**（开关／白名单／提示）—— 由第七件提供；
+    //   没装 ⇒ `undefined` ⇒ 核心照旧验签（向后兼容 ✓）
+    verify: ctx?.get?.('whale.verify') ?? ctx?.whale?.verify,
   }
   const bus = createBus({ ...config, services })
   if (typeof ctx?.provide === 'function') ctx.provide('whale.bus', bus)

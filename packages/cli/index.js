@@ -33,7 +33,7 @@ const flag = (name) => argv.includes(`--${name}`)
 const die = (code, msg) => { if (msg) console.error(msg); process.exit(code) }
 
 /** 把接口件拼起来（★核心只认接口，这里就是"接线"） */
-function wire({ root, live, allow: allowIn } = {}) {
+function wire({ root, live, allow: allowIn, verifyEnabled } = {}) {
   const r = root ?? opt('root') ?? process.env.WHALE_POST_ROOT ?? join(process.cwd(), '.whale-mail')
   const injected = []
   // ★`--live a,b` 声明"这些人此刻有活体会话"（独立审计 2026-10-05：原来它只在自测里被用到 ⇒ 死参数 ✗）
@@ -50,7 +50,7 @@ function wire({ root, live, allow: allowIn } = {}) {
     roster: createRoster({ file: opt('roster') ?? join(r, 'roster.json') }),
     types: createTypes(),
     gate: createGate({ root: r }),
-    verify: createVerify({ root: r, enabled: flag('enable-verify'), allow }),
+    verify: createVerify({ root: r, enabled: flag('enable-verify') || verifyEnabled === true, allow }),
     deliver: createDeliver({
       sessionOf: (id) => (liveSet.has(id) ? { live: true, inject: (text) => injected.push({ id, text }) } : undefined),
     }),
@@ -74,7 +74,9 @@ function selftest() {
       groups: { all: ['alice', 'bob', 'carol'], club: ['alice', 'bob'] },
     }, null, 2), 'utf8')
 
-    const { bus: w, services, injected } = wire({ root: tmp, live: ['bob'] })   // ★只有 bob 有"活体会话"
+    // ★自测里**显式开安全校验** —— 因为下面要验"改一个字段就不过"；
+    //   而默认那一档是"禁用"（禁用时按设计跳过 HMAC ⇒ 改 mode 查不出来，另有一条判据专门盯它）
+    const { bus: w, services, injected } = wire({ root: tmp, live: ['bob'], verifyEnabled: true })   // ★只有 bob 有"活体会话"
     w.hello({ as: 'alice' }); w.hello({ as: 'bob' }); w.hello({ as: 'carol' })
 
     // ① 离线件：落在对方信箱、不叫醒

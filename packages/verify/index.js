@@ -123,12 +123,19 @@ export function createVerify(config = {}) {
   // ── 验签 ────────────────────────────────────────────────────────────────
   /** 摘要／签名：优先借 `bus` 的实现（同一个算法，不各算各的）✓ */
   const digestOf = (body) => (typeof cfg.bus?.digest === 'function' ? cfg.bus.digest(body) : sha256hex(body))
+  /**
+   * ★密钥的用法必须与 `bus.sign` **逐字节一致**（集成测试 07-10 抓出的 bug ✗）：
+   *   bus 用的是 `Buffer.from(keyHex(), 'hex')` —— 把 64 位 hex **解码成 32 字节**再当 HMAC 密钥；
+   *   原来这里直接拿 hex 字符串当密钥 ⇒ 两边密钥不同 ⇒ **算出来的签名永远不符**，
+   *   而各自的自测都自洽（自测里造信也用字符串）⇒ **全绿但一接就炸** ✓。
+   */
+  const keyBuf = (key) => (/^[0-9a-f]{64}$/i.test(String(key)) ? Buffer.from(String(key), 'hex') : Buffer.from(String(key), 'utf8'))
   function macOf(env, key) {
     if (typeof cfg.bus?.sign === 'function') {
       try { return cfg.bus.sign(env) } catch { /* bus 的签名抛了 ⇒ 退回内置 */ }
     }
     const canonical = JSON.stringify(FIELD_ORDER.filter((k) => env[k] !== undefined).map((k) => [k, env[k]]))
-    return createHmac('sha256', key).update(canonical, 'utf8').digest('hex')
+    return createHmac('sha256', keyBuf(key)).update(canonical, 'utf8').digest('hex')
   }
 
   /**
@@ -145,15 +152,21 @@ export function createVerify(config = {}) {
       if (allow.length > 0 && !allow.includes(String(env.from))) {
         return { ok: false, why: `发件人不在白名单里：${env.from}` }
       }
-      // ② 必填字段
-      for (const k of ['v', 'kind', 'id', 'from', 'to', 'seq', 'sha256']) {
+      // ② 必填字段（★**分 kind**：hello／ack 信封没有正文 ⇒ 没有 seq／sha256
+      //    —— 口径与 bus.verify 一致；07-10 集成测试抓出的 bug：原来无条件要 sha256 ⇒
+      //    一开启安全校验，连"握手（hello）"都被判不过 ⇒ 整条链发不出信 ✗）
+      const base = ['v', 'kind', 'id', 'from', 'to']
+      const need = env.kind === 'msg' ? [...base, 'seq', 'sha256'] : base
+      for (const k of need) {
         if (env[k] === undefined || env[k] === null) return { ok: false, why: `信封缺字段：${k}` }
       }
       // ③ 不许有未登记字段（★加字段忘了进签名域＝那个字段可被随便改 ✓）
       const unknown = Object.keys(env).filter((k) => !FIELD_ORDER.includes(k) && k !== 'mac')
       if (unknown.length) return { ok: false, why: `信封里有未登记字段：${unknown.join(',')}` }
-      // ④ 摘要（正文）
-      if (digestOf(env.body ?? '') !== env.sha256) return { ok: false, why: '正文摘要不符（body 被改过）' }
+      // ④ 摘要（★只有"信"有正文 ⇒ 只对 kind==='msg' 查；hello／ack 不查 ✓）
+      if (env.kind === 'msg' && digestOf(env.body ?? '') !== env.sha256) {
+        return { ok: false, why: '正文摘要不符（body 被改过）' }
+      }
       // ⑤ 签名
       const key = keyFor(env.from)
       if (!key) return { ok: false, why: '取不到钥匙（没有专用钥也没有共享钥）' }

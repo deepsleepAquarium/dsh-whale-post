@@ -11,6 +11,7 @@ import { mkdirSync, writeFileSync, readFileSync } from 'node:fs'
 import { createHash, createHmac } from 'node:crypto'
 import { join } from 'node:path'
 import { apply, createVerify, apiVersion, FIELD_ORDER } from './index.js'
+import { createBus } from '../bus/index.js'
 
 const tmp = join(process.env.TEMP ?? '/tmp', `whale-verify-selftest-${Date.now()}`)
 const checks = []
@@ -22,7 +23,9 @@ const KEY_B = 'b'.repeat(64)
 const digest = (s) => createHash('sha256').update(String(s), 'utf8').digest('hex')
 const mac = (env, key) => {
   const canonical = JSON.stringify(FIELD_ORDER.filter((k) => env[k] !== undefined).map((k) => [k, env[k]]))
-  return createHmac('sha256', key).update(canonical, 'utf8').digest('hex')
+  // ★密钥用法必须与 bus.sign 一致：64 位 hex ⇒ 解码成 32 字节（否则"自测自洽、一接就炸"）
+  const buf = /^[0-9a-f]{64}$/i.test(String(key)) ? Buffer.from(String(key), 'hex') : Buffer.from(String(key), 'utf8')
+  return createHmac('sha256', buf).update(canonical, 'utf8').digest('hex')
 }
 const letter = (over = {}, key = KEY_A, from = 'alice') => {
   const env = { v: 1, kind: 'msg', id: 'm-test-1', from, to: 'bob', seq: 1, subject: 's', body: 'hello', sha256: digest('hello'), sentAtMs: 1, type: 'direct', mode: 'offline', ...over }
@@ -108,6 +111,34 @@ try {
   const noDedicated = createVerify({ root: tmp, enabled: true, now: t0, keysDir: join(tmp, 'nokeys'), keyFile: join(tmp, 'signing.key') })
   check('回落：没有专用钥时用共享钥（★老信老成员一字不改）', noDedicated.verify(letter({}, 'c'.repeat(64), 'carol')).ok === true)
   check('回落对照：共享钥签的人，专用钥目录里没有 ⇒ 仍过', noDedicated.verify(letter({}, 'c'.repeat(64), 'carol')).ok === true)
+
+  // ★★ 集成测试抓出的真 bug（2026-10-10 凌晨）：开启安全**之后连 `hello` 都被判不过** ✗
+  //   ⇒ 因为原实现无条件要求 seq／sha256，而 hello／ack 没有正文 ⇒ 整条链"握手都不成立"、发不出信。
+  //   这几条判据钉住"与 bus.verify 同口径"：只有 kind==='msg' 才查 seq／sha256 与正文摘要。
+  const helloEnv = { v: 1, kind: 'hello', id: 'h-1', from: 'alice', to: 'bob' }
+  helloEnv.mac = mac(helloEnv, KEY_A)
+  check('★hello 信封（无 seq／sha256）⇒ 开启安全时也验得过', on.verify(helloEnv).ok === true, JSON.stringify(on.verify(helloEnv)))
+  const ackEnv = { v: 1, kind: 'ack', id: 'a-1', from: 'bob', to: 'alice' }
+  ackEnv.mac = mac(ackEnv, KEY_B)
+  check('★ack 信封（无正文）⇒ 同上（口径与 bus 一致）', on.verify(ackEnv).ok === true, JSON.stringify(on.verify(ackEnv)))
+  check('对照：msg 信封缺 sha256 ⇒ 仍判不过（该严的还是要严）', on.verify({ ...good, sha256: undefined }).ok === false)
+  check('对照：hello 信封签名被改 ⇒ 仍判不过（不是"什么都不查"）', on.verify({ ...helloEnv, mac: helloEnv.mac.slice(0, -1) + '0' }).ok === false)
+
+  // ★★ 与 bus **互验**（集成测试 07-10 抓出的 bug：两边算签名用的密钥形状不一致
+  //   ⇒ 各自自测全绿、一接上就"签名不符"⇒ 整条链发不出信 ✗）。
+  //   判据：**用真 bus 造一个真信封**，再看 verify 包认不认 —— 这才叫"能接上"。
+  const xroot = join(tmp, 'cross-check')
+  mkdirSync(xroot, { recursive: true })
+  const busX = createBus({ root: xroot, services: {} })
+  busX.hello({ as: 'alice' })
+  const realHello = JSON.parse(readFileSync(join(xroot, 'hello', 'alice.json'), 'utf8'))
+  // ★用空 keysDir ⇒ 强制回落到共享钥（<xroot>/signing.key，由 bus 首用时生成）
+  const vX = createVerify({ root: xroot, enabled: true, keysDir: join(xroot, '没有这个目录') })
+  const rx = vX.verify(realHello)
+  check('★★与 bus 互验：真 bus 造的 hello 信封 ⇒ verify 包认得出（同一把共享钥）', rx.ok === true, JSON.stringify(rx))
+  const realMsg = busX.seal({ v: 1, kind: 'msg', id: 'real-1', from: 'alice', to: 'bob', seq: 1, subject: 's', body: 'hi', sha256: busX.digest('hi'), sentAtMs: Date.now() })
+  check('★★与 bus 互验：真 bus 签的 msg 信封 ⇒ verify 包也认得出', vX.verify(realMsg).ok === true, JSON.stringify(vX.verify(realMsg)))
+  check('互验对照：把一个字节改掉 ⇒ 两边都判不过', vX.verify({ ...realMsg, body: 'hi!' }).ok === false)
 
   // ── ④ 防泄露 ＋ 坏输入不炸 ──────────────────────────────────────────
   const src = readFileSync(new URL('./index.js', import.meta.url), 'utf8')

@@ -42,6 +42,22 @@ try {
   check('信封：改正文 ⇒ 不过', bus.verify({ ...raw, body: raw.body + 'X' }).some((x) => /摘要不符|MAC/.test(x)))
   check('信封：改 mode ⇒ 不过（模式进签名）', bus.verify({ ...raw, mode: 'online' }).some((x) => /MAC/.test(x)))
 
+  // ★★ 安全校验的**策略**归 `whale.verify`（主人 2026-10-09 定："默认禁用"）——
+  //   不装 ⇒ 照旧验签（向后兼容）；装了但禁用 ⇒ **真的跳过 HMAC**；装了且开启 ⇒ 照验
+  const broken = { ...raw, body: raw.body + 'X' }        // 正文被改 ⇒ 摘要那条必然报（与策略无关）
+  const mk = (v) => createBus({ root: tmp, services: { roster, types, verify: v } })
+  check('策略：★没装 verify 包 ⇒ 照旧验签（改正文仍不过，向后兼容）',
+    mk(undefined).verify(broken).some((x) => /摘要不符|MAC/.test(x)))
+  const offProbs = mk({ verify: () => ({ ok: true, skipped: true }) }).verify(broken)
+  check('★★策略：装了 verify 但**禁用** ⇒ 跳过 HMAC（★"默认禁用"真的生效）',
+    !offProbs.some((x) => /MAC/.test(x)), JSON.stringify(offProbs))
+  check('策略：装了 verify 且**开启**（放行）⇒ 仍做 HMAC（改正文仍不过）',
+    mk({ verify: () => ({ ok: true }) }).verify(broken).some((x) => /MAC/.test(x)))
+  check('策略：纯策略判不过 ⇒ 核心如实报"安全校验不过：…"',
+    mk({ verify: () => ({ ok: false, why: '不在白名单里' }) }).verify(raw).some((x) => /安全校验不过/.test(x)))
+  check('策略：禁用时**形状校验照旧**（禁用 ≠ 什么都不查 —— 缺字段仍要报）',
+    mk({ verify: () => ({ ok: true, skipped: true }) }).verify({ ...raw, from: undefined }).some((x) => /from/.test(x)))
+
   // ③ 收信：消费 ＋ ack ＋ 幂等（★要声明 reader：CLI 把信打到终端时才敢消费）
   const got = bus.pump({ as: 'bob', reader: true })
   check('收信：拉到 1 封', got.length === 1 && got[0].ok)
