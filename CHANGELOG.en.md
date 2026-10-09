@@ -417,6 +417,19 @@
     ★★**that is a false red** (★"the script never ran" being read as "the criterion went red" ✗ —— ★**a non-zero exit code does not mean the criterion took effect** ✓).
   ⇒ ★**what actually guards the selection rule is `compat`** ✓ (★it really runs the old version ✓). ★The criterion stays because it at least pins "the signature value varies with the fields" ✓.
 * ★★ **`npm run compat` is wired into the docs** ✗✓: one row each in `FOR-AGENTS` CN/EN ✓ plus step 0 of `RELEASE` ✓ (★"needs network, about 40 s" ✓).
+* ★★★ **`selftest-all` now distinguishes "**a criterion went red**" from "**it crashed**"** ✗✓ (added 2026-10-10) ——
+  ★★**The illness** ✗: ★it used to look only at the **exit code** ✓ ⇒ ★**if one `selftest.mjs` crashed** (★syntax error / `ReferenceError` ✓)
+    it also reported `FAIL` ✓, ★**with not a single `FAIL` line** ✓ ⇒ ★★**you cannot tell "a criterion is red" from "the script never ran"** ✗✓.
+  ★★★**Why this matters** ✗✓: ★**I made exactly that mistake last round and read it as "the negative test worked"** ✓ ——
+    ★and ★**a non-zero exit code does not mean the criterion took effect** ✓ (★"the worst kind of false red" ✓).
+  ★**How it decides** ✗: ★**exit code ≠ 0 with zero `FAIL` lines** ⇒ ★**that is a crash** ✓;
+    ★and it pulls out the error line itself (★`SyntaxError` / `ReferenceError` / … ✓) ⇒ ★**you see where it broke** ✓.
+  ★**What it looks like now** ✗✓ (★measured ✓):
+    · ★**a red criterion** ⇒ `— bus  FAIL  98/100 通过   ← 2 条不过` ✓ (★the script ran to the end ✓);
+    · ★**a crash** ⇒ `— bus  FAIL  ★崩了（★退出码 1，★一条 FAIL 行都没有 ⇒ ★不是判据红 ✗）：SyntaxError: …` ✓;
+    · ★**the summary** ⇒ ★`有件没过：bus、xcheck` plus ★`★★其中 **1 件是"崩了"**（★不是判据红 ✗）：bus` ✓.
+  ★★**The two require completely different fixes** ✗✓: ★**a red criterion ⇒ the code has a bug** ✓; ★**a crash ⇒ the self-test itself is broken** ✓ ——
+    ★so they **must be reported separately** ✓. (★Negative tests: inserting a syntax error ⇒ reports "crashed" ✓; emptying `LEGACY_FIELDS` ⇒ reports "2 条不过" ✓.)
 * ★**`cli`: `--only-offline <attribute>` / `--dormant <attribute>`** —— ★both rules can finally be switched on from the command line ✓.
 * ★**`cli`: `verify` / `nag` subcommands** —— ★the three-state design is finally visible from the command line
   (★`verify --enable` / `--disable` / `--allow a,b`; `nag` tells you whether a notice is due ✓).

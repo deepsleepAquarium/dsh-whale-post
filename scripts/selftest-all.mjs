@@ -41,8 +41,19 @@ for (const p of items) {
   const all = out.match(/(\d+)\/(\d+) 通过/g) ?? []
   const summary = all.length ? all[all.length - 1] : ''
   const fails = (out.match(/^FAIL.*$/gm) ?? [])
-  results.push({ p, code: r.status, summary })
-  console.log(`${r.status === 0 ? 'PASS' : 'FAIL'}  ${summary}${fails.length ? '   ← ' + fails.length + ' 条不过' : ''}`)
+  // ★★★"**崩了**"跟"**判据红**"必须分开报 ✗✓（2026-10-10 加 —— ★这是我上一轮踩的坑 ✓）：
+  //   ★**病** ✗：★原来只看退出码 ✓ ⇒ ★**某个 `selftest.mjs` 崩了**（★语法错／`ReferenceError` 之类 ✓）
+  //     也会报"FAIL"，★而**一条 `FAIL` 行都没有** ✓ ⇒ ★**人分不清"判据红了"还是"脚本压根没跑起来"** ✗。
+  //   ★★★**为什么这个区分要紧** ✗✓：★我上一轮就把它当成"负向有效"了 ✓ ——
+  //     ★**退出码非 0 ≠ 判据生效** ✓（★"最坏的那种假红" ✓）。
+  //   ★★判法：★**退出码 ≠ 0 且一条 `FAIL` 行都没有** ⇒ ★**那是崩了** ✓；
+  //     ★再把错误行本身抓出来（★`SyntaxError`／`ReferenceError`／…）⇒ ★**一眼看得出崩在哪** ✓。
+  const crashed = r.status !== 0 && fails.length === 0
+  const errLine = ((String(r.stderr ?? '') + '\n' + out).match(/^\s*((?:Syntax)?Error|ReferenceError|TypeError|RangeError)[^\n]*/m) ?? [])[0]
+  results.push({ p, code: r.status, summary, crashed })
+  console.log(crashed
+    ? `FAIL  ★**崩了**（★退出码 ${r.status}，★**一条 FAIL 行都没有** ⇒ ★不是判据红 ✗）${errLine ? '：' + errLine.trim().slice(0, 90) : ''}`
+    : `${r.status === 0 ? 'PASS' : 'FAIL'}  ${summary}${fails.length ? '   ← ' + fails.length + ' 条不过' : ''}`)
 }
 
 console.log('')
@@ -101,9 +112,13 @@ process.stdout.write(`— ${'pkgcheck'.padEnd(9)} `)
 
 console.log('')
 const bad3 = results.filter((r) => r.code !== 0)
+//   ★★汇总里也要**点名"崩了"的那几件** ✗✓（★否则"有件没过"看起来像"判据红了" ✓）——
+//     ★两者要修的地方完全不同：★**判据红 ⇒ 代码有 bug** ✓；★**崩了 ⇒ 自测自己坏了** ✓。
+const crashed3 = bad3.filter((r) => r.crashed)
 console.log(bad3.length === 0
   ? `全过：${results.length}/${results.length} 项（退出码 0）`
-  : `有件没过：${bad3.map((b) => b.p).join('、')}（退出码 ${bad3[0].code}）`)
+  : `有件没过：${bad3.map((b) => b.p).join('、')}（退出码 ${bad3[0].code}）` +
+    (crashed3.length ? `\n★★其中 **${crashed3.length} 件是"崩了"**（★不是判据红 ✗）：${crashed3.map((b) => b.p).join('、')}` : ''))
 // ★★另有一个**并发压测**不在这里跑 ✗（它起十几个真子进程、慢一些）：
 //   `node scripts/racetest.mjs` —— ★**改了发号或落盘就要跑它** ✓（发号撞号只在那里才看得见 ✓）
 console.log('ⓘ 另有并发压测：node scripts/racetest.mjs（★改了发号／落盘就一定要跑 ✓）')
