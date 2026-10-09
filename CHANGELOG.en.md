@@ -105,7 +105,16 @@
   Four states: `awake` / `quiet` / `dormant` ★plus **`unknown`** (★**"we do not know" ≠ "they are dormant"** ✓).
   ★Two hard rules: ★**no backlog ⇒ never call it dormant** ✗ ("nothing to read ≠ not reading" ✓) / ★**only on-disk mtime is used** ✓ (never a timestamp from the content ✓).
   ★Thresholds `dormantSoftDays: 3` / `dormantHardDays: 7` ✓; ★**a merely `quiet`/`inferred` recipient is never bounced** ✗ (we do not guess ✓).
-* ★**`cli`: `verify` / `nag` subcommands** —— the three-state design is finally visible from the command line.
+* ★★★ **Offline letters are exempt from the whole loop gate** ✗✓ (ported from the original on 2026-10-10; ★its criteria 29-31 plus "**the keeper's order of 2026-10-06**" ✓)
+  —— ★**this is the opposite of what upstream did** ✗: ★all three loop gates exist to stop "**waking the other side one extra time**" ✓,
+  ★and **an offline letter wakes nobody at all** (it just lies there waiting to be collected ✓) ⇒ blocking it **buys nothing**
+  and merely traps "what you wanted to say" in the sender's hands ✓. ★★**A gate should stop a cost, not an expression** ✓✓.
+  ⚠️ ★**Only the loop gate is exempt** ✗ —— ★**quotas still apply** ✓ (the offline bucket is counted separately ✓); ★online letters behave exactly as before ✓.
+  ★One **real problem** was fixed alongside it: `recent` (the table the same-pair loop gate counts) used to include **offline letters too** ✗ ⇒
+  now that they are exempt, they would still occupy the "wake-up log" ⇒ ★**wrongly blocking later online letters** ✓ ⇒ it now records **online letters only** ✓ (that is exactly what a "wake-up log" is ✓).
+  ★Criteria: `gate` has 46 (including the three "offline exemption ①②③", "online letters still bound by gates ①②", and "offline letters still bound by quotas" ✓);
+  ★negative test: removing the exemption turns **3 criteria red immediately** ✓. The older `bus`/`cli` criteria that built "refused by the gate"
+  out of **offline** letters were updated to use **online** letters (★otherwise they go red —— ★and that would be a **changed definition**, not a bug ✓).
 * ★★★ **S8: the small daily cap on online letters to a "phone" (`bus` + `gate`)** ✗✓ —— ★**the last item ported from the tank's original** ✓:
   ★verbatim from the original: ★"**every online letter = waking a member for one full-context inference** ✗ (**the most expensive step** ✓)
   ⇒ a member like a phone, which "may wake up once and fire off several letters", needs a **small daily cap** ✓

@@ -304,7 +304,9 @@ try {
   bus6.send({ as: 'alice', to: 'bob', subject: '第一封', body: '正常的一封：让水位从 2 开始（正文有货，不是回执）' })
   const seqBefore = bus6.loadState('alice').nextSeq
   let refused = ''
-  try { bus6.send({ as: 'alice', to: 'bob', subject: 'x', body: '收到' }) } catch (e) { refused = e.message }
+  try { bus6.send({ as: 'alice', to: 'bob', mode: 'online', subject: 'x', body: '收到' }) } catch (e) { refused = e.message }
+  //   ★★注意必须用**在线件** ✗ —— 2026-10-10 起离线件**豁免整套回环闸** ✓（主人 2026-10-06 令）；
+  //     ★用离线件构造"被闸拒"现在构造不出来 ⇒ 水位当然会变（★不是"烧了不该烧的号" ✓）。
   check('拒发不烧序号：被闸拒掉的信 ⇒ 水位不变', /闸拒发/.test(refused) && bus6.loadState('alice').nextSeq === seqBefore,
     JSON.stringify({ refused: refused.slice(0, 30), before: seqBefore, after: bus6.loadState('alice').nextSeq }))
   //   (g) 老信（没有 mode 字段）不许被标成"[在线]"

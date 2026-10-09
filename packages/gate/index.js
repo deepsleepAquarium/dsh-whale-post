@@ -193,7 +193,13 @@ export function createGate(config = {}) {
         }
       }
     }
-    if (!letter.force) {
+    // ★★★离线件豁免**整套回环闸** ✗✓（2026-10-10 从正本移植；★正本 29-31 三条判据 ＋ 「主人 2026-10-06 令」✓）
+    //   ★为什么 ✗：★三道回环闸拦的都是"**别多叫醒人一次**" ✓ —— ★而**离线件根本不叫醒任何人**
+    //   （它躺着等对方来收 ✓）⇒ ★拦它**没有任何收益**，只会把"想说的话"堵在发信人手里 ✓。
+    //   ★★这正是"**信只会晚到，不会不到**"：★"闸"该拦的是**代价**，不是**表达** ✓✓。
+    //   ⚠️ 只豁免**回环闸**（①纯回执／②同对／③链深）✓ —— ★**配额照旧** ✓（★离线桶独立计 ✓，见下面 ✓）。
+    //   ⚠️ `--force` 本来也跳过这三道 ✓ ⇒ 两个条件是"或" ✓。
+    if (!(letter.mode === 'offline' || letter.force)) {
       if (Buffer.byteLength(flat, 'utf8') > 0 && Buffer.byteLength(flat, 'utf8') <= loop.ackMaxBytes && loop.ackOnly.test(flat)) {
         return { reject: true, reason: `回环闸①（纯回执）：正文去掉空白标点后只剩「${flat}」这类字样 —— ` +
           `回执不必发信（收信方会自动写 ack）。真要有新事实／新决定就写进正文；确需照发加 --force。` }
@@ -250,8 +256,13 @@ export function createGate(config = {}) {
     b.units += units
     b.over += charge
     b.feeCent = Number((b.feeCent + feeCent).toFixed(4))
-    d.recent = [...(d.recent ?? []), { to: letter.to, atMs: letter.sentAtMs ?? Date.now() }].slice(-200)
-    j.recent = [...(j.recent ?? []), { to: letter.to, atMs: letter.sentAtMs ?? Date.now() }].slice(-200)
+    // ★★`recent` 是"**叫醒记录**" ✗ —— 只记**在线件** ✓（2026-10-10 改）
+    //   ★为什么：★离线件**豁免整套回环闸** ✓（它不叫醒任何人 ✓）⇒ ★**让它占满 `recent`
+    //   会把后面的**在线件**误拦** ✗✓ —— 那是"用不会叫醒的信，挤掉真的该发的那封" ✓。
+    if (letter.mode !== 'offline') {
+      d.recent = [...(d.recent ?? []), { to: letter.to, atMs: letter.sentAtMs ?? Date.now() }].slice(-200)
+      j.recent = [...(j.recent ?? []), { to: letter.to, atMs: letter.sentAtMs ?? Date.now() }].slice(-200)
+    }
     save(as, j)
     return { bucket, units, used: b.units, limit: cap.limit, over: charge, feeCent }
   }

@@ -155,6 +155,25 @@ try {
   check('★S8：拿不到名单 ⇒ **不拦**（宁可放过，不冤枉 ✓）',
     createGate({ root: tmp, quota: { phoneFlag: 'ph', phoneOnlineCap: 1 } })
       .check(L8({ as: 's8noroster' }), { declaredCaps: {} }) === 'pass')
+
+  // ★★★离线件豁免**整套回环闸** ✗✓（2026-10-10 从正本移植；★正本 29-31 三条 ＋ 「主人 2026-10-06 令」✓）
+  //   ★为什么：★三道回环闸拦的是"**别多叫醒人一次**" ✓ —— ★而离线件**根本不叫醒任何人** ✓
+  //   ⇒ ★拦它没有收益，只会把"想说的话"堵在发信人手里 ✓（★"闸"该拦代价，不该拦表达 ✓）
+  const gOff = createGate({ root: tmp })
+  const LO = (over = {}) => ({ as: 'offexempt', to: 'qq', targets: ['qq'], mode: 'offline', type: 'direct', body: '离线件（正文有货，别当回执）', ...over })
+  check('★★离线豁免①：纯回执「已读」的**离线件照发**（主人 2026-10-06 令）', gOff.check(LO({ body: '已读' })) === 'pass')
+  for (let i = 0; i < 5; i += 1) gOff.record(LO(), ['qq'])
+  check('★★离线豁免②：同对 20 分钟内第 4、5 封**照发**', gOff.check(LO()) === 'pass')
+  check('★★离线豁免③：本链第 3 跳的离线件**照发**', gOff.check(LO({ hop: 3, re: 'x' })) === 'pass')
+  check('★在线件**仍然**受闸①（别把闸一起豁免了）', gOff.check(LO({ mode: 'online', body: '已读' })).reject === true)
+  const gOn = createGate({ root: tmp })
+  for (let i = 0; i < 5; i += 1) gOn.record({ ...LO({ mode: 'online', as: 'offexempt-on' }) }, ['qq'])
+  check('★在线件**仍然**受闸②', gOn.check(LO({ mode: 'online', as: 'offexempt-on' })).reject === true)
+  // ★★豁免的**只是回环闸** ✗ —— 配额照旧（★离线桶独立计 ✓）
+  const gQuota = createGate({ root: tmp, quota: { onOver: 'reject', types: { offline: { label: '离线', limit: 1, perSend: true } } } })
+  gQuota.record(LO({ as: 'offexempt-q' }), ['qq'])
+  const qr = gQuota.check(LO({ as: 'offexempt-q' }), {})
+  check('★★离线件仍受**配额**（豁免的只是回环闸，不是配额 ✗）', qr !== 'pass' && qr.reject === true && /配额/.test(qr.reason), JSON.stringify(qr))
 } catch (err) {
   check('自测没有抛异常', false, err && err.stack ? err.stack.split('\n')[0] : err)
 }

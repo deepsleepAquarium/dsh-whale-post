@@ -153,15 +153,30 @@ function selftest() {
     check('组名：club 解析成 alice（不含发件人自己）', s4.targets.length === 1 && s4.targets[0] === 'alice', JSON.stringify(s4.targets))
 
     // ⑥ 回环闸①：纯回执
+    //   ★★注意必须用**在线件** ✗ —— 2026-10-10 起，★离线件**豁免整套回环闸** ✓
+    //   （★"主人 2026-10-06 令"＋正本判据 29-31 ✓：三道闸拦的是"别多叫醒人一次"，
+    //    而离线件**根本不叫醒任何人** ⇒ 拦它没有收益 ✓）
     let e1 = ''
-    try { w.send({ as: 'alice', to: 'bob', subject: '回执', body: '收到' }) } catch (e) { e1 = e.message }
-    check('回环闸①：纯回执拒发', /纯回执/.test(e1), e1)
+    try { w.send({ as: 'alice', to: 'bob', mode: 'online', subject: '回执', body: '收到' }) } catch (e) { e1 = e.message }
+    check('回环闸①：纯回执拒发（★在线件）', /纯回执/.test(e1), e1)
+    //   ★同一条的"反面"：同一个纯回执换成**离线** ⇒ **照发** ✓
+    let offlineAckOk = false
+    try { w.send({ as: 'alice', to: 'bob', mode: 'offline', subject: '回执', body: '收到' }); offlineAckOk = true } catch { offlineAckOk = false }
+    check('★★离线豁免闸①：纯回执的**离线件照发**（主人 2026-10-06 令）', offlineAckOk)
 
-    // ⑦ 回环闸②：同一对 20 分钟内限封数（第 4 封起拒）
-    w.send({ as: 'alice', to: 'bob', subject: '第三封', body: '同一对第三封（正文有货，不是回执）' })
+    // ⑦ 回环闸②：同一对 20 分钟内限封数（超出就拒）—— ★同样要用在线件 ✓
+    //   ★★注意：`recent` 现在**只记在线件** ✗（2026-10-10 改：离线件豁免整套回环闸，
+    //     让它占满"叫醒记录"会把后面的**在线件**误拦 ✓）⇒ ★这条判据要**自己把在线件发满** ✓。
+    //   ★用 `force` 填到刚好超过上限（★`force` 跳过闸、但**照样进 `recent`** ✓）
+    //     —— ★不许在 `try` 外面发，否则第 3 封就抛，把整个自测炸掉 ✗（我们刚栽过 ✓）。
+    for (let i = 0; i < 4; i += 1) w.send({ as: 'alice', to: 'bob', mode: 'online', force: true, subject: `填满${i}`, body: `把叫醒记录填满：第 ${i} 封（正文有货，不是回执）` })
     let e2 = ''
-    try { w.send({ as: 'alice', to: 'bob', subject: '连发', body: '同一个人连着发第 4 封（正文有货，不是回执）' }) } catch (e) { e2 = e.message }
-    check('回环闸②：同对限封数（第 4 封拒）', /同对回环/.test(e2), e2)
+    try { w.send({ as: 'alice', to: 'bob', mode: 'online', subject: '连发', body: '填满之后再发一封普通的（正文有货，不是回执）' }) } catch (e) { e2 = e.message }
+    check('回环闸②：同对限封数（超出就拒）（★在线件）', /同对回环/.test(e2), e2)
+    //   ★同一条的"反面"：同一对再来**离线**件 ⇒ **照发** ✓（豁免 ✓）
+    let offlineMoreOk = false
+    try { w.send({ as: 'alice', to: 'bob', mode: 'offline', subject: '离线', body: '同一对再来离线件（正文有货，不是回执）' }); offlineMoreOk = true } catch { offlineMoreOk = false }
+    check('★★离线豁免闸②：同对连发位置上的**离线件照发**（主人 2026-10-06 令）', offlineMoreOk)
 
     // ⑧ 空正文 / 未注册类型 / 名额写错 ⇒ 一律拒发
     let e3 = ''; try { w.send({ as: 'bob', to: 'alice', subject: 'x', body: '   ' }) } catch (e) { e3 = e.message }
