@@ -231,7 +231,30 @@
   ★`report()` now also returns `days` ✓ (★with the ledger split in two places, callers **could not tell which days exist** ✗ ⇒ the per-day books are handed out too ✓).
   ★Criteria: `gate` 50 → 53 (★serial baseline of 12 / ★a fresh instance still reads 12 / ★increment filenames **each its own** ✓).
   ★Negative test: ★replacing the random filename with a **fixed** one (★simulating the mechanism being broken ✓) ⇒ **4 out of 4 runs lost entries** ✓ (★the negative is effective ✓).
+* ★★★ **`doccheck`: a structural parity check for the Chinese/English docs** ✗✓ (added 2026-10-10; ★`npm run doccheck` ✓) ——
+  ★**Why it exists** ✗: ★we have already been burned **twice** by documentation drift ——
+  ① ★the Chinese `README.md` was **missing two whole sections** (★"concurrent claiming: tested" and ★"**still untested**" ✓) while the English one had them ✓ ——
+     ★★**and what was missing was precisely an**honest statement** ("still untested")** ✗ (★the rule says "never claim what you have not verified" ✓);
+  ② ★after I restored the Chinese side, ★**the English one was missing the `xcheck` paragraph** ✗ (★the other direction ✓).
+  ★★**Both slipped past a review that only counted headings** ✗✓ —— ★because ★**it only looks at headings** ✓ and cannot see a missing body section ✓.
+  ★**It checks six things** ✗: ★heading count (**listed per level** ⇒ easy to locate ✓) / ★**bullet count** (`^* ` ✓) / table count /
+  ★**code fences** (★**must be even** —— ★an odd number means one is unpaired ✓) / link count / ★and **table column counts consistent within each document** ✓.
+  ★★★**It found three real defects the moment it went live** ✗✓ (★that is the point of building it ✓):
+    · ★★**An orphan ``` line in `docs/INSTALL.en.md`** ✗✓ —— ★**it made the whole second half render as a code block** ✓
+      (★exactly the "the docs are hard to read" problem ✓);
+    · ★★**The English `CHANGELOG` was missing an entire entry** (★"`cli`: `verify` / `nag` subcommands" ✓) ——
+      ★and ★**that was the very line I had used as an anchor last round** ✓, ★**so it got pushed out; I only restored the Chinese one** ✗;
+    · the two Chinese `README` sections (★restored in the previous commit ✓).
+  ★Its criterion is the **exit code** ✓ (0 = all in step / non-zero = drift ✓); ★**it is now part of `npm run selftest`** (★**9 items** ✓).
+  ★Negative test: ★deleting the English entry I had just restored ⇒ **turns red immediately** ✓ (★and accurately reports "bullets 43 vs 42" ✓).
+  ★ⓘ ★The first version **false-alarmed** ⚠️: ★I took "headings 21 vs 23" seriously and went hunting, ★only to find that **`#` comments inside a code block** were being counted as headings ✓
+    ⇒ ★it now **strips fenced blocks before counting** ✓ (★while the fences themselves are counted separately —— ★another criterion needs that ✓).
 * ★**`cli`: `--only-offline <attribute>` / `--dormant <attribute>`** —— ★both rules can finally be switched on from the command line ✓.
+* ★**`cli`: `verify` / `nag` subcommands** —— ★the three-state design is finally visible from the command line
+  (★`verify --enable` / `--disable` / `--allow a,b`; `nag` tells you whether a notice is due ✓).
+  ★ⓘ ★This entry had gone missing on the **English** side —— ★and that is exactly what `doccheck` caught
+  (★the criterion "bullets 43 vs 42" ✓): ★last round I inserted a new entry using this very line as the anchor,
+  ★which **pushed it out** ✓; ★I restored the Chinese one then, ★but **forgot the English one** ✗.
 * ★★★ **No handshake no longer means "refused"** ✗✓ (ported from the original on 2026-10-10; ★its criteria 1-3 plus "**the keeper's order of 2026-10-06 01:5x**" ✓)
   —— ★**another "opposite direction"** ✗: ★it used to throw and refuse when there was no handshake ✓; the new rule is
   ★**send anyway + say plainly "downgraded to offline for them"** ✓✓.

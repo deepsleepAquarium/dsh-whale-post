@@ -47,7 +47,10 @@ for (const p of items) {
 
 console.log('')
 const bad = results.filter((r) => r.code !== 0)
-
+//   ★为什么单列一步 ✗：★它盯的**不是"某一件事对不对"，而是"**同一件事在两件里算得一样吗**"** ✓ ——
+//   ★我们踩过两次：★`verify` 自己抄了一份 `FIELD_ORDER`（合法信被判"未登记"、当场退信 ✗）／
+//     ★`gate` 与 `verify` 各算一份日界（★差一天而**谁都不报错** ✓）。
+//   ★★它的判据也是**退出码** ✓（0 全一致／非 0 有漂移 ✓）。
 // ★★★跨包一致性（`xcheck`）✗✓ —— ★**漂移探测器**
 //   ★为什么单列一步 ✗：★它盯的**不是"某一件事对不对"，而是"**同一件事在两件里算得一样吗**"** ✓ ——
 //   ★我们踩过两次：★`verify` 自己抄了一份 `FIELD_ORDER`（合法信被判"未登记"、当场退信 ✗）／
@@ -63,12 +66,30 @@ process.stdout.write(`— ${'xcheck'.padEnd(9)} `)
   console.log(`${xr.status === 0 ? 'PASS' : 'FAIL'}  ${xall.length ? xall[xall.length - 1] : ''}${xfails.length ? '   ← ' + xfails.length + ' 条漂移' : ''}`)
 }
 
+// ★★另有一个**并发压测**不在这里跑 ✗（它起十几个真子进程、慢一些）：
+//   `node scripts/racetest.mjs` —— ★**改了发号或落盘就要跑它** ✓（发号撞号只在那里才看得见 ✓）
+// ★★★中英文档的**结构对等**（`doccheck`）✗✓
+//   ★为什么单列一步 ✗：★它抓的不是"代码对不对"、也不是"跨包一致吗" ✓，而是
+//   ★★**"两种语言的说明，还是同一份说明吗"** ✓ —— ★我们在这上面栽过两次：
+//     ★中文 `README` 整整缺了两段（★**而缺的偏偏是"仍未测"那种**诚实声明** ✗** ✓）／
+//     ★英文 `CHANGELOG` 缺了一整条 ✓（★都是"只数标题"的复核放过去的 ✓）。
+process.stdout.write(`— ${'doccheck'.padEnd(9)} `)
+{
+  const dr = spawnSync(process.execPath, [join(repo, 'scripts', 'doccheck.mjs')], { stdio: only ? 'inherit' : 'pipe', encoding: 'utf8' })
+  const dout = only ? '' : String(dr.stdout ?? '')
+  const dall = dout.match(/(\d+)\/(\d+) 对等/g) ?? []
+  const dfails = (dout.match(/^FAIL.*$/gm) ?? [])
+  results.push({ p: 'doccheck', code: dr.status, summary: dall.length ? dall[dall.length - 1] : '' })
+  console.log(`${dr.status === 0 ? 'PASS' : 'FAIL'}  ${dall.length ? dall[dall.length - 1] : ''}${dfails.length ? '   ← ' + dfails.length + ' 处不对等' : ''}`)
+}
+
 console.log('')
-const bad2 = results.filter((r) => r.code !== 0)
-console.log(bad2.length === 0
+const bad3 = results.filter((r) => r.code !== 0)
+console.log(bad3.length === 0
   ? `全过：${results.length}/${results.length} 项（退出码 0）`
-  : `有件没过：${bad2.map((b) => b.p).join('、')}（退出码 ${bad2[0].code}）`)
+  : `有件没过：${bad3.map((b) => b.p).join('、')}（退出码 ${bad3[0].code}）`)
 // ★★另有一个**并发压测**不在这里跑 ✗（它起十几个真子进程、慢一些）：
 //   `node scripts/racetest.mjs` —— ★**改了发号或落盘就要跑它** ✓（发号撞号只在那里才看得见 ✓）
 console.log('ⓘ 另有并发压测：node scripts/racetest.mjs（★改了发号／落盘就一定要跑 ✓）')
+process.exit(bad3.length === 0 ? 0 : 1)
 process.exit(bad2.length === 0 ? 0 : 1)

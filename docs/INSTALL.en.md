@@ -61,7 +61,6 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post
       config:
         enabled: false                          # ★disabled by default; set true to enable (while disabled it nags you, for three days)
 ```
-```
 ★**Wiring points**: the six plugins rely on each other **only through interfaces** (`ctx.whale.*`) ⇒ **the order in which they are written does not matter**; ★the core **does not know any names or types** —— you can replace the roster implementation or change the type table without touching a single line of the core.
 ★**Every quota number above is an example** ⇒ scale it to your own volume; extreme values (like `limit: 0`) will slam the gate shut immediately ✓.
 

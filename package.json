@@ -12,7 +12,8 @@
     "selftest": "node scripts/selftest-all.mjs",
     "selftest:each": "node scripts/selftest-all.mjs --each",
     "racetest": "node scripts/racetest.mjs",
-    "xcheck": "node scripts/xcheck.mjs"
+    "xcheck": "node scripts/xcheck.mjs",
+    "doccheck": "node scripts/doccheck.mjs"
   },
   "workspaces": [
     "packages/*"

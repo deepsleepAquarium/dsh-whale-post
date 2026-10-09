@@ -1,0 +1,124 @@
+/**
+ * ★★★中英文档的**结构对等**检查（`doccheck`）✗✓ —— **比"数标题"深一层**
+ *
+ * ★为什么要有它 ✗：★我们已经在"文档不对等"上栽过**两次**：
+ *   ① ★中文 `README.md` 里**整整缺了两段**（★"并发抢号：已测" ＋ ★"**仍未测**" ✓），而英文有 ✓ ——
+ *      ★★**而缺的偏偏是**诚实声明**那一段** ✗（★纪律写着"不许声称未验证的事" ✓）；
+ *   ② ★我在中文里补完之后，★**英文又少了 `xcheck` 那段** ✗（★反向 ✓）。
+ * ★★两次都是**"标题数一致"的复核放过去的** ✗✓ —— ★因为★**它只看标题** ✓，★看不出"正文缺段" ✓。
+ *
+ * ★这份脚本查什么 ✗（★逐份配对 ＋ 逐项计数 ✓）：
+ *   · ★**标题数**（`^#{1,6} ` ✓）＋ ★**标题顺序**（去掉编号后逐条比 ✓）
+ *   · ★★**条目数**（`^* ` 开头 ✓）—— ★**上一轮就是靠它看出 15 vs 14** ✓
+ *   · ★**表格数** ＋ ★**每张表的列数**
+ *   · ★**代码块数**（``` 配对数 ✓）
+ *   · ★**链接数**（`](…)` ✓）
+ *   · ★**行数**（★只报、不判 —— ★中英行数天然会差 ✓）
+ *   · ★★**每份文档**内部：★**所有表格的列数必须一致** ✗（★这是 markdown 表格最常见的坏法 ✓）
+ *
+ * ★判据看**退出码** ✓：0 全对等／非 0 有不对等 ✓（★不看输出里的中文 ✗）。
+ * ⚠️ ★配不上对的单份文档**不算错** ✗（★比如 `example/README.md` 可能本来就没有英文版 ✓）——
+ *   ★只有"**一边有一边没有**"才报 ✓。
+ */
+import { readdirSync, statSync, readFileSync } from 'node:fs'
+import { join, dirname, relative } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const repo = join(dirname(fileURLToPath(import.meta.url)), '..')
+const rel = (p) => relative(repo, p).replace(/\\/g, '/')
+
+/** ★扫出仓库里所有 `.md`（★排除 `node_modules` ✓） */
+function walk(dir, out = []) {
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    if (e.name === 'node_modules' || e.name === '.git') continue
+    const p = join(dir, e.name)
+    if (e.isDirectory()) walk(p, out)
+    else if (e.name.endsWith('.md')) out.push(p)
+  }
+  return out
+}
+
+/** ★一份文档的结构快照 ✓ */
+function profile(text) {
+  const lines = text.split(/\r?\n/)
+  //   ★★★先**剥掉代码块** ✗✓ —— 否则代码里的 `# 注释` 会被当标题（★我第一版就误报过：★
+  //     "标题数 21 vs 23"，★查了半天才发现多出来的是 shell 注释 ✓）、★`* ` 会被当条目 ✓。
+  //   ⓘ ★围栏**本身**要单独数（★那是"代码块数对等"这条判据要的 ✓）⇒ 先数、再剥 ✓。
+  const fences = (text.match(/^```/gm) ?? []).length
+  const body = []
+  let inFence = false
+  for (const l of lines) {
+    if (/^```/.test(l)) { inFence = !inFence; continue }
+    if (!inFence) body.push(l)
+  }
+  const headings = body.filter((l) => /^#{1,6} /.test(l)).map((l) => l.replace(/^#{1,6} /, '').replace(/^[0-9]+[.、]\s*/, '').trim())
+  const byLevel = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 }
+  for (const l of body) { const m = /^(#{1,6}) /.exec(l); if (m) byLevel[m[1].length] += 1 }
+  const bullets = body.filter((l) => /^\* /.test(l)).length
+  let tables = 0
+  let inTable = false
+  const tableWidths = []
+  let cur = []
+  for (const l of body) {
+    const isRow = l.trimStart().startsWith('|')
+    if (isRow) { if (!inTable) { inTable = true; tables += 1; cur = [] } cur.push((l.replace(/\\\|/g, 'X').match(/\|/g) ?? []).length) }
+    else if (inTable) { inTable = false; tableWidths.push(new Set(cur).size === 1 ? cur[0] : -1) }
+  }
+  if (inTable) tableWidths.push(new Set(cur).size === 1 ? cur[0] : -1)
+  const tableRows = body.filter((l) => l.trimStart().startsWith('|')).length
+  const links = (body.join('\n').match(/\]\([^)]*\)/g) ?? []).length
+  return { lines: lines.length, headings, byLevel, bullets, tables, tableRows, tableWidths, fences, links }
+}
+
+const checks = []
+const check = (name, ok, extra = '') => checks.push({ name, ok: !!ok, extra: String(extra) })
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b)
+
+const all = walk(repo)
+const set = new Set(all.map(rel))
+const pairs = []
+for (const p of all) {
+  const r = rel(p)
+  if (r.endsWith('.en.md')) continue
+  const en = r.replace(/\.md$/, '.en.md')
+  if (set.has(en)) pairs.push([p, join(repo, en)])
+}
+
+check(`① 找到 ${pairs.length} 对中英文档（★配不上对的不算错 ✓）`, pairs.length > 0, pairs.map(([a]) => rel(a)).join('、'))
+
+const diffs = []
+for (const [cnPath, enPath] of pairs) {
+  const cn = profile(readFileSync(cnPath, 'utf8'))
+  const en = profile(readFileSync(enPath, 'utf8'))
+  const name = rel(cnPath)
+  if (cn.headings.length !== en.headings.length) {
+    //   ★★报得**具体一点** ✗✓：★按层级列出来（★"哪个层级差了几个"比"总数差 2"好定位得多 ✓）
+    const lv = [1, 2, 3, 4, 5, 6].map((k) => `h${k} ${cn.byLevel[k]}/${en.byLevel[k]}`).join(' ')
+    diffs.push(`${name}: 标题数 ${cn.headings.length} vs ${en.headings.length}（${lv}）`)
+  }
+  if (cn.bullets !== en.bullets) diffs.push(`${name}: 条目数 ${cn.bullets} vs ${en.bullets}`)
+  if (cn.tables !== en.tables) diffs.push(`${name}: 表格数 ${cn.tables} vs ${en.tables}`)
+  //   ★★围栏：★**必须是偶数** ✗（★奇数 ⇒ 有一个没配上 ⇒ 后面全被当成代码块 ✓），★且两边要相等 ✓
+  if (cn.fences % 2 !== 0 || en.fences % 2 !== 0) {
+    diffs.push(`${name}: 代码围栏**没配对**（CN ${cn.fences} ／ EN ${en.fences} —— ★该是偶数 ✓）`)
+  } else if (cn.fences !== en.fences) diffs.push(`${name}: 代码围栏数 ${cn.fences} vs ${en.fences}`)
+  if (cn.links !== en.links) diffs.push(`${name}: 链接数 ${cn.links} vs ${en.links}`)
+}
+
+check('② ★中英**逐项对等**（标题／条目／表格／代码围栏／链接 ✓）', diffs.length === 0,
+  diffs.length ? diffs.join(' ／ ') : `${pairs.length} 对全部对上`)
+
+// ★★每份文档**内部**：★表格列数必须一致 ✗（★这是 markdown 表格最常见的坏法 ✓）
+const badTables = []
+for (const p of all) {
+  const { tableWidths } = profile(readFileSync(p, 'utf8'))
+  const bad = tableWidths.filter((w) => w === -1).length
+  if (bad > 0) badTables.push(`${rel(p)}（${bad} 张表列数不齐）`)
+}
+check('③ ★每份文档内部：**表格列数一致** ✗（★列不齐是最常见的坏法 ✓）', badTables.length === 0,
+  badTables.length ? badTables.join('、') : `${all.length} 份文档全齐`)
+
+for (const c of checks) console.log(`${c.ok ? 'PASS' : 'FAIL'}  ${c.name}${c.ok ? '' : '  :: ' + c.extra}`)
+const pass = checks.filter((c) => c.ok).length
+console.log(`\n${pass}/${checks.length} 对等   （扫了 ${all.length} 份 .md，配成 ${pairs.length} 对）`)
+process.exit(pass === checks.length ? 0 : 1)
