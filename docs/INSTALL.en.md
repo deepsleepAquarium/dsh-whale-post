@@ -146,3 +146,52 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* deliver this text into th
 | The log writes one line every 4 seconds | The logging does not test for state changes | See rule 6 |
 
 ---
+
+## 7. ★Three configurable behaviours (★none of them is on unless you configure it ✓; old deployments are unchanged ✗)
+
+★All three take their **names from configuration** —— ★the core **knows no concrete name** ✓ (this is criterion "E").
+
+### 1) `offlineOnlyFlag` —— members who receive offline letters only
+
+★Some members **simply cannot receive an online letter** (for example, something that only lives next to you and has no resident session).
+Give `bus` an **attribute name**:
+
+```yaml
+- id: whale-bus
+  name: dsh-whale-post-bus
+  config:
+    root: '~/.dsh/whale-mail'
+    offlineOnlyFlag: '<a name you choose>'      # ★the name is yours; the core does not know it
+```
+
+★Behaviour ✓: sending an **online** letter to such a member is **refused** (non-zero exit + **nothing written to the mailbox** +
+no silent downgrade), and the message **shows the way out**: "resend with `--mode offline`" ✓.
+★**`--force` does not exempt it** ✗ —— it is a **physical constraint** (they cannot receive online letters), not a "gate".
+★Sending to a **group** that contains one is **blocked just the same** ✓.
+
+### 2) `groupWithout` —— who broadcasts skip by default
+
+```yaml
+- id: whale-roster-json
+  name: dsh-whale-post-roster
+  config:
+    file: '~/.dsh/whale-mail/roster.json'
+    groupWithout: '<a name you choose>'          # ★broadcasts drop members carrying this attribute by default
+```
+
+★Behaviour ✓: ★a **broadcast** (`--to all`, and sending to a group) **drops** members carrying that attribute by default;
+★★**addressing someone by name is unaffected** ✗ ("**broadcasts skip it, naming it gets through**" ✓).
+An explicit `without: null` means "do not drop anyone this time" ✓.
+★If dropping leaves the group empty ⇒ **refused** (never post a letter with no recipients ✓).
+
+### 3) Two spellings for member attributes (★pick either ✓)
+
+```json
+{ "apiVersion": 1,
+  "members": [ { "id": "alice" },
+               { "id": "carol", "<attribute>": true } ],   ← ① on the member
+  "groups": { "all": ["alice", "carol"] },
+  "<attribute>": ["carol"] }                               ← ② or a top-level array of the same name
+```
+
+★Both are accepted ✓; ★falsy values (`false` / `0` / empty string) all count as "**does not carry it**" ✓.

@@ -7,6 +7,13 @@
 * **Independent implementation**: this repository does not accept "code carried over from a repository that has no license". **Borrow ideas, not code.**
 * **Replaceability is a hard requirement**: every plugin must be replaceable; the core must not know any member name, type identifier or machine path.
 * **Offline by default**: any feature that "notifies someone" does not wake the other side by default.
+* ★★**How to choose a version number** ✗: while this repository is `0.x` —— ★**if interfaces or behaviour changed ⇒ bump the minor** (`0.1 → 0.2`) ✓;
+  ★**documentation only, or a fix that does not change behaviour ⇒ bump the patch** ✓.
+  ★**Before tagging `1.0.0`, meet three conditions** ✗: ① the interfaces are settled (no new methods, no semantic changes)
+  ② every known boundary is **written down in the documentation**
+  ③ ★**the "untested" items are either tested, or still explicitly marked untested** ✓ (never let `1.0.0` paper over something unverified ✓).
+* ★**Every version needs a changelog entry** ✗ —— write it into `CHANGELOG.md` (and `CHANGELOG.en.md` ✓),
+  ★**saying "why", not "which line changed"** ✓.
 
 ## 2. Self-check before you submit
 

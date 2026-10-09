@@ -97,27 +97,99 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* 把这段文字送进那�
 3. ★**给了 `inject` 就会真调它，它抛异常 ⇒ 不消费** —— 交不出去的信，绝不当成交出去了。
 
 ## 四、包与接口一览
+
+### 先看懂四个角色（★这一张看懂，下面就不迷路 ✓）
+
+| 角色 | 回答什么问题 | 谁担任 |
+|---|---|---|
+| ★**核心** | 信长什么样、怎么签、怎么落盘 —— ★**它不认识任何名字与类型** ✓ | `bus` |
+| ★**接口件（provider）** | ★**谁在名单里**／★**信是什么类型** —— ★**你换掉实现，核心一行都不用动** ✓ | `roster`、`types` |
+| ★**策略件** | ★**投不投／拦不拦／验不验** —— 这是"挂点"，换掉它就换行为 ✓ | `deliver`、`gate`、`verify` |
+| ★**入口工具** | ★**人在命令行上怎么用**（★**它不是插件** ✗） | `cli` |
+
+### 包
+
 | 包 | 角色 | 提供／依赖的接口 |
 |---|---|---|
 | `dsh-whale-post-bus` | 核心：信封／摘要＋HMAC 签名／握手／幂等／落盘 | 提供 `ctx.whale.bus` |
 | `dsh-whale-post-roster` | **谁来收**（接口件 ＋ 读 JSON 的样例） | 提供 `ctx.whale.roster` |
 | `dsh-whale-post-types` | **信是什么类型**（接口件 ＋ 样例） | 提供 `ctx.whale.types` |
 | `dsh-whale-post-deliver` | **投递策略**（＝示例①的挂点） | 用 `bus`／`roster` |
-| `dsh-whale-post-gate` | **闸**（＝示例②的挂点） | 用 `bus`／`types` |
+| `dsh-whale-post-gate` | **闸**：配额与计费 ＋ 回环闸（＝示例②的挂点） | 用 `bus`／`types` |
 | `dsh-whale-post-verify` | **安全校验**（信封验签 ＋ 名单白名单），★默认禁用 | 用 `bus`（可选：借它的 `digest`／`sign`） |
 | `dsh-whale-post-cli` | 入口工具（★**不是插件**） | 用 `bus` |
 | `example/` | 组合示例：最小 `cordis.patch.yml` ＋ 跑一次的判据 | 全部 |
 
-★接口最小方法集（★**带 `apiVersion`**，允许随时扩充类型）：
+### 接口（★每个方法一句话 ✗）
 
-| namespace | 方法 |
+| namespace | 方法 | 一句话 |
+|---|---|---|
+| `ctx.whale.bus` | `send(letter)` | ★发一封；**拒发就是拒发**（抛错 ⇒ CLI 非 0 ✓） |
+| | `pump({ as, keep, reader })` | ★收信；★**没有读者就不消费**（信原样留着 ✓） |
+| | `verify(letter)` | ★查信封的问题，返回**问题数组**（空＝没问题 ✓） |
+| | `hello({ as })` | ★握手（发信前对方会看你新不新鲜 ✓） |
+| | `format(env)` | ★把信封排成给人看的文本 ✓ |
+| | `paths()`／`root()`／`keyHex()`／`digest(s)`／`seal(f)`／`sign(env)`／`loadState(as)` | ★底层零件（自测与工具用 ✓） |
+| `ctx.whale.roster` | `list()`／`has(id)`／`label(id)` | ★最小集：有哪些人／有没有他／他叫什么 ✓ |
+| | `member(id)` | ★**整条成员记录**（含自定义属性 ✓） |
+| | `flag(id, name)` | ★**成员属性**：`name` 由调用方给 ✓（成员字段／顶层数组都认 ✓） |
+| | `without(ids, name)` | ★从一份名单里**剔掉**带该属性的人 ✓ |
+| | `broadcast()` | ★**群发该发给谁**（按 `groupWithout` 剔过 ✓） |
+| | `groups()`／`group(name, opts)` | ★组名列表／某组成员（`opts.without` 可临时剔 ✓） |
+| `ctx.whale.types` | `register(id, meta)`／`resolve(id)`／`list()`／`meta(id)` | ★注册／查／列表；★**未注册的类型当场拒** ✓ |
+| `ctx.whale.deliver` | `deliver(letter, ctx)` | ★返回 `'delivered'`／`'kept'`／`'rejected'` ✓ |
+| | `blocked(id)`／`sessionOf(id)` | ★这个收件人被挡了吗／那个会话活着吗 ✓ |
+| `ctx.whale.gate` | `check(letter, ctx)` | ★拦不拦：`'pass'`／`{ reject, reason }` ✓ |
+| | `record(letter, targets)`／`report({ as, days })` | ★投出去之后记账／查账 ✓ |
+| `ctx.whale.verify` | `verify(letter)` | ★`{ ok, why?, skipped? }`；★**禁用时放行但带 `skipped:true`** ✓ |
+| | `nag()` | ★该提示就返回文案，不该提示返回 `null` ✓ |
+| | `status()`／`enable()`／`disable()` | ★如实状态／开／关 ✓ |
+
+### ★配置项（★"不写会怎样"也写清 ✗）
+
+| 插件 | 字段 | 默认 | 含义 |
+|---|---|---|---|
+| `bus` | `root` | `WHALE_POST_ROOT` ⇒ `./.whale-mail` | ★信箱根（**信就落在这里** ✓） |
+| | `keyFile` | `<root>/signing.key` | ★签名密钥（首用时自动生成 ✓） |
+| | `maxBody` | `64 KiB` | ★正文上限 ✓ |
+| | `requireHello` | `true` | ★要不要握手（协议不许"像 UDP 那样"直接发 ✓） |
+| | `helloMaxAgeMs` | `24 小时` | ★握手多旧算过期 ✓ |
+| | `defaultType` | `'direct'` | ★★配 `null` ⇒ **没写类型的信直接拒发**（不替调用方猜 ✓） |
+| | `offlineOnlyFlag` | 不配 | ★对带此属性的成员**发在线即拒发** ✓（见 §七） |
+| `roster` | `file` | `<root>/roster.json` | ★名单文件 ✓ |
+| | `groupWithout` | 不配 | ★**群发默认剔掉**带此属性的成员 ✓（见 §七） |
+| | `sample` | `false` | ★`true` ⇒ 文件不存在时用内置样例（只为试跑 ✓） |
+| `types` | `types` | 三个样例 | ★类型表；★**数组与对象两种写法都认** ✓ |
+| | `extra` | 不配 | ★在样例之外**追加**注册 ✓ |
+| `deliver` | `sessionOf` | 不接 | ★**接真引擎的唯一接线口** ✓（见 §三） |
+| | `blocked` | `[]` | ★明确挡掉的收件人（信不进它的信箱 ✓） |
+| `gate` | `quota.onOver` | `'reject'` | ★`'reject'` 拒发 ／ ★`'price'` **照发但计费**（"价格闸，不是封嘴闸"✓） |
+| | `quota.dayBoundaryHour` | `0` | ★日界：0 ＝ 自然日；★写 `9` ＝ 早九点到次日早九点算一天 ✓ |
+| | `quota.types` | 四个样例桶 | ★每桶 `limit`；★**离线桶可 `perSend: true`**（按发信次数计，组发不翻倍 ✓） |
+| | `quota.defaultLimit` | `120` | ★**没在表里的类型**落这个桶 ✓ |
+| | `loop.ackMaxBytes`／`ackOnly` | `40`／中英回执词 | ★**纯回执拒发** ✓ |
+| | `loop.pairWindowMs`／`pairMax` | `20 分钟`／`3` | ★同一对**这个窗口内最多发几封** ✓ |
+| | `loop.hopMax` | `3` | ★链深上限（★礼貌闸／省米闸，**不是安全边界** ✓） |
+| `verify` | `enabled` | ★**`false`** | ★★**默认禁用** —— ★这是有意的，不是"还没写" ✓ |
+| | `allow` | `[]` | ★白名单；★**空 ⇒ 不限制收件人** ✓ |
+| | `nagDays` | `3` | ★**连提几天后不再提** ✓（状态仍如实显示禁用 ✓） |
+| | `keysDir`／`keyFile` | `<root>/keys`／`<root>/signing.key` | ★★**按信封声明的发件人取钥**；★没有专用钥**回落共享钥** ✓ |
+| | `now` | 不注入 | ★注入时钟（自测用 ✓） |
+
+### ★"我想做 X ⇒ 用哪个"（★索引 ✗）
+
+| 我想… | 用它 |
 |---|---|
-| `ctx.whale.bus` | `send(letter)` ／ `pump({ as, keep })` ／ `verify(letter)` |
-| `ctx.whale.roster` | `list()` ／ `has(id)` ／ `label(id)` |
-| `ctx.whale.types` | `register(id, meta)` ／ `resolve(id)` ／ `list()` |
-| `ctx.whale.deliver` | `deliver(letter, ctx)` → `'delivered'` ／ `'kept'` ／ `'rejected'` |
-| `ctx.whale.gate` | `check(letter, ctx)` → `'pass'` ／ `{ reject, reason }` |
-| `ctx.whale.verify` | `verify(letter)` → `{ ok, why?, skipped? }` ／ `nag()` → `string \| null` ／ `status()` ／ `enable()` ／ `disable()` |
+| ★发一封信 | ★`bus.send({ as, to, subject, body, mode })` ✓ |
+| ★收信 | ★`bus.pump({ as, reader: true })` ✓ |
+| ★群发 | ★`send({ to: 'all' })` 或 `to: '<组名>'` ✓ |
+| ★让某人不收群发 | ★`roster` 的 **`groupWithout`** ✓（点名照样到 ✓） |
+| ★让某人只收离线 | ★`bus` 的 **`offlineOnlyFlag`** ✓（发在线会**拒发并告诉你怎么办** ✓） |
+| ★限制一天能发多少 | ★`gate` 的 **`quota.types`** ✓ |
+| ★防对发死循环 | ★`gate` 的 **`loop.*`**（默认就开 ✓） |
+| ★要求验签＋白名单 | ★`verify` 的 **`enabled: true` ＋ `allow`** ✓ |
+| ★看"要不要开验签" | ★`npx dsh-whale-post-cli nag` ✓ |
+| ★接进真引擎 | ★`deliver` 的 **`sessionOf`** ✓ |
 
 ## 五、★写插件的规范（照着写，别踩我们的坑）
 1. ★**只认接口，不认名字**：不许在核心代码里硬编码**任何**成员名／类型标识／内部路径（名单与类型一律注册进来）。
@@ -146,3 +218,49 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* 把这段文字送进那�
 | 日志 4 秒一行 | 日志没做状态变化判断 | 见规范第 6 条 |
 
 ---
+
+## 七、★三个可配的行为（★都不写就不启用 ✓，老部署行为一字不变 ✗）
+
+★这三条的名字**全部由配置给** —— ★核心**不认识任何具体名字** ✓（守 ACCEPTANCE 的"戊"）。
+
+### 1）`offlineOnlyFlag` —— "只收离线"的成员
+
+★有些成员**根本收不到在线件**（比如只在你手边、不走常驻会话的那种）。给 `bus` 配一个**属性名**：
+
+```yaml
+- id: whale-bus
+  name: dsh-whale-post-bus
+  config:
+    root: '~/.dsh/whale-mail'
+    offlineOnlyFlag: '<你自己起的属性名>'      # ★名字随你起；核心不认识它
+```
+
+★行为 ✓：对带该属性的成员**发在线 ⇒ 拒发**（退出码非 0 ＋ **不落信箱** ＋ 不许静默降级）★文案**带出路**：
+"请用 `--mode offline` 重发" ✓。★**`--force` 不豁免** ✗ —— 那是**物理约束**（它收不到在线件），不是"闸"。
+★发给一个**组**、组里有它 ⇒ **一样拦得住** ✓。
+
+### 2）`groupWithout` —— 群发默认不到谁
+
+```yaml
+- id: whale-roster-json
+  name: dsh-whale-post-roster
+  config:
+    file: '~/.dsh/whale-mail/roster.json'
+    groupWithout: '<你自己起的属性名>'          # ★群发时默认剔掉带此属性的成员
+```
+
+★行为 ✓：★**群发**（`--to all`、以及按组发）默认**剔掉**带该属性的成员；
+★★**点名不受影响** ✗（"**群发默认不到它，点名才进**"✓）。★显式 `without: null` ⇒ 这一次不剔 ✓。
+★剔完组里没人 ⇒ **拒发**（不投一封没有收件人的信 ✓）。
+
+### 3）成员属性的两种写法（★任选 ✓）
+
+```json
+{ "apiVersion": 1,
+  "members": [ { "id": "alice" },
+               { "id": "carol", "<属性名>": true } ],   ← ① 写在成员上
+  "groups": { "all": ["alice", "carol"] },
+  "<属性名>": ["carol"] }                              ← ② 或者顶层同名数组
+```
+
+★两种都认 ✓；★假值（`false`／`0`／空串）一律算"**不带**" ✓。

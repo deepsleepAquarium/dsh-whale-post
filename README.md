@@ -36,19 +36,39 @@ npx -y dsh-whale-post-cli@0.2.0 selftest
 
 ## 现状
 
-* `packages/` 里**七件已落地**：`bus`（核心：信封／签名／握手／幂等／落盘）／`roster`（名单接口）／`types`（类型注册表接口）／`deliver`（投递策略）／`gate`（配额与计费闸 ＋ 回环闸）／`verify`（**安全校验：验签 ＋ 白名单**，★默认禁用）／`cli`（零依赖命令行）；`example/` 是一份"**怎么把它们接起来**"的组合示例。
-* **一把跑完自测**：`node scripts/selftest-all.mjs` —— **退出码 0 ＝ 七件全过**（条数由它自己打出来，不在本文件里写死）。
-* 每件都过三关：**能加载 ＋ 能跑 ＋ 跑错会红**（验收规格见 [`docs/ACCEPTANCE.md`](docs/ACCEPTANCE.md)）。
-* 版本 `0.2.0`（★**`0.1.x` 装进真引擎会六个插件全部加载不上** ✗ ⇒ 别钉旧 tag，钉 **`v0.2.0`**）；
-  接口带 `apiVersion`，**类型可以随时扩充**（加类型不用动核心）。★逐版改了什么、为什么 ⇒ 见 [`CHANGELOG.md`](CHANGELOG.md)。
-* **装法已在真引擎上实测过一遍**：★**首批五件**按 `dsh plugin --profile <p> add link:<本仓>/packages/<件>` 装进一个**一次性 profile** ⇒ 它们**出现在 profile 配置树里**（`dsh --profile <p> --dump-config` 能看到 `dsh-whale-post-*` 五行）⇒ **真启一遍成功、对外服务正常、日志无加载错** ⇒ 用完把那个 profile 删掉，**在役的两台引擎全程没重启**。
-  ★**本次新增的那件也走过同一条实测了** ✓（2026-10-10 00:03）：★把**六个插件**一次装进一次性 profile（`dsh 0.1.5-rc.1` ＋ `--from-default-profile headless`）⇒ `--dump-config` **六层齐** ⇒ **真启一遍：退出码 0、错误 0 行** ✓。
-    ★★**而那一次实测抓到一个致命 bug（已修）** ✗：六件**全部 `failed to apply`** —— `cannot get property "whale" without inject`（`apply()` 里读了 `ctx.whale` 属性；真 Cordis 里读它要先 `inject`）。★**而 `--dump-config` 完全看不出来** ✗ —— 它只组配置树、不跑 `apply()`。⇒ 已改成只 `ctx.provide(...)` ＋ 运行时 `ctx.get(...)`，并钉了一条静态判据（源码里不许出现 `ctx.whale =` ／ `ctx?.whale?.` ⇒ 0 命中）。
-  ★**踩到的坑写在这儿免得别人再踩**：插件包**必须**声明
-  ```json
-  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }
-  ```
-  少了这一行，`dsh plugin add` **只会把它当普通依赖装进去、不会激活成 profile 层** ✗（我们第一版就漏了，靠这次实测抓出来）。
+### ★主体（基础版）＝ `bus` ＋ `roster` ＋ `types` ＋ `cli` ✗
+
+★这四件合起来就是一个**能用的邮局** ✓ —— 留信、收信、认人、认类型都齐：
+
+| 件 | 它管什么 | 详细说明 |
+|---|---|---|
+| `dsh-whale-post-bus` | ★**核心**：信封／摘要＋HMAC 签名／握手／幂等／落盘 ✓ | [`packages/bus/README.md`](packages/bus/README.md) |
+| `dsh-whale-post-roster` | ★**谁在名单里**（含成员属性） ✓ | [`packages/roster/README.md`](packages/roster/README.md) |
+| `dsh-whale-post-types` | ★**信是什么类型** ✓ | [`packages/types/README.md`](packages/types/README.md) |
+| `dsh-whale-post-cli` | ★**命令行**（★**不是插件** ✗） | [`packages/cli/README.md`](packages/cli/README.md) |
+
+### ★其余都是插件（可换、可加、可不要 ✗）
+
+★**它们各自的说明写在各自的 README 里** ✓ —— 主体这一页不重复讲 ✓：
+
+| 插件 | 它加什么 | 详细说明 |
+|---|---|---|
+| `dsh-whale-post-deliver` | ★**投递策略**：离线留着等人／在线投出去；★**接真引擎的探针在这里** ✓ | [`packages/deliver/README.md`](packages/deliver/README.md) |
+| `dsh-whale-post-gate` | ★**闸**：配额与计费 ＋ 回环闸 ✓ | [`packages/gate/README.md`](packages/gate/README.md) |
+| `dsh-whale-post-verify` | ★**安全校验**：验签 ＋ 白名单（★**默认禁用** ✓） | [`packages/verify/README.md`](packages/verify/README.md) |
+
+★**怎么把它们接起来** ⇒ [`docs/INSTALL.md`](docs/INSTALL.md) ✓；★**组合示例** ⇒ [`example/`](example/README.md) ✓。
+
+### 别的
+
+* ★**一把跑完自测**：`node scripts/selftest-all.mjs` —— **退出码 0 ＝ 七件全过**（条数由它自己打出来，不写死 ✓）。
+* ★每件都过三关：**能加载 ＋ 能跑 ＋ 跑错会红** ✓（★**光跑自测不算，必须真启一遍** ✗ ⇒ 验收规格见 [`docs/ACCEPTANCE.md`](docs/ACCEPTANCE.md)）。
+* ★版本 `0.2.0`（★**`0.1.x` 装进真引擎会六个插件全部加载不上** ✗ ⇒ 别钉旧 tag，钉 **`v0.2.0`**）；
+  接口带 `apiVersion`，**类型可以随时扩充**（加类型不用动核心 ✓）。★逐版改了什么、为什么 ⇒ 见 [`CHANGELOG.md`](CHANGELOG.md)。
+* ★**装法已在真引擎上实测过** ✓ —— ★**而那次实测抓到一个致命 bug（已修）** ✗：
+  六件**全部 `failed to apply`**（`apply()` 里读了 `ctx.whale` 属性，而真 Cordis 里读它要先 `inject` ✓）；
+  ★**而 `--dump-config` 完全看不出来** ✗（它只组配置树、**不跑 `apply()`**）。
+  ⇒ 现在只 `ctx.provide(...)` ＋ 运行时 `ctx.get(...)`，并钉了一条静态判据 ✓。★细节与坑 ⇒ [`docs/INSTALL.md`](docs/INSTALL.md) §六。
 
 ## 它不是什么
 * **不是聊天室**：没有实时推送、没有已读回执焦虑（**异步信箱**）。
