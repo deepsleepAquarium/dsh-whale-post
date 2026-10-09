@@ -22,7 +22,7 @@ import { join, dirname } from 'node:path'
 export const name = 'whale-bus'
 export const apiVersion = 1
 export const V = 1
-const FIELD_ORDER = ['v', 'kind', 'id', 'from', 'to', 'seq', 'subject', 'body', 'sha256', 'sentAtMs', 'type', 'mode', 're', 'hop']
+const FIELD_ORDER = ['v', 'kind', 'id', 'from', 'to', 'seq', 'subject', 'body', 'sha256', 'sentAtMs', 'type', 'mode', 're', 'hop', 'onlineCapPerDay']
 /**
  * ★★**已知但已废弃**的信封字段 ✗（2026-10-10 从共享邮局根里真信上学到的）：
  *
@@ -207,13 +207,32 @@ export function createBus(config = {}) {
   }
 
   // ── 握手 ──────────────────────────────────────────────────────────────
-  function hello({ as } = {}) {
+  /**
+   * ★★握手（可以带"自报"✗）—— `onlineCapPerDay` ＝ **这个成员自报的"每天最多收几封在线件"** ✓
+   *   ★缸里 S8 的口径：★**每封在线件 ＝ 叫醒一个成员做一次满上下文推理**（**最贵的那一步** ✓）
+   *   ⇒ 收件习惯**由它自己声明** ✓，★而**声明只能更保守** ✗（闸那边取 `min(自报, 天花板)` ✓）。
+   *   ★它**进签名域** ✓（"自报"也要能被验出改过 ✓）；★不给 ⇒ **不进信封** ✓ ⇒ 老 hello 的签名照旧有效 ✓。
+   */
+  function hello({ as, onlineCapPerDay } = {}) {
     if (!as) throw new Error('hello 需要 as')
     ensure()
-    const env = seal({ v: V, kind: 'hello', id: `hello-${as}`, from: as, to: '*', seq: 0, body: '', sentAtMs: Date.now() })
+    const cap = Number(onlineCapPerDay)
+    const env = seal({
+      v: V, kind: 'hello', id: `hello-${as}`, from: as, to: '*', seq: 0, body: '', sentAtMs: Date.now(),
+      ...(Number.isFinite(cap) && cap >= 0 ? { onlineCapPerDay: Math.floor(cap) } : {}),
+    })
     atomicWrite(paths().hello(as), JSON.stringify(env, null, 2))
     return env
   }
+  /** ★读某个成员**自己签的 hello** 里那份自报上限（没有 ⇒ `null` ✓ —— **不替它猜** ✗） */
+  function declaredOnlineCap(as) {
+    try {
+      const env = JSON.parse(readFileSync(paths().hello(as), 'utf8'))
+      const v = Number(env.onlineCapPerDay)
+      return Number.isFinite(v) && v >= 0 ? Math.floor(v) : null
+    } catch { return null }
+  }
+
   function helloFresh(as) {
     try {
       const env = JSON.parse(readFileSync(paths().hello(as), 'utf8'))
@@ -373,7 +392,10 @@ export function createBus(config = {}) {
     const groupMembers = groupMembersOf(to)
     const gate = services.gate
     if (gate && typeof gate.check === 'function') {
-      const r = gate.check({ as, to, targets, subject, body, mode: m, type, re, force, hop: hop0, groupMembers })
+      // ★★S8：把"每个收件人**自报**的在线件上限"交给闸 ✗（★闸不认识 `hello/`，也读不了盘 ✓）
+      const declaredCaps = {}
+      for (const t of targets) { const c = declaredOnlineCap(t); if (c !== null) declaredCaps[t] = c }
+      const r = gate.check({ as, to, targets, subject, body, mode: m, type, re, force, hop: hop0, groupMembers }, { declaredCaps })
       if (r && typeof r === 'object' && r.reject) throw new Error(`闸拒发：${r.reason}`)
     }
     // ★发号放在**闸之后**（独立审计 2026-10-05）：被拒的信不该烧掉一个序号 ⇒ 水位与真实发信量对得上
@@ -522,7 +544,7 @@ export function createBus(config = {}) {
     env.body,
   ].filter(Boolean).join('\n')
 
-  const api = { apiVersion, send, pump, verify, hello, format, paths, root, keyHex, digest, seal, sign, loadState }
+  const api = { apiVersion, send, pump, verify, hello, helloFresh, declaredOnlineCap, format, paths, root, keyHex, digest, seal, sign, loadState }
   return api
 }
 
