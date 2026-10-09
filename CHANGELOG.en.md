@@ -512,6 +512,28 @@
     ① ★I inserted a criterion in the wrong place (★`cli/selftest` has no `} catch (err) {` door ✓);
     ② ★★**I added a `--quiet` feature to `cli` and forgot the criterion** ✓ ⇒ ★the run reported "cli 51 → 50, shrank" ✓ ——
     ★★**what it blocks is exactly "code changed, criteria did not follow"** ✓✓.
+* ★★★ **Added the "deliver" half of S6: a letter to a remote member is written to the remote `inbox/`, with no second copy kept locally** ✗✓ (2026-10-10) ——
+  ★★**How it was found** ✗✓: ★in round 67 I started writing the "fake phone" script from **§3** of the original's 《跨设备邮局-1.0局域网实现清单》 ✓,
+  ★and partway through I found that ★**"the tank delivers ⇒ the fake phone receives" simply did not work** ✗ —— ★because ★**`send` never accepted `--remote`** ✓.
+  ★**The illness** ✗: ★`pickup` (the **receive** half ✓) had been done long ago ✓, ★while ★**`send` only ever wrote the local `inbox/`** ✗ ⇒
+  ★★★**"delivering to the phone" was not implemented at all in the public repository** ✗✓ —— ★**and the checklist counts it as half of S6** ✓.
+  ★**The original's words** ✗ (★§1 · S6 ✓): ★"**deliver**: a letter to the phone ⇒ write the remote `inbox/潮信鲸/` ✓ (★**keep no second copy locally** ✗)"✓.
+  ★**The change** ✗: ★`send --remote <mailbox root> --remote-only <attribute>` ✓ —— ★members carrying that attribute ⇒ **write remote + delete local** ✓
+    (★**write remote first, then delete local** ✓: ★a crash midway leaves the local copy in place ⇒ "**a letter may arrive late, never not at all**" ✓).
+  ★★**"No second copy locally" is not tidiness** ✗✓: ★**keeping one creates two authorities** ✓ ⇒ ★and the two will **disagree** about fetching, receipts and consumption ✓.
+  ★★**New `scripts/fake-phone.mjs`** ✗✓ (★the "fake phone" §3 asked for ✓): ★it reads and writes the "simulated mailbox" directory directly with `node` ✓,
+    performing the phone's **five actions** ✓ —— ★**PUT hello** / ★**list**≈`PROPFIND` / ★**GET** / ★**MOVE ⇒ seen** / ★**PUT ack** ✓;
+    ★★**both the hello and the ack are genuinely signed** ✓ (★through `bus.seal` ✓ ⇒ **the tank verifies them** ✓).
+  ★★★**The end-to-end run genuinely works** ✗✓ (★the sentence §3 asked for ✓):
+    ★tank `send --remote` ⇒ ★mailbox `inbox/潮信鲸` **1** ／ ★local **0** ✓ ⇒
+    ★fake phone `--drain` ⇒ ★`GET` + `MOVE ⇒ seen` + **`PUT ack`** ✓ ⇒
+    ★mailbox三处: ★`inbox` **0** / `seen` **1** / `ack/web` **1** ✓ ⇒
+    ★tank `pickup` ⇒ ★**1 receipt mirrored** ⇒ ★local `ack/web` **1** ✓✓ —— ★**closed loop** ✓.
+  ★**Criteria** ✗ (`cli` 52 → **54** ✓): ★a remote member ⇒ written remotely and zero copies locally ✓ / ★without `--remote-only` ⇒ **still local as before** ✓
+    (★"old behaviour unchanged" ✓). ★Negative test: ★switching that block off ⇒ **genuinely red** ✓.
+  ★ⓘ ★My first version wrote `cfg.remoteOnlyFlag` ✗ —— ★**and there is no `cfg` inside `wire()`** ✓ ⇒
+    ★it would `ReferenceError` ✓, ★**which syntax checking cannot see** ✓ ⇒ ★**only actually running it explodes** ✓ ——
+    ★★**exactly the shape of lesson 4 in section 10 of `FOR-AGENTS`** (★"a name that does not exist", ★**knowable only by running** ✓).
 * ★**`cli`: `--only-offline <attribute>` / `--dormant <attribute>`** —— ★both rules can finally be switched on from the command line ✓.
 * ★**`cli`: `verify` / `nag` subcommands** —— ★the three-state design is finally visible from the command line
   (★`verify --enable` / `--disable` / `--allow a,b`; `nag` tells you whether a notice is due ✓).

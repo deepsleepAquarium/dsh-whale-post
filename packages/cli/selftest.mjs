@@ -325,6 +325,36 @@ check('★★★`hello --quiet` ⇒ 输出里**报出勿扰时段** ✗✓',
   qHello.status === 0 && String(qHello.stdout).includes('勿扰时段'), String(qHello.stdout).slice(0, 80))
 check('★★勿扰时段**真进了信封** ✗✓（★不是只打一行字 ✗）',
   (() => { try { const env = JSON.parse(readFileSync(join(qRoot, 'hello', 'alice.json'), 'utf8')); return Array.isArray(env.quiet) && env.quiet[0] === '22:00' && env.quiet[1] === '09:00' } catch { return false } })())
+// ★★★**" 投 "那半边：发给远端成员 ⇒ 写远端 inbox/，本机不留第二份** ✗✓（2026-10-10 补）——
+//   ★正本《跨设备邮局-1.0局域网实现清单》**§一 · S6** 原话 ✓：
+//     ★"投：发给手机的 ⇒ 写远端 `inbox/潮信鲸/` ✓（★**本机不留第二份** ✗）"。
+//   ★★**为什么补** ✗✓：★`pickup`（**取** 那半边 ✓）早就做了 ✓，★而 **`send` 从来只写本机** ✗
+//     ⇒ ★★★**"投给手机"这件事在公开版里根本没实现** ✗✓ —— ★而清单把它算作 S6 的一半 ✓。
+//   ⚠️ ★**本机不留第二份** ✗ —— ★★留了就会有**两份权威** ✓（★而两份会在"取件／回执／消费"上**各说各话** ✗）。
+const fpRoot = join(process.env.TEMP ?? '/tmp', `whale-cli-fp-${Date.now()}`)
+const fpTank = join(fpRoot, 'tank'); const fpMail = join(fpRoot, 'mail')
+mkdirSync(fpTank, { recursive: true }); mkdirSync(fpMail, { recursive: true })
+const fpRoster = JSON.stringify({ apiVersion: 1, members: [{ id: 'web' }, { id: 'phone', phone: true }] })
+writeFileSync(join(fpTank, 'roster.json'), fpRoster, 'utf8'); writeFileSync(join(fpMail, 'roster.json'), fpRoster, 'utf8')
+run(['hello', '--as', 'web', '--root', fpTank])
+run(['hello', '--as', 'phone', '--root', fpMail])
+const fpSend = run(['send', '--as', 'web', '--to', 'phone', '--body', '投远端测试（★正文有货，别当回执）', '--root', fpTank, '--remote', fpMail, '--remote-only', 'phone'])
+check('★★★发给**远端成员** ⇒ 写远端 `inbox/` ✓（★★**本机不留第二份** ✗）',
+  fpSend.status === 0 &&
+  (() => { try { return readdirSync(join(fpMail, 'inbox', 'phone')).filter((f) => f.endsWith('.msg.json')).length === 1 } catch { return false } })() &&
+  (() => { try { return readdirSync(join(fpTank, 'inbox', 'phone')).filter((f) => f.endsWith('.msg.json')).length === 0 } catch { return true } })())
+check('★★没配 `--remote-only` ⇒ **照旧写本机** ✓（★不改旧行为 ✓）',
+  (() => {
+    try {
+      const r = join(process.env.TEMP ?? '/tmp', `whale-cli-fp2-${Date.now()}`)
+      mkdirSync(r, { recursive: true })
+      writeFileSync(join(r, 'roster.json'), fpRoster, 'utf8')
+      run(['hello', '--as', 'web', '--root', r]); run(['hello', '--as', 'phone', '--root', r])
+      const s = run(['send', '--as', 'web', '--to', 'phone', '--body', '没配远端（★正文有货，别当回执）', '--root', r])
+      return s.status === 0 && readdirSync(join(r, 'inbox', 'phone')).filter((f) => f.endsWith('.msg.json')).length === 1
+    } catch { return false }
+  })())
+
 for (const c of checks) console.log(`${c.ok ? 'PASS' : 'FAIL'}  ${c.name}${c.ok ? '' : '  :: ' + c.extra}`)
 const pass = checks.filter((c) => c.ok).length
 console.log(`\n${pass}/${checks.length} 通过`)

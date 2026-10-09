@@ -175,6 +175,11 @@ function wire({ root, live, allow: allowIn, verifyEnabled } = {}) {
     ...(opt('only-offline') ? { offlineOnlyFlag: opt('only-offline') } : {}),
     ...(opt('dormant') ? { dormantFlag: opt('dormant') } : {}),
   })
+  //   ★★`remoteOnlyFlag` **不能塞进 `createBus`** ✗✓（2026-10-10 补）——
+  //     ★因为★**投远端是 `cli` 的动作，不是 `bus` 的** ✓（★`bus` 的 `send` 只懂"落在本机谁的格子里" ✓）；
+  //     ★★★**所以它单独挂着** ✓（★`bus` 的 `cfg` 里没有它 ⇒ ★**我第一版写成 `cfg.remoteOnlyFlag` ⇒ `ReferenceError`** ✗ ——
+  //     ★**而语法检查照不出来** ✓，★**只有真跑才炸** ✓ ★★**这正是 `FOR-AGENTS` 第十节第 4 条那个形状** ✓）。
+  services.remoteOnlyFlag = opt('remote-only') ?? process.env.WHALE_POST_REMOTE_ONLY_FLAG ?? undefined
   services.busRef = bus     // ★回填：★`verify` 那边通过**延迟函数**读它（★"一套真相" ✓ —— 见上面 `vSvc` 那段的注释 ✓）
   // ★★把"谁是明示休眠"**挂出去** ✗✓（★只写一份 ✓ —— `deliver` 与 `pickup` 共用同一句 ✓）
   services.declaredDormant = declaredDormant
@@ -372,6 +377,34 @@ function main() {
         re: opt('re'),
         force: flag('force'),
       })
+      // ★★★**"投"那半边：发给远端成员的 ⇒ 写远端 `inbox/<目标>/`，本机不留第二份** ✗✓
+      //   （2026-10-10 补；★正本《跨设备邮局-1.0局域网实现清单》**§一 · S6** 原话 ✓：
+      //    ★"**投**：发给手机的 ⇒ 写远端 `inbox/潮信鲸/` ✓（★**本机不留第二份** ✗）"✓）
+      //   ★★**为什么要补** ✗✓：★`pickup`（**取** 那半边 ✓）早就做了 ✓，★而★**`send` 从来只写本机 `inbox/`** ✗
+      //     ⇒ ★★★**"投给手机"这件事在公开版里**根本没实现**** ✓ —— ★**而清单把它算作 S6 的一半** ✓。
+      //   ★**怎么知道谁是"远端成员"** ✗：★配 `remoteOnlyFlag`（★同 `offlineOnlyFlag` 的形状 ✓ ——
+      //     ★**核心不认识具体属性名** ✓，★**属性名由配置给** ✓）。
+      //   ⚠️ ★**本机不留第二份** ✗ —— ★★**留了就会有两份权威** ✓（★而两份会在"取件／回执／消费"上**各说各话** ✗）。
+      const remote = opt('remote') ?? process.env.WHALE_POST_REMOTE_ROOT
+      const remoteFlag = services.remoteOnlyFlag   // ★★它挂在 `services` 上 ✓（★不在 `bus.cfg` 里 ✗）
+      const toRemote = (remote && remoteFlag && services.roster && typeof services.roster.flag === 'function')
+        ? r.targets.filter((t) => services.roster.flag(t, remoteFlag))
+        : []
+      if (toRemote.length) {
+        if (!existsSync(remote)) die(2, `远端根不存在：${remote}（★要指到"信箱根"那一层 ✓）`)
+        let moved = 0
+        for (const t of toRemote) {
+          const srcP = join(bus.paths().inbox(t), `${r.id}.msg.json`)
+          if (!existsSync(srcP)) continue
+          const dstDir = join(remote, 'inbox', t)
+          mkdirSync(dstDir, { recursive: true })
+          //   ★**先写远端、再删本机** ✓（★中途崩 ⇒ 本机那份还在 ⇒ "信只会晚到，不会不到" ✓）
+          writeFileSync(join(dstDir, `${r.id}.msg.json`), readFileSync(srcP, 'utf8'), 'utf8')
+          unlinkSync(srcP)
+          moved += 1
+        }
+        if (moved) console.log(`★投到远端：${toRemote.join('、')} ⇒ ${join(remote, 'inbox')}（★**本机不留第二份** ✗ —— ★两份会各说各话 ✓）`)
+      }
       const modeTxt = r.mode === 'offline' ? '离线（落在对方信箱，不唤醒）' : '在线（立即投进对方的会话）'
       const verdictTxt = r.verdict === 'delivered' ? 'delivered（投出去了）'
         : r.verdict === 'kept' ? 'kept（留在信箱里等人来收）' : String(r.verdict)
