@@ -37,6 +37,27 @@ try {
   const hard = ['alice', 'bob'].filter((n) => new RegExp(`\\b${n}\\b`).test(codeOnly))
   check('防泄露：核心代码里没有写死成员名（只在文档与样例里出现）', hard.length === 0, hard.join(','))
 
+  // ★★成员属性（2026-10-10）：通用读取 —— ★属性名由调用方给，本插件里不出现任何具体属性名 ✓
+  //   两种写法都认：① 成员对象上的同名字段 ② 顶层同名数组（"名单式"）
+  const withFlags = { apiVersion: 1,
+    members: [{ id: 'alice', label: 'Alice' }, { id: 'carol', label: 'Carol', flagA: true }],
+    groups: { all: ['alice', 'carol'], club: ['alice', 'carol'] },
+    flagB: ['carol'] }
+  writeFileSync(file, JSON.stringify(withFlags), 'utf8')
+  check('成员：list 保留自带字段（★自定义属性不被吃掉）', roster.member('carol')?.flagA === true, JSON.stringify(roster.member('carol')))
+  check('成员：member() 取整条；不认识 ⇒ undefined', roster.member('alice')?.label === 'Alice' && roster.member('zed') === undefined)
+  check('属性：成员字段写法 ⇒ true', roster.flag('carol', 'flagA') === true)
+  check('属性：顶层名单式写法 ⇒ true', roster.flag('carol', 'flagB') === true)
+  check('属性：没有该属性 ⇒ false（fail-safe 到"不带"）', roster.flag('alice', 'flagA') === false && roster.flag('zed', 'flagA') === false)
+  writeFileSync(file, JSON.stringify({ apiVersion: 1, members: [{ id: 'x', label: 'X', flagA: false }, { id: 'y', label: 'Y', flagA: 0 }, { id: 'z', label: 'Z', flagA: '' }] }), 'utf8')
+  check('属性：假值（false／0／空串）都算"不带"', !roster.flag('x', 'flagA') && !roster.flag('y', 'flagA') && !roster.flag('z', 'flagA'))
+  writeFileSync(file, JSON.stringify(withFlags), 'utf8')
+  check('属性：without() 剔掉带该属性的成员', JSON.stringify(roster.without(['alice', 'carol'], 'flagA')) === '["alice"]', JSON.stringify(roster.without(['alice', 'carol'], 'flagA')))
+  check('属性：without() 不改名单本身（认不出的原样留着）', JSON.stringify(roster.without(['alice', 'zed'], 'flagA')) === '["alice","zed"]')
+  check('属性：group(name, { without }) 一次剔干净', JSON.stringify(roster.group('club', { without: 'flagA' })) === '["alice"]', JSON.stringify(roster.group('club', { without: 'flagA' })))
+  check('属性：group() 不带 opts ⇒ 原样（向后兼容）', JSON.stringify(roster.group('club')) === '["alice","carol"]')
+  check('属性：flag 的名字由调用方给 ⇒ 换个名字照样工作（核心不认识任何具体属性名）', roster.flag('carol', 'flagB') === true && roster.flag('carol', 'flagC') === false)
+
   // ③ 坏输入不炸（宁可变空名单，也不许抛未捕获异常）
   writeFileSync(file, '{ 这不是 JSON', 'utf8')
   check('坏名单：不抛异常，退化成空名单', Array.isArray(roster.list()) && roster.list().length === 0)
