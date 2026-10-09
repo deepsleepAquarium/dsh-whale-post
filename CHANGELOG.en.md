@@ -430,6 +430,23 @@
     · ★**the summary** ⇒ ★`有件没过：bus、xcheck` plus ★`★★其中 **1 件是"崩了"**（★不是判据红 ✗）：bus` ✓.
   ★★**The two require completely different fixes** ✗✓: ★**a red criterion ⇒ the code has a bug** ✓; ★**a crash ⇒ the self-test itself is broken** ✓ ——
     ★so they **must be reported separately** ✓. (★Negative tests: inserting a syntax error ⇒ reports "crashed" ✓; emptying `LEGACY_FIELDS` ⇒ reports "2 条不过" ✓.)
+* ★★★ **A criterion-count baseline (`scripts/criteria-baseline.mjs`): counts may only grow, never quietly shrink** ✗✓ (added 2026-10-10) ——
+  ★★**The illness** ✗: ★last round I gave `selftest-all` a defence that "**tells a red criterion from a crash**" ✓ ——
+  ★★**but the other direction was still open** ✗: ★**if some `selftest.mjs` runs only 3 criteria and exits 0** ✓,
+  ★**the full run still reports PASS** ✓ ⇒ ★★★**"341 criteria" is really 340 and nobody knows** ✗✓.
+  ★★★**This is a "**silent deletion**"** ✗✓ —— ★**delete one criterion and the tool **will not shout**** ✓;
+  ★★a tool that guards a pile of criteria **needs someone guarding it too** ✓.
+  ★**How to use it** ✗: ★run `npm run selftest` ⇒ ★**it compares against the baseline automatically** ✓ (★**growth allowed, shrinkage not** ✗);
+  ★after adding criteria ⇒ ★`node scripts/selftest-all.mjs --update-baseline` ✓ an explicit update (★**updating is a deliberate act** ✓).
+  ★**Negative tests, measured** ✗✓ (★both really run ✓): ★commenting out **one** criterion in `types` ⇒
+    · ★**running `types` alone: 13/13 passed, exit code 0** ✓ —— ★★**"you cannot see it in isolation"** ✓ (★exactly why the full run matters ✓);
+    · ★**full run: exit code 1** ✓ plus ★an explicit report ★"criteria **shrank**: types 14 → 13 (★1 fewer)" ✓ plus
+      ★the guidance ★"'shrinking' and 'a red criterion' are two different things ✓ —— ★**red ⇒ the code has a bug**; ★**fewer ⇒ a criterion was deleted**" ✓ plus
+      ★the `--update-baseline` hint ✓.
+  ⚠️ ★It **compares counts only** ✗ —— ★"one criterion swapped for another of the same count" is invisible to it ✓ (★that needs a human reading the diff ✓);
+    ★★what it does catch is the most common case: ★**commenting out a criterion while editing code** ✓.
+  ★ⓘ ★**While writing this, `doccheck` immediately caught a table row of mine missing a column** ✓ (★in both the Chinese and English copies ✓) ——
+    ★★**the tools watch each other** ✓, which has now happened several times tonight ✓.
 * ★**`cli`: `--only-offline <attribute>` / `--dormant <attribute>`** —— ★both rules can finally be switched on from the command line ✓.
 * ★**`cli`: `verify` / `nag` subcommands** —— ★the three-state design is finally visible from the command line
   (★`verify --enable` / `--disable` / `--allow a,b`; `nag` tells you whether a notice is due ✓).

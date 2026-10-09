@@ -15,6 +15,7 @@ npm run selftest     # 10 项：加载级 ＋ 静态判据 ＋ 跨包一致 ＋ 
 npm run racetest     # 11 条：并发发号 ＋ 并发记账
 npm run doccheck     # 中英文档对等
 npm run pkgcheck     # 包元数据（★发布这件事的坑全在这里）
+★★另：`selftest` 会把**判据条数**跟 `scripts/criteria-baseline.mjs` 比 ✓ —— ★★**只许变多、不许悄悄变少** ✗（★删一条而不更新基准 ⇒ 非 0 退出 ✓）。
 npm run compat       # ★★跨版本：真跑 npm 上已发布的那一版（★要联网，约 40 秒）
 ```
 

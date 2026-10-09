@@ -87,6 +87,7 @@
 | Command | What it watches | When you must run it |
 |---|---|---|
 | `npm run selftest` | ★**each of the seven packages' load-level self-test + two static criteria + cross-package consistency** ✓ (★8 items in all ✓) | ★**after every change** ✓ |
+|   └ ★★**added or removed criteria** | run `node scripts/selftest-all.mjs --update-baseline` ✓ (★★**delete one without updating and the full run reports "criteria shrank" with a non-zero exit** ✓) | ★★**after touching the criteria** ✓。 |
 | `npm test` = `selftest:each` | ★the same, but **each one separately** (★to see details ✓) | ★when you want to know **which** one is red ✓ |
 | `npm run racetest` | ★**concurrency stress test** (★spawns a dozen real subprocesses ✓) | ★**any change to sequencing or disk writes must run it** ✓ (★collisions only show up there ✓) |
 | `npm run xcheck` | ★★**cross-package consistency** ✗✓ (★fine to run on its own ✓) | ★after changing anything implemented on both sides ✓ |

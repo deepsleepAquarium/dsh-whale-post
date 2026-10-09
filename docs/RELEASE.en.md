@@ -15,6 +15,7 @@ npm run selftest     # 10 items: load-level + static criteria + cross-package + 
 npm run racetest     # 11 criteria: concurrent sequence claiming + concurrent accounting
 npm run doccheck     # Chinese/English doc parity
 npm run pkgcheck     # package metadata (★every publishing pit lives here)
+★★Also: `selftest` compares the **criterion count** against `scripts/criteria-baseline.mjs` ✓ —— ★★**counts may only grow, never quietly shrink** ✗ (★delete one without updating the baseline ⇒ non-zero exit ✓).
 npm run compat       # ★★cross-version: really runs the version published on npm (★needs network, ~40 s)
 ```
 

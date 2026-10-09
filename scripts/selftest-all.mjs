@@ -7,9 +7,12 @@
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { BASELINE, TOTAL } from './criteria-baseline.mjs'
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..')
 const only = process.argv.includes('--each')
+//   ★`--update-baseline`：★把"现在每件多少条"写回基准 ✓（★**显式动作** ⇒ 删判据时糊弄不过去 ✓）
+const updateBaseline = process.argv.includes('--update-baseline')
 const items = ['bus', 'roster', 'types', 'deliver', 'gate', 'verify', 'cli']
 
 const results = []
@@ -119,7 +122,41 @@ console.log(bad3.length === 0
   ? `全过：${results.length}/${results.length} 项（退出码 0）`
   : `有件没过：${bad3.map((b) => b.p).join('、')}（退出码 ${bad3[0].code}）` +
     (crashed3.length ? `\n★★其中 **${crashed3.length} 件是"崩了"**（★不是判据红 ✗）：${crashed3.map((b) => b.p).join('、')}` : ''))
+
+// ── ★★★判据条数：**只许变多，不许悄悄变少** ✗✓（2026-10-10 加）
+//   ★★**病** ✗：★若某个自测"只跑 3 条就退出码 0" ✓ ⇒ ★**上面照样报 PASS** ✓
+//     ⇒ ★**"345 条"其实只剩 340 条，而没人会知道** ✗ —— ★这是"**沉默的删除**" ✓。
+//   ★★**守着一堆判据的工具，自己也得有人守** ✓。
+//   ⚠️ ★只比**条数** ✗ —— ★"换了一条同样数量的判据"它看不出来 ✓（★那要靠人看 diff ✓）；
+//     ★而它能挡住最常见的那种：★**改代码时顺手注释掉一条判据** ✓。
+const counts = new Map()
+for (const r of results) {
+  const m = /(\d+)\/(\d+)/.exec(r.summary ?? '')
+  if (m) counts.set(r.p, Number(m[2]))
+}
+//   ★静态判据与三件跨包检查不在基准里（★它们各有各的说法 ✓）：
+//     ★`static` 是"七件源码里没有 ctx.whale 属性读写" ✓；★`xcheck`／`doccheck`／`pkgcheck` **在**基准里 ✓。
+const shrank = []
+const grew = []
+for (const [name, base] of Object.entries(BASELINE)) {
+  const now = counts.get(name)
+  if (now === undefined) { shrank.push(`${name}（★没跑到／没报条数）`); continue }
+  if (now < base) shrank.push(`${name} ${base} → ${now}（★少了 ${base - now} 条）`)
+  else if (now > base) grew.push(`${name} ${base} → ${now}（★多了 ${now - base} 条）`)
+}
+if (shrank.length) {
+  console.log(`\n★★判据**变少**了 ✗：${shrank.join('、')}`)
+  console.log('  ★★"变少"跟"判据红"是两件事 ✓ —— ★**红 ⇒ 代码有 bug** ✓；★**少了 ⇒ 判据被删了** ✗。')
+  console.log('  ⓘ ★确认是有意删的 ⇒ `node scripts/selftest-all.mjs --update-baseline` 更新基准 ✓。')
+}
+if (grew.length) {
+  console.log(`\nⓘ ★判据**变多**了 ✓（★好事，★但记得更新基准 ✓）：${grew.join('、')}`)
+  console.log('  ⓘ ★`node scripts/selftest-all.mjs --update-baseline` ✓')
+}
+if (counts.size) console.log(`ⓘ 共 ${[...counts.values()].reduce((a, b) => a + b, 0)} 条判据（★基准 ${TOTAL} 条 ✓）`)
+
+const failed = bad3.length > 0 || shrank.length > 0
 // ★★另有一个**并发压测**不在这里跑 ✗（它起十几个真子进程、慢一些）：
 //   `node scripts/racetest.mjs` —— ★**改了发号或落盘就要跑它** ✓（发号撞号只在那里才看得见 ✓）
 console.log('ⓘ 另有并发压测：node scripts/racetest.mjs（★改了发号／落盘就一定要跑 ✓）')
-process.exit(bad3.length === 0 ? 0 : 1)
+process.exit(failed ? 1 : 0)
