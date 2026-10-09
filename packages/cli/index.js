@@ -434,6 +434,31 @@ function main() {
         }
       }
 
+      // ★★★S6b：把邮筒上"**别人回给我的回执**"镜像回来 ✗✓（2026-10-10 从正本移植；★正本判据 107-110 ✓）
+      //   ★**病** ✗：★`pickup` 原来只镜像 `hello/` ✓ ⇒ ★★**邮筒上的 `ack/<我>/` 从来没搬过** ✓
+      //     ⇒ ★**发信人的本机**永远看不到"**对方已经收了**"** ✗✓（★正本原话：★"**此前收不到**" ✓）——
+      //     而★"发出去的信，对方收没收到"**正是邮局要回答的问题** ✓。
+      //   ★★两条纪律（正本 108／109 ✓）：
+      //     · ★**只镜不删** ✗ —— ★邮筒那份**原样留着** ✓（★跟 `hello` 镜像一个道理：★
+      //       ★那台邮筒可能还有别的取件人 ✓）；
+      //     · ★**幂等** ✗ —— ★**内容相同就跳过** ✓（★否则每次 `pickup` 都重写一遍，
+      //       ★而重写会动 mtime ⇒ ★**下游"多久没动"那类判断会跟着乱** ✓）。
+      //   ⚠️ ★回执是**发给发信人的** ✓ ⇒ 它躺在邮筒的 `ack/<我>/` 里 ✓（★不是 `ack/` 根下 ✓）。
+      let ackMirrored = 0
+      {
+        const rAck = join(remote, 'ack', as)
+        const myAck = bus.paths().ack(as)
+        if (existsSync(rAck)) {
+          mkdirSync(myAck, { recursive: true })
+          for (const f of readdirSync(rAck).filter((x) => x.endsWith('.json'))) {
+            let same = false
+            try { same = readFileSync(join(myAck, f), 'utf8') === readFileSync(join(rAck, f), 'utf8') } catch { same = false }
+            if (same) continue                                   // ★幂等：一模一样就跳过 ✓（★不动 mtime ✓）
+            try { writeFileSync(join(myAck, f), readFileSync(join(rAck, f), 'utf8'), 'utf8'); ackMirrored++ } catch { /* 单个失败不拦住别的 ✓ */ }
+          }
+        }
+      }
+
       // ②③④ 搬信
       let took = 0, skipped = 0, bad = 0, swept = 0, converged = 0, bounced = 0
       const files = existsSync(rInbox) ? readdirSync(rInbox).filter((x) => x.endsWith('.msg.json')) : []
@@ -573,7 +598,7 @@ function main() {
         }
         console.log(`取回   ${f} :: ${env.from} → ${as}《${env.subject ?? ''}》[${env.mode ?? 'online'}]${quota}`)
       }
-      console.log(`\n取回 ${took} 封，跳过 ${skipped} 封（已有），没搬 ${bad} 封，镜像 hello ${mirrored} 份` +
+      console.log(`\n取回 ${took} 封，跳过 ${skipped} 封（已有），没搬 ${bad} 封，镜像 hello ${mirrored} 份，镜像回执 ${ackMirrored} 份` +
         (swept || converged || bounced ? `，清理陈旧半截 ${swept} 个，收敛补 MOVE ${converged} 封，休眠退回 ${bounced} 封` : ''))
       console.log('★远端没搬走的都还在那儿 ✓；搬走的留在它的 seen/ 里当消费凭证 ✓；★记账记在**发件人**名下 ✓')
       return bad > 0 && took === 0 ? 2 : 0

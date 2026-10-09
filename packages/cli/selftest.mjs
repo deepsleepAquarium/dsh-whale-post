@@ -183,6 +183,33 @@ check('★★S6h-②：**收敛式 MOVE** —— 邮筒那份补进 `seen/`（�
   !existsSync(join(hRoot, 'inbox', 'web', hFile)) && existsSync(join(hRoot, 'seen', 'web', hFile)))
 check('★S6h-②：本机**没重复导入** ✓（★幂等仍在管事 ✓）', lsDir(join(hLocal, 'inbox', 'web')).length === 1)
 
+// ★★★S6b：邮筒上"**别人回给我的回执**" ⇒ 镜像回本机 ✗✓
+//   （2026-10-10 从正本移植；★正本判据 107-110 ✓）
+//   ★**病**：★`pickup` 原来只镜像 `hello/` ⇒ ★**邮筒上的 `ack/<我>/` 从来没搬过** ✓
+//     ⇒ ★**发信人的本机永远看不到"对方已经收了"** ✗（★正本原话："**此前收不到**" ✓）——
+//     ★而"发出去的信，对方收没收到"**正是邮局要回答的问题** ✓。
+//   ★★两条纪律：★**只镜不删** ✗（★邮筒那份原样留着 ✓）／★**幂等** ✗（★内容相同就跳过 ⇒ **不动 mtime** ✓）。
+const b6Root = join(process.env.TEMP ?? '/tmp', `whale-cli-s6b-rem-${Date.now()}`)
+const b6Local = join(process.env.TEMP ?? '/tmp', `whale-cli-s6b-loc-${Date.now()}`)
+for (const d of [b6Root, b6Local, join(b6Local, 'inbox', 'web'), join(b6Root, 'ack', 'web')]) mkdirSync(d, { recursive: true })
+for (const d of [b6Root, b6Local]) writeFileSync(join(d, 'roster.json'), mRoster, 'utf8')
+run(['hello', '--as', 'phone', '--root', b6Root]); run(['hello', '--as', 'web', '--root', b6Root])
+//   ★在**邮筒上**放两份"别人回给我的回执"（★模拟"手机收信后留下的" ✓）
+writeFileSync(join(b6Root, 'ack', 'web', 'aaa.phone.ack.json'), '{"kind":"ack","by":"phone","ok":true,"disposition":"delivered-offline"}', 'utf8')
+writeFileSync(join(b6Root, 'ack', 'web', 'bbb.phone.ack.json'), '{"kind":"ack","by":"phone","ok":true,"disposition":"delivered-offline"}', 'utf8')
+run(['pickup', '--as', 'web', '--root', b6Local, '--remote', b6Root, '--only-offline', 'phone'])
+const b6Acks = (d) => { try { return readdirSync(join(d, 'ack', 'web')).filter((f) => f.endsWith('.json')) } catch { return [] } }
+check('★★★S6b：邮筒上的回执 ⇒ **镜像回本机** ✗（★"发出去的信，对方收没收到" ✓）',
+  b6Acks(b6Local).length === 2, `本机 ${b6Acks(b6Local).length} 份`)
+check('★★S6b：**只镜不删** ✗ —— 邮筒那份**原样留着** ✓', b6Acks(b6Root).length === 2, `邮筒 ${b6Acks(b6Root).length} 份`)
+run(['pickup', '--as', 'web', '--root', b6Local, '--remote', b6Root, '--only-offline', 'phone'])
+check('★★S6b：**幂等** ✗ —— 内容相同就跳过（★不重写 ⇒ **不动 mtime** ✓）',
+  b6Acks(b6Local).length === 2 && b6Acks(b6Root).length === 2)
+//   ★再放一份 ⇒ 该只多镜 1 份（★"增量"也对 ✓）
+writeFileSync(join(b6Root, 'ack', 'web', 'ccc.phone.ack.json'), '{"kind":"ack","by":"phone","ok":false,"disposition":"refused"}', 'utf8')
+run(['pickup', '--as', 'web', '--root', b6Local, '--remote', b6Root, '--only-offline', 'phone'])
+check('★S6b：**新回执**会被补镜（★只多 1 份 ✓）', b6Acks(b6Local).length === 3, `本机 ${b6Acks(b6Local).length} 份`)
+
 // ★★★S11 取件那半边：把**明示休眠**者信箱里积压的信**退回** ✗✓
 //   （2026-10-10 从正本移植；★正本判据 105-106 ＋「主人 2026-10-06 02:5x 令」✓）
 //   ★它扫**两个地方**：★本机 `inbox/<谁>/` ＋ ★**远端邮筒的** `inbox/<谁>/` ✓（★只扫本机是不够的 ✓）

@@ -355,6 +355,16 @@
     (★the only case where **following the docs makes things worse** ✓, ★worse than a missing paragraph ✓).
     ★Negative test: writing a `v0.3.0` into it ⇒ **turns red immediately** ✓ (★and points at line 29 ✓).
   ★ⓘ ★`doccheck` **found the new pair automatically** (★6 pairs → **7** ✓) —— ★and CN/EN matched on the **first try** ✓.
+* ★★★ **S6b: mirror the mailbox's acknowledgements back home** ✗✓ (ported from the original 2026-10-10; ★its criteria 107-110 ✓) ——
+  ★**The illness** ✗: ★`pickup` used to **mirror only `hello/`** ✓ ⇒ ★★**`ack/<me>/` on the mailbox was never fetched** ✓
+  ⇒ ★**the sender's own machine could never see "the other side has received it"** ✗✓ (★verbatim: ★"**we never received them**" ✓) ——
+  ★★and "was the letter I sent actually received" **is the very question a post office exists to answer** ✓.
+  ★**Two rules** (★original 108 / 109 ✓):
+    · ★**mirror only, never delete** ✗ —— ★the mailbox copy **stays exactly where it is** ✓ (★same reasoning as mirroring `hello`: ★that mailbox may have other collectors ✓);
+    · ★**idempotent** ✗ —— ★**identical content is skipped** ✓ (★otherwise every `pickup` rewrites them ⇒ ★**and a rewrite moves mtime** ⇒
+      ★**any downstream "how long has this been idle" judgement goes wrong** ✓).
+  ★**Criteria** (`cli` 44 → 48 ✓): ★two acks mirrored / ★**mirror only, never delete** (★the mailbox still has 2 ✓) / ★**idempotent** (★a second pickup mirrors 0 ✓) /
+    ★**a new ack gets picked up** (★exactly one more ✓). ★Negative test: switching that block off ⇒ **3 criteria genuinely red** ✓.
 * ★**`cli`: `--only-offline <attribute>` / `--dormant <attribute>`** —— ★both rules can finally be switched on from the command line ✓.
 * ★**`cli`: `verify` / `nag` subcommands** —— ★the three-state design is finally visible from the command line
   (★`verify --enable` / `--disable` / `--allow a,b`; `nag` tells you whether a notice is due ✓).
