@@ -11,6 +11,7 @@
 ## ★ 第 0 步：先跑四样，**全绿才发** ✗
 
 ```bash
+★★另：**已装好提交前的门** ✗✓（`npm run hooks:install` ✓）—— ★每次 `git commit` 会自动跑 `selftest`，非 0 就拒绝提交 ✓。
 npm run selftest     # 10 项：加载级 ＋ 静态判据 ＋ 跨包一致 ＋ 中英对等 ＋ 包元数据
 npm run racetest     # 11 条：并发发号 ＋ 并发记账
 npm run doccheck     # 中英文档对等
