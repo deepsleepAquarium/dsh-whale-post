@@ -91,6 +91,7 @@
 | `npm run racetest` | ★**concurrency stress test** (★spawns a dozen real subprocesses ✓) | ★**any change to sequencing or disk writes must run it** ✓ (★collisions only show up there ✓) |
 | `npm run xcheck` | ★★**cross-package consistency** ✗✓ (★fine to run on its own ✓) | ★after changing anything implemented on both sides ✓ |
 | `npm run doccheck` | ★★**Chinese/English docs stay in step** ✗✓ (★headings / bullets / tables / fences / links ✓) | ★**after changing any document** ✓ (★especially when only one side was touched ✗) |
+| `npm run pkgcheck` | ★★**package metadata** ✗✓ (★versions equal / plugins have `dsh` / **`cli` does not** ✓) | ★**after touching any `package.json`** ✓ |
 
 ★★ **One more step you cannot skip** ✗: ★**boot it for real once** ✓ —— ★`npm run selftest` being green does **not** mean the engine can load ✓
 (★we hit that: ★all six plugins **failed to load** in the real engine, ★and **neither the self-tests nor `--dump-config` could see it** ✓).

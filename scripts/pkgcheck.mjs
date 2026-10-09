@@ -1,0 +1,99 @@
+/**
+ * ★★★包元数据检查（`pkgcheck`）✗✓ —— ★**"该一致的必须一致" ＋ ★"故意不一致的不许被顺手补齐"**
+ *
+ * ★为什么要有它 ✗：★"发布"这件事上我们踩过坑，而坑都长在**元数据**里（不是代码里）：
+ *   · ★版本号：★七件**必须同一个版本** ✓ —— 发版时漏掉一件，★**装上去就是半新半旧** ✗；
+ *   · ★★`dsh.bundle.patch`：★**插件包少了它，真引擎里就是"装上了但什么都不做"** ✗
+ *     （★这条我们写在 `INSTALL` §五第 1 条里，★而**没有任何判据盯着它** ✓）；
+ *   · ★`private: true` 的包**发不出去** ✓（★根 `package.json` 该 private，★而**七个包不该** ✓）。
+ *
+ * ★★**最要紧的一条是"故意的不一致"** ✗✓：★六件是**插件** ✓，★而 `cli` **是入口工具、不是插件** ✓
+ *   （★正本纪律原话：★"`cli` 是入口工具（★**不是插件** ✗）" ✓）⇒ ★它**本来就该没有 `dsh`** ✓。
+ *   ★★但"少了一个字段"看起来**特别像"忘了加"** ✗ ⇒ ★**下一个人会顺手补齐** ⇒ ★**把 CLI 也变成插件** ✗✓。
+ *   ★所以这条判据**明着写"cli 必须没有"** ✓ —— ★让"故意的不一致"**看得见** ✓。
+ *
+ * ★判据看**退出码** ✓：0 全对／非 0 有不对 ✓。
+ */
+import { readFileSync, readdirSync, existsSync } from 'node:fs'
+import { join, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const repo = join(dirname(fileURLToPath(import.meta.url)), '..')
+const PLUGINS = ['bus', 'roster', 'types', 'deliver', 'gate', 'verify']
+const CLI = 'cli'
+const ALL = [...PLUGINS, CLI]
+
+const checks = []
+const check = (name, ok, extra = '') => checks.push({ name, ok: !!ok, extra: String(extra) })
+
+/** ★读一个包的 package.json ✓ */
+const pkgOf = (p) => {
+  const f = join(repo, 'packages', p, 'package.json')
+  if (!existsSync(f)) return null
+  try { return JSON.parse(readFileSync(f, 'utf8')) } catch { return null }
+}
+
+const pkgs = Object.fromEntries(ALL.map((p) => [p, pkgOf(p)]))
+check(`① 七个包的 \`package.json\` 都在（★${ALL.join('、')} ✓）`, ALL.every((p) => pkgs[p] !== null),
+  ALL.filter((p) => pkgs[p] === null).join('、'))
+
+// ★★② 版本号**必须全等** ✗（★发版漏一件 ⇒ 装上去半新半旧 ✓）
+const versions = [...new Set(ALL.map((p) => pkgs[p]?.version).filter(Boolean))]
+check('② ★版本号**七件全等** ✗（★漏一件就是"半新半旧" ✓）', versions.length === 1,
+  versions.length === 1 ? `全是 ${versions[0]}` : `出现了 ${versions.join('、')}`)
+
+// ★★③ 六件插件**必须**有 `dsh.bundle.patch` ✗（★少了它，真引擎里"装上了但什么都不做" ✓）
+const noDsh = PLUGINS.filter((p) => !pkgs[p]?.dsh?.bundle?.patch)
+check('③ ★六件插件**都有** `dsh.bundle.patch` ✗（★少了它真引擎里"装上了但什么都不做" ✓）',
+  noDsh.length === 0, noDsh.length ? `缺：${noDsh.join('、')}` : PLUGINS.join('、'))
+
+// ★★★④ `cli` **必须没有** `dsh` ✗✓（★它是**入口工具、不是插件** ✓）——
+//   ★★这条是"**故意的不一致**" ✗✓：★"少一个字段"看起来特别像"忘了加" ✓ ⇒
+//     ★**下一个人会顺手补齐** ⇒ ★**把 CLI 也变成插件** ✗ ⇒ ★所以明着写出来 ✓。
+check('④ ★★`cli` **必须没有** `dsh` ✗（★它是**入口工具、不是插件** ✓ —— ★故意的不一致，别顺手补齐 ✗）',
+  pkgs[CLI] !== null && pkgs[CLI].dsh === undefined,
+  pkgs[CLI]?.dsh === undefined ? '没有 ✓（正确）' : '★ 它有了 dsh ⇒ 被当成插件了')
+
+const badName = ALL.filter((p) => !String(pkgs[p]?.name ?? '').startsWith('dsh-whale-post-'))
+check('⑤ ★包名前缀统一（`dsh-whale-post-*` ✓）', badName.length === 0, badName.join('、'))
+// ★⑥ **六件插件**的 `main`／`exports`／`files` 形状一致 ✓ —— ★★**而 `cli` 少一项，且那是故意的** ✗✓：
+//   ★六件的 `files` 里有 `cordis.patch.yml`（★那是**插件**给引擎打补丁用的 ✓），
+//   ★★而 `cli` **不是插件** ⇒ ★**它本来就该没有那个文件** ✓（★跟 ④ 同一条道理 ✓）。
+//   ⚠️ ★**这一条也容易"被顺手补齐"** ✗：★"少一个文件"看起来就是漏了 ✓ ⇒ ★所以**明着判** ✓。
+const shape = (p) => JSON.stringify([pkgs[p]?.main, Object.keys(pkgs[p]?.exports ?? {}), pkgs[p]?.files])
+const pluginShapes = [...new Set(PLUGINS.map(shape))]
+check('⑥ ★六件插件的 `main`／`exports`／`files` **形状一致** ✓', pluginShapes.length === 1,
+  pluginShapes.length === 1 ? '六件全一致' : `${pluginShapes.length} 种形状`)
+check('⑥b ★★`cli` 的 `files` **必须少 `cordis.patch.yml`** ✗（★它不是插件 ⇒ 没有补丁文件 ✓ —— ★故意的 ✓）',
+  Array.isArray(pkgs[CLI]?.files) && !pkgs[CLI].files.includes('cordis.patch.yml'),
+  Array.isArray(pkgs[CLI]?.files) ? pkgs[CLI].files.join(',') : '（没有 files）')
+
+// ★⑦ `private`：★**七个包都不许 private** ✗（★private 的包发不出去 ✓）；★而根**该** private ✓
+const priv = ALL.filter((p) => pkgs[p]?.private === true)
+check('⑦ ★七个包都**不是** `private` ✗（★private 的包发不出去 ✓）', priv.length === 0, priv.join('、'))
+{
+  const root = JSON.parse(readFileSync(join(repo, 'package.json'), 'utf8'))
+  check('⑧ 根 `package.json` **是** `private` ✓（★它不该被发出去 ✓）', root.private === true)
+}
+
+// ★⑨ 每个包的 `exports` 指向的文件**真的存在** ✓（★指向空气是最容易犯的发布错 ✓）
+const missing = []
+for (const p of ALL) {
+  const e = pkgs[p]?.exports
+  const targets = typeof e === 'string' ? [e] : Object.values(e ?? {}).flatMap((v) => (typeof v === 'string' ? [v] : Object.values(v ?? {})))
+  for (const t of targets) {
+    if (typeof t !== 'string') continue
+    if (!existsSync(join(repo, 'packages', p, t))) missing.push(`${p}→${t}`)
+  }
+}
+check('⑨ ★`exports` 指向的文件**真的存在** ✗（★指向空气是最容易犯的发布错 ✓）',
+  missing.length === 0, missing.join('、'))
+
+// ★⑩ 仓库里不该有散落的临时文件（★我这几轮写过好几个探针 ✓）
+const strays = readdirSync(repo).filter((f) => /^t-.*\.(mjs|cjs|js)$/.test(f))
+check('⑩ ★仓库根目录没有散落的临时探针 ✗（`t-*.mjs` ✓ —— ★我自己犯过 ✓）', strays.length === 0, strays.join('、'))
+
+for (const c of checks) console.log(`${c.ok ? 'PASS' : 'FAIL'}  ${c.name}${c.ok ? '' : '  :: ' + c.extra}`)
+const pass = checks.filter((c) => c.ok).length
+console.log(`\n${pass}/${checks.length} 合格   （查了 ${ALL.length} 个包 ✓）`)
+process.exit(pass === checks.length ? 0 : 1)

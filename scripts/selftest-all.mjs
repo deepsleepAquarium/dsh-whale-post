@@ -83,6 +83,22 @@ process.stdout.write(`— ${'doccheck'.padEnd(9)} `)
   console.log(`${dr.status === 0 ? 'PASS' : 'FAIL'}  ${dall.length ? dall[dall.length - 1] : ''}${dfails.length ? '   ← ' + dfails.length + ' 处不对等' : ''}`)
 }
 
+// ★★★包元数据（`pkgcheck`）✗✓ —— ★**"发布"这件事上我们踩过的坑，全在元数据里（不在代码里）**
+//   ★★它明着钉住两条**"故意的不一致"** ✗✓：
+//     · ★`cli` **不能有** `dsh` ✓（★它是**入口工具、不是插件** ✓）；
+//     · ★`cli` 的 `files` **不能有** `cordis.patch.yml` ✓（★它没有补丁文件 ✓）。
+//   ★为什么这两条要明着写 ✗：★"少一个字段"看起来**特别像"忘了加"** ⇒ ★**下一个人会顺手补齐** ⇒
+//     ★**把 CLI 也变成插件** ✗ —— ★而这一轮**我自己的第一版判据就差点这么误报** ✓。
+process.stdout.write(`— ${'pkgcheck'.padEnd(9)} `)
+{
+  const pr = spawnSync(process.execPath, [join(repo, 'scripts', 'pkgcheck.mjs')], { stdio: only ? 'inherit' : 'pipe', encoding: 'utf8' })
+  const pout = only ? '' : String(pr.stdout ?? '')
+  const pall = pout.match(/(\d+)\/(\d+) 合格/g) ?? []
+  const pfails = (pout.match(/^FAIL.*$/gm) ?? [])
+  results.push({ p: 'pkgcheck', code: pr.status, summary: pall.length ? pall[pall.length - 1] : '' })
+  console.log(`${pr.status === 0 ? 'PASS' : 'FAIL'}  ${pall.length ? pall[pall.length - 1] : ''}${pfails.length ? '   ← ' + pfails.length + ' 处不合格' : ''}`)
+}
+
 console.log('')
 const bad3 = results.filter((r) => r.code !== 0)
 console.log(bad3.length === 0
@@ -92,4 +108,3 @@ console.log(bad3.length === 0
 //   `node scripts/racetest.mjs` —— ★**改了发号或落盘就要跑它** ✓（发号撞号只在那里才看得见 ✓）
 console.log('ⓘ 另有并发压测：node scripts/racetest.mjs（★改了发号／落盘就一定要跑 ✓）')
 process.exit(bad3.length === 0 ? 0 : 1)
-process.exit(bad2.length === 0 ? 0 : 1)

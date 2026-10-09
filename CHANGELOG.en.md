@@ -249,6 +249,25 @@
   ★Negative test: ★deleting the English entry I had just restored ⇒ **turns red immediately** ✓ (★and accurately reports "bullets 43 vs 42" ✓).
   ★ⓘ ★The first version **false-alarmed** ⚠️: ★I took "headings 21 vs 23" seriously and went hunting, ★only to find that **`#` comments inside a code block** were being counted as headings ✓
     ⇒ ★it now **strips fenced blocks before counting** ✓ (★while the fences themselves are counted separately —— ★another criterion needs that ✓).
+* ★★★ **`pkgcheck`: package metadata check** ✗✓ (added 2026-10-10; ★`npm run pkgcheck` ✓) ——
+  ★**Why it exists** ✗: ★every pit we fell into around **publishing** lived in **metadata, not code** ✓ ——
+  · ★versions: ★all seven **must share one version** ✓ (★miss one when releasing ⇒ ★**the install is half new and half old** ✗);
+  · ★★`dsh.bundle.patch`: ★**without it a plugin package "installs but does nothing" in a real engine** ✗
+    (★this is written in `INSTALL` §5 rule 1, ★and **nothing was watching it** ✓);
+  · ★a package with `private: true` **cannot be published** ✓ (★the root should be private ✓, ★**the seven must not** ✓);
+  · ★`exports` pointing at a **file that does not exist** ✓ (★the most common publishing mistake ✓).
+  ★★**Its most valuable part is two "deliberate inconsistencies"** ✗✓:
+  · ★★**`cli` **must not have** `dsh`** ✓ —— ★it is an **entry-point tool, not a plugin** ✓ (★the original's rule, verbatim ✓);
+  · ★★**`cli`'s `files` **must not contain** `cordis.patch.yml`** ✓ —— ★it has no patch file ✓.
+  ★★★**Why these two must be spelled out** ✗✓: ★★**"a missing field / a missing file" looks exactly like "someone forgot"** ✓ ⇒
+  ★the next person will **helpfully add it** ⇒ ★**turning the CLI into a plugin** ✗✓ —— ★★**and my own first version of this check almost false-alarmed on exactly that** ✓
+  (★it reported "the seven have two different shapes", ★I went to look, ★and found it was **deliberate** ✓).
+  ★**It checks eleven things** ✗: ★all seven `package.json` files exist / ★**versions all equal** / ★the six **all have `dsh`** / ★**`cli` does not** /
+  ★name prefix / ★the six share one shape / ★**`cli` lacks `cordis.patch.yml`** / ★none of the seven is private / ★the root is private /
+  ★`exports` targets really exist / ★**no stray temporary probes in the repo root** (★`t-*.mjs` —— ★**I wrote several myself these past rounds** ✓).
+  ★Its criterion is the **exit code** ✓; ★**it is now part of `npm run selftest`** (★**10 items** ✓).
+  ★Negative test: ★① change one package's version ⇒ reports "0.2.1 and 0.2.0 both present" ✓; ★② **give `cli` a `dsh` field** (★simulating "helpfully adding it" ✓)
+  ⇒ reports "★it has dsh ⇒ it is being treated as a plugin" ✓ —— ★**both genuinely go red** ✓.
 * ★**`cli`: `--only-offline <attribute>` / `--dormant <attribute>`** —— ★both rules can finally be switched on from the command line ✓.
 * ★**`cli`: `verify` / `nag` subcommands** —— ★the three-state design is finally visible from the command line
   (★`verify --enable` / `--disable` / `--allow a,b`; `nag` tells you whether a notice is due ✓).
