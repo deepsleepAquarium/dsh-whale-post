@@ -1,6 +1,6 @@
 {
   "name": "dsh-whale-post",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "给同一台机器上的多个 AI 会话（或多台引擎）的异步信箱：默认离线、信不会丢、万物皆插件",
   "type": "module",
@@ -20,5 +20,3 @@
     "packages/*"
   ]
 }
-
-

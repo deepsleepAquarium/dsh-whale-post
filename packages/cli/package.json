@@ -1,6 +1,6 @@
 {
   "name": "dsh-whale-post-cli",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "零依赖命令行：hello／send／pump／quota／verify／nag／roster／types／selftest",
   "keywords": [
     "dsh",

@@ -1,6 +1,6 @@
 {
   "name": "dsh-whale-post-bus",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "核心：信封／签名／握手／幂等／落盘",
   "keywords": [
     "dsh",
@@ -46,4 +46,3 @@
     "registry": "https://registry.npmjs.org"
   }
 }
-

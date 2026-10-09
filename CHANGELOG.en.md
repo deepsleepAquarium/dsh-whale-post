@@ -7,6 +7,47 @@
 
 ---
 
+## v0.3.0 —— 2026-10-10 (★**in preparation**: the latest on npm is still `0.2.0` ✗)
+
+> ★★**Why this section stands on its own** ✗✓: ★we did a dozen more rounds after `0.2.0` shipped ——
+> ★and **the `v0.2.0` section below mixes "already released" with "added afterwards"** ✓
+> (★it had 22 entries at release time and has 45 now ✓).
+> ★★So this section states **what this version actually changes** ✓; ★below it, **entries marked ★★★ are the new ones** ✓.
+
+### ★★★ Read first: **three behaviour changes** relative to `v0.2.0` ✗✓
+
+★★ **All three turn a refusal into "send it anyway + say so loudly"** ✗ —— ★**if you depend on the old behaviour, read this before upgrading** ✓:
+
+| Before | Now | Why |
+|---|---|---|
+| ★**no handshake ⇒ throw and refuse** | ★★**send anyway + say plainly "downgraded to offline for them"** ✗✓ (★`wakePrediction.willWait` ✓) | ★★Verbatim from the original: ★"**if you cannot wake them, leave it in the box for them —— but say so loudly**" —— ★and "refusing" is **backwards**: ★**the letter never leaves**, yet the sender believes "the protocol forbids it" ✓ |
+| ★**offline letters went through all three loop gates** | ★★**offline letters are exempt from the whole loop gate** ✗✓ (★quotas unchanged ✓) | ★Those gates stop "**waking the other side one extra time**" ✓, ★and **an offline letter wakes nobody** ✓ ⇒ ★blocking it **buys nothing** ✓ |
+| ★**an online letter to an "offline-only" member ⇒ refused** | ★★**send anyway + say "treated as offline for them"** ✗✓ (★**`mode` in the envelope is untouched** ✓ —— ★it sits inside the signature domain ✓) | ★Same reasoning ✓ |
+
+★**All three keep a way back** ✗: ★`requireHello: 'reject'` / `offlineOnlyMode: 'reject'` ⇒ ★**an old deployment writing those sees no change at all** ✓.
+
+### ★★ Two real bugs (★the kind you only see by running it) ✗✓
+
+* ★★★ **The quota ledger loses entries under concurrency** ✗✓ —— ★12 real sub-processes each writing one entry left only **8 / 9 / 10** in the ledger ✓
+  (★and "**the quota is someone else's money**" ✓, ★with **no fallback at all** ✓) ⇒ ★now **each entry is its own increment file** ✓
+  (★"**each writes its own**" —— ★**the very cure the original used for `ack`** ✓). ★Old ledgers **are still read** ✓.
+* ★★**The watermark could go backwards** ✗✓ —— ★under 12-way concurrency, **the last process to write may be the one that claimed its sequence first** ⇒ ★it wrote a **smaller** `n` ✓
+  ⇒ ★now it is **monotonic** ✓ (★the worst case moves from "wrote too small" to "wrote one time fewer" ✓ —— ★and a missed write is fixed by the next send ✓).
+
+### ★★ Other additions (★the per-entry list is below, marked ★★★ ✓)
+
+* ★★★ **Structured acknowledgements** ✗✓: ★one receipt states **two things** (★`recipientState` + `disposition` ✓),
+  ★★**and `disposition` prefers the delivery note written by the sender** ✓ (★`deliveryNote` **travels with the letter** ✓).
+* ★★★ **S11: dormant ⇒ bounce** ✗✓ plus ★★**`dormant --pin`** ✗✓ (★promoting an **inferred** dormancy into a **declared** one ✓ ——
+  ★"**an inferred dormancy never bounces automatically**": ★otherwise "bounce ⇒ the evidence disappears ⇒ judged active again" **oscillates** ✗).
+* ★★★ **S6h's three hard jobs** ✗✓: ★a half-written `.tmp` ⇒ `垃圾/` (★**never delete** ✗) / ★**a fetched letter keeps its original mtime** ✓ /
+  ★**a future timestamp is judged stale** ✓ (★fail-safe: ★**a misjudgement may only lean towards offline** ✓).
+* ★★ **S8: the daily cap on online letters to a "phone"** ✗✓ (★the allowance is `min(self-declared, ceiling)` ✓ —— ★**a declaration can only be more conservative** ✓).
+* ★★ **S12: do not hang when the link drops** ✗✓ (★probe before touching the mailbox ✓ —— ★measured: **22.7 s** down to **2.8 s** ✓).
+* ★★ **Four tools** ✗✓: `racetest` (11 criteria) / `xcheck` (cross-package, 6) / `doccheck` (CN/EN doc parity, 3) /
+  `pkgcheck` (package metadata, 11 ✓) —— ★**all wired into `npm run selftest`** (★**10 items** now ✓).
+* ★★ **Criteria 199 → 339** ✗✓.
+
 ## v0.2.0 —— 2026-10-10
 
 ★★ **In one sentence** ✗: **this is the first version that works when you simply follow the README** ✓ —— the previous one had **all six plugins fail to load** inside a real engine.

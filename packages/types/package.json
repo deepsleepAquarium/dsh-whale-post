@@ -1,6 +1,6 @@
 {
   "name": "dsh-whale-post-types",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "邮件类型注册表接口 ＋ 样例类型（direct／broadcast／club）",
   "keywords": [
     "dsh",
@@ -46,4 +46,3 @@
     "registry": "https://registry.npmjs.org"
   }
 }
-
