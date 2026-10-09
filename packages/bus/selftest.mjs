@@ -208,12 +208,25 @@ try {
   expectThrow('没握手', () => bus.send({ as: 'alice', to: 'carol', subject: 'x', body: '正文有货', force: false }), /未知收件人/)
   check('拒发：四条非法输入都当场挡住', fails.length === 0, fails.join('；'))
 
-  // ⑥ 握手闸：对方没有新鲜 hello ⇒ 拒（--force 才放行）
+  // ⑥ ★★握手（2026-10-10 按正本改成"**未握手不再拒发**"✗✓ —— ★正本判据 1-3 ＋「主人 2026-10-06 01:5x 令」✓）
+  //   ★新口径三态：`false` 不检查 ／ `'reject'` 旧的拒发 ／ 其它真值（默认）⇒ **照发 ＋ 明示降级为离线** ✓
   writeFileSync(join(tmp, 'roster.json'), JSON.stringify({ apiVersion: 1, members: [{ id: 'alice' }, { id: 'bob' }, { id: 'dave' }], groups: {} }), 'utf8')
-  let helloReject = ''
-  try { bus.send({ as: 'alice', to: 'dave', subject: 'x', body: '对方没握手就该拒（正文有货）' }) } catch (e) { helloReject = e.message }
-  check('握手闸：没握过手 ⇒ 拒发', /未与 dave 建立握手/.test(helloReject), helloReject)
-  check('握手闸：--force 可以强发（收信侧只认签名）', !!bus.send({ as: 'alice', to: 'dave', force: true, subject: 'x', body: '强发：绕过握手但照旧签名（正文有货）' }).id)
+  //   ⚠️★下面这些必须写 `mode: 'online'` ✗ —— ★不写就默认**离线**，而**离线件根本不看握手** ✓
+  //     （★我第一版就漏了它 ⇒ 两条判据假红 ✓ —— ★这本身就是正本第 3 条的现场例证 ✓）
+  const noHello = bus.send({ as: 'alice', to: 'dave', mode: 'online', subject: 'x', body: '对方没握手 ⇒ 照发，但要大声说（正文有货）' })
+  check('★★握手：没握过手 ⇒ **不再拒发** ✗（信照落对方信箱 ✓）', !!noHello.id)
+  check('★★握手：**明示"对它们降级为离线"** ✗（不许静默 ✓，★与正本同名字段 `wakePrediction.willWait`）',
+    Array.isArray(noHello.wakePrediction?.willWait) && noHello.wakePrediction.willWait.includes('dave'), JSON.stringify(noHello.wakePrediction))
+  check('★握手：握过手的人 ⇒ **不该**出现在 willWait 里（别乱报警 ✓）',
+    !(noHello.wakePrediction?.willWait ?? []).includes('bob'))
+  check('★握手：**离线件根本不看握手** ✓（① 离线件躺着等人，握手管不着它 ✓）',
+    !!bus.send({ as: 'alice', to: 'dave', mode: 'offline', subject: 'x', body: '离线件不看握手（正文有货）' }).id)
+  check('握手：--force 照旧能强发（收信侧只认签名）', !!bus.send({ as: 'alice', to: 'dave', force: true, subject: 'x', body: '强发：绕过握手但照旧签名（正文有货）' }).id)
+  //   ★`'reject'` 三态里保留旧的"拒发" ⇒ 老部署写它 ⇒ **一字不变** ✓
+  const strictHello = createBus({ root: tmp, services: { roster: createRoster({ file: join(tmp, 'roster.json') }), types }, requireHello: 'reject' })
+  let strictMsg = ''
+  try { strictHello.send({ as: 'alice', to: 'dave', mode: 'online', subject: 'x', body: '配了 reject 就该拒（正文有货）' }) } catch (e) { strictMsg = e.message }
+  check('★握手：`requireHello: "reject"` ⇒ **保留旧的拒发**（老部署一字不变 ✓）', /未与 dave 建立握手/.test(strictMsg), strictMsg)
 
   // ⑦ 坏信：挪进"退信"，不炸
   writeFileSync(join(tmp, 'inbox', 'bob', 'garbage.msg.json'), '{ 这不是 JSON', 'utf8')

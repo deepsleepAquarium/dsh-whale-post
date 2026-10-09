@@ -379,11 +379,25 @@ export function createBus(config = {}) {
         skippedDormant = asleep
       }
     }
-    if (cfg.requireHello && !force) {
+    // ★★★握手（2026-10-10 按正本改：**未握手不再拒发** ✗✓ —— ★正本判据 1-3 ＋「**主人 2026-10-06 01:5x 令**」✓）
+    //   ★为什么改 ✗：★"拒发"是**更早**的版本；★新口径是 ★**照发 ＋ 大声说明"对它们降级为离线"** ✓✓。
+    //   ★★理由正是"**信只会晚到，不会不到**"：★叫不醒 ⇒ 就**留在箱里等人** ✓；
+    //     而"拒发"是**反的** —— 信**根本没出去**，发信人还以为"协议不让发" ✗。
+    //   ★三态（★老部署写 `'reject'` ⇒ **一字不变** ✓）：
+    //     · `false`       ⇒ ★**不检查**握手（也不明示 ✓）
+    //     · `'reject'`    ⇒ ★**旧的"拒发"** ✓（保留给要旧行为的人 ✓）
+    //     · 其它真值（★默认 `true`）⇒ ★**照发 ＋ 明示降级** ✓
+    //   ⚠️ ★本封是**离线件**时**根本不看握手** ✓（★离线件躺着等人，握手管不着它 ✓）
+    let willWait = []
+    if (m !== 'offline' && cfg.requireHello && !force) {
       const missing = targets.filter((t) => !helloFresh(t))
       if (missing.length) {
-        throw new Error(`未与 ${missing.join('、')} 建立握手（对方没有新鲜的 hello，或已过期）—— ` +
-          `协议不许"像 UDP 那样"直接发。让对方先跑 hello；确需强发用 --force（收信侧只认签名与摘要、不看握手，会照收）。`)
+        if (cfg.requireHello === 'reject') {
+          throw new Error(`未与 ${missing.join('、')} 建立握手（对方没有新鲜的 hello，或已过期）—— ` +
+            `协议不许"像 UDP 那样"直接发。让对方先跑 hello；确需强发用 --force（收信侧只认签名与摘要、不看握手，会照收）。`)
+        }
+        // ★★新口径：**照发**，但把"这些人叫不醒、信会留在箱里等"**明示**出来 ✗✓（★不许静默 ✓）
+        willWait = missing
       }
     }
     // ★闸：只问接口（闸可以拒，也可以记账）—— 把它判断需要的东西都给出去（含 force／链深／组员名单）
@@ -416,7 +430,10 @@ export function createBus(config = {}) {
     const st = loadState(as)
     st.recent = [...(st.recent ?? []), { to, atMs: env.sentAtMs, subject: String(subject).slice(0, 40) }].slice(-200)
     saveState(as, st)
-    return { id, seq, to, targets, mode: m, type, verdict, hop, env, ...(skippedDormant.length ? { skippedDormant } : {}) }
+    return { id, seq, to, targets, mode: m, type, verdict, hop, env,
+      ...(skippedDormant.length ? { skippedDormant } : {}),
+      // ★★正本同名：`wakePrediction.willWait` ＝ **"这些人叫不醒，信会留在箱里等"** ✗✓（★不许静默 ✓）
+      ...(willWait.length ? { wakePrediction: { willWait } } : {}) }
   }
   // 回环链深：数一数这封信是本链第几跳（父信读不到 ⇒ 当第 1 跳，不冤枉人）
   function hopOf(parentId) {

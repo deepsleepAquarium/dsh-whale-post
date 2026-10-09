@@ -160,7 +160,7 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* 把这段文字送进那�
 | `bus` | `root` | `WHALE_POST_ROOT` ⇒ `./.whale-mail` | ★信箱根（**信就落在这里** ✓） |
 | | `keyFile` | `<root>/signing.key` | ★签名密钥（首用时自动生成 ✓） |
 | | `maxBody` | `64 KiB` | ★正文上限 ✓ |
-| | `requireHello` | `true` | ★要不要握手（协议不许"像 UDP 那样"直接发 ✓） |
+| | `requireHello` | `true` | ★★**三态** ✗：★默认 ⇒ **照发 ＋ 明示"降级为离线"** ✓（★返回值 `wakePrediction.willWait` ✓）；★`false` ⇒ 不检查；★**`'reject'` ⇒ 旧的"拒发"** ✓。★**离线件根本不看握手** ✓ |
 | | `helloMaxAgeMs` | `24 小时` | ★握手多旧算过期 ✓ |
 | | `defaultType` | `'direct'` | ★★配 `null` ⇒ **没写类型的信直接拒发**（不替调用方猜 ✓） |
 | | `offlineOnlyFlag` | 不配 | ★对带此属性的成员**发在线即拒发** ✓（见 §七） |

@@ -162,7 +162,7 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* deliver this text into th
 | `bus` | `root` | `WHALE_POST_ROOT` ⇒ `./.whale-mail` | ★mailbox root (**this is where letters land** ✓) |
 | | `keyFile` | `<root>/signing.key` | ★signing key (generated on first use ✓) |
 | | `maxBody` | `64 KiB` | ★body size limit ✓ |
-| | `requireHello` | `true` | ★whether a handshake is required (the protocol forbids "sending like UDP" ✓) |
+| | `requireHello` | `true` | ★★**three states** ✗: ★the default ⇒ **send anyway + say plainly "downgraded to offline"** ✓ (via `wakePrediction.willWait` ✓); ★`false` ⇒ no check; ★**`'reject'` ⇒ the old "refuse to send"** ✓. ★**offline letters never look at the handshake** ✓ |
 | | `helloMaxAgeMs` | `24 hours` | ★how old a handshake may be ✓ |
 | | `defaultType` | `'direct'` | ★★set it to `null` ⇒ **a letter with no type is refused** (we do not guess for the caller ✓) |
 | | `offlineOnlyFlag` | unset | ★**an online letter to a member carrying this attribute is refused** ✓ (see §7) |

@@ -89,6 +89,16 @@
   (the CLI prints **"not delivered to: …"** ✓ —— **no silence** ✓).
   ★The attribute name comes from **configuration** ✓; unset ⇒ the rule is entirely off (backward compatible ✓).
 * ★**`cli`: `--only-offline <attribute>` / `--dormant <attribute>`** —— ★both rules can finally be switched on from the command line ✓.
+* ★★★ **No handshake no longer means "refused"** ✗✓ (ported from the original on 2026-10-10; ★its criteria 1-3 plus "**the keeper's order of 2026-10-06 01:5x**" ✓)
+  —— ★**another "opposite direction"** ✗: ★it used to throw and refuse when there was no handshake ✓; the new rule is
+  ★**send anyway + say plainly "downgraded to offline for them"** ✓✓.
+  ★Verbatim from the original: ★"**if you cannot wake them, leave it in the box for them —— but say so loudly**" ✓ ——
+  ★★and "refusing" is **backwards**: ★the letter **never leaves**, yet the sender believes "the protocol forbids it" ✗
+  (★which is at odds with "a letter only arrives late, never not at all" ✓).
+  ★Implementation: `requireHello` now has **three states** ✗ —— ★the default truthy value ⇒ **send anyway + `wakePrediction.willWait`** ✓;
+  ★`false` ⇒ no check ✓; ★**`'reject'` ⇒ keeps the old refusal** ✓ (★an old deployment writing it sees **no change at all** ✓).
+  ★Alongside: ★**offline letters never consult the handshake** ✓ (★they lie there waiting; the handshake is none of their business ✓).
+  The return field `wakePrediction.willWait` has the **same name as in the original** ✓ (★so the two ends can be read against each other later ✓).
 * ★**`cli`: the "do not hang when the link drops" probe in `pickup` (S12)** ✗✓ —— ★**the fourth item ported from the tank's original** ✓:
   ★verbatim from the original: ★"**when SMB drops, synchronous fs calls hang for tens of seconds** ✗ (a local disk does not ✓)
   ⇒ `pickup` hangs, and so does sending ✓". ⇒ ★**probe before touching the postbox**: TCP **445** only;
