@@ -141,11 +141,27 @@ export function createVerify(config = {}) {
    *   而各自的自测都自洽（自测里造信也用字符串）⇒ **全绿但一接就炸** ✓。
    */
   const keyBuf = (key) => (/^[0-9a-f]{64}$/i.test(String(key)) ? Buffer.from(String(key), 'hex') : Buffer.from(String(key), 'utf8'))
+  /**
+   * ★★★签名域**只有一套真相** ✗✓（2026-10-10 修）——
+   *   ★病 ✗：★这份文件**抄了一份 `FIELD_ORDER`** ✓（★注释还写着"与 `whale-bus` 的 `FIELD_ORDER` 一致" ✓），
+   *     而★**两套名单会漂移** ✓：★我在 `bus` 里加了 `peerStateAtSend` 等字段 ⇒
+   *     ★这边却把它判成"**未登记字段**" ⇒ ★**一封完全合法的信被拒收、挪进退信** ✗✓。
+   *   ★★★ ⇒ ★★**传了 `cfg.bus` 就认它那份** ✓（★本文件那份只剩"没接 bus 时的兜底" ✓）；
+   *   ★★这才是"一套真相"的写法 ✓（★"两边都写一份"再怎么写注释都会漂 ✓）。
+   */
+  const fieldsOf = () => {
+    // ★优先用**注入的延迟函数** ✓（★`() => bus.FIELD_ORDER` —— ★函数体延迟求值 ⇒ 天然躲过暂时性死区 ✓）
+    try { const f = cfg.bus?.fields?.(); if (Array.isArray(f) && f.length) return f } catch { /* 还没建好 ⇒ 往下兜底 ✓ */ }
+    // ★其次认**直接给的数组** ✓（★谁直接传就认谁 ✓）
+    if (Array.isArray(cfg.bus?.FIELD_ORDER) && cfg.bus.FIELD_ORDER.length) return cfg.bus.FIELD_ORDER
+    // ★最后才是**本文件那份兜底** ✓（★没接 bus 时用 ✓ —— ★它**不该**成为第二套真相 ✓）
+    return FIELD_ORDER
+  }
   function macOf(env, key) {
     if (typeof cfg.bus?.sign === 'function') {
       try { return cfg.bus.sign(env) } catch { /* bus 的签名抛了 ⇒ 退回内置 */ }
     }
-    const canonical = JSON.stringify(FIELD_ORDER.filter((k) => env[k] !== undefined).map((k) => [k, env[k]]))
+    const canonical = JSON.stringify(fieldsOf().filter((k) => env[k] !== undefined).map((k) => [k, env[k]]))
     return createHmac('sha256', keyBuf(key)).update(canonical, 'utf8').digest('hex')
   }
 
@@ -172,7 +188,7 @@ export function createVerify(config = {}) {
         if (env[k] === undefined || env[k] === null) return { ok: false, why: `信封缺字段：${k}` }
       }
       // ③ 不许有未登记字段（★加字段忘了进签名域＝那个字段可被随便改 ✓）
-      const unknown = Object.keys(env).filter((k) => !FIELD_ORDER.includes(k) && k !== 'mac')
+      const unknown = Object.keys(env).filter((k) => !fieldsOf().includes(k) && k !== 'mac')
       if (unknown.length) return { ok: false, why: `信封里有未登记字段：${unknown.join(',')}` }
       // ④ 摘要（★只有"信"有正文 ⇒ 只对 kind==='msg' 查；hello／ack 不查 ✓）
       if (env.kind === 'msg' && digestOf(env.body ?? '') !== env.sha256) {

@@ -250,6 +250,43 @@ export function createBus(config = {}) {
     } catch { return null }
   }
 
+  /**
+   * ★★回执④：**拒收**（验签不过）✗✓（2026-10-10 从正本移植；★正本判据 90 ✓）
+   *   ★护栏（正本原话）✗：★"**坏信封（没 `from`／`id` ⇒ 连回执都不知道写给谁）绝不许把邮局搞崩**" ✓
+   *   ⇒ ★**缺 `from`／`id` 就静默返回** ✓（★那封信本来就会被挪进退信 ✓，不必也不能回执 ✓）。
+   *   ⚠️ ★整段包在 `try` 里 ✓ —— ★回执写不出去**绝不许**连累收信主流程 ✓。
+   */
+  function writeRefusal(as, env, why) {
+    try {
+      if (!as || !env || typeof env !== 'object' || !env.from || !env.id) return undefined
+      const ackEnv = seal({ v: V, kind: 'ack', id: env.id, from: as, to: env.from, seq: env.seq ?? 0, body: '', sha256: '', sentAtMs: Date.now(), re: env.id,
+        by: as, ok: false, note: `拒收：${String(why).slice(0, 200)}`, recipientState: meStateOf(as), disposition: 'refused' })
+      atomicWrite(join(paths().ack(env.from), `${env.id}.${as}.ack.json`), JSON.stringify(ackEnv, null, 2))
+      return ackEnv
+    } catch { return undefined }
+  }
+  /** ★我（收件人）此刻的状态：★"我在不在线"＝**我自己发出去的 `hello` 新不新鲜** ✓ */
+  function meStateOf(as) {
+    try {
+      const h = JSON.parse(readFileSync(paths().hello(as), 'utf8'))
+      const age = Date.now() - Number(h.sentAtMs ?? 0)
+      const skew = Number(cfg.helloClockSkewMs) >= 0 ? Number(cfg.helloClockSkewMs) : 60000
+      if (!Number.isFinite(age) || age < -skew) return 'offline'
+      return age < cfg.helloMaxAgeMs ? 'online' : 'stale-online'
+    } catch { return 'offline' }
+  }
+  /** ★★我"看到"的**别人**的状态（发信时写进信封，`peerStateAtSend`）✗✓（正本判据 99 ✓）——
+   *   ★"发信人当时看到的状态"**只有发信人知道** ✓ ⇒ ★只能**发信时写下来** ✓（★事后谁也推不出来 ✓）。 */
+  function peerStateOf(id) {
+    try {
+      const h = JSON.parse(readFileSync(paths().hello(id), 'utf8'))
+      const age = Date.now() - Number(h.sentAtMs ?? 0)
+      const skew = Number(cfg.helloClockSkewMs) >= 0 ? Number(cfg.helloClockSkewMs) : 60000
+      if (!Number.isFinite(age) || age < -skew) return 'offline'
+      return age < cfg.helloMaxAgeMs ? 'online' : 'stale-online'
+    } catch { return 'offline' }      // ★没 hello ⇒ 从没见它报到过 ⇒ `offline` ✓（不猜别的 ✓）
+  }
+
   function helloFresh(as) {
     try {
       const env = JSON.parse(readFileSync(paths().hello(as), 'utf8'))
@@ -454,6 +491,11 @@ export function createBus(config = {}) {
       // ★★"投递说明"随信过去 ✗✓（★收信侧才知道"**为什么**走了离线" ✓）——
       //   ★`offlineOnly`（对方声明仅收离线 ✓）优先于 `willWait`（未握手 ✓）：★前者是**对方的属性**，更根本 ✓。
       ...(offlineOnly.length ? { deliveryNote: 'offline-only' } : (willWait.length ? { deliveryNote: 'no-handshake' } : {})),
+      // ★★`peerStateAtSend` ✗✓（★正本判据 99：★回执带上「**发信人当时看到的状态**」✓）——
+      //   ★「当时看到什么」**只有发信人能记** ✓（★事后谁也推不出来 ✓）⇒ ★**发信时就写进信封** ✓。
+      //   ★只看**点名一个**收件人的场合（`targets.length === 1`）—— ★群发时不写它：
+      //     ★「我看到的状态」对不同人**不一样**，只写一个会**误导** ✗（★要写就得分人，那是下一版的事 ✓）。
+      ...(targets.length === 1 ? { peerStateAtSend: peerStateOf(targets[0]) } : {}),
       ...(hop === undefined ? {} : { re, hop }) })
     // ★★★S11：收件人**全休眠** ⇒ **退信** ✗✓（2026-10-10 从正本移植；正本判据 100-104 ＋「主人 2026-10-06 02:5x 令」✓）
     //   ★五条口径 ✗：① ★**不落它信箱** ✓（它不会有人来取 ⇒ 落进去就是永远堆着 ✓）
@@ -557,6 +599,13 @@ export function createBus(config = {}) {
       }
       const probs = verify(env)
       if (probs.length) {
+        // ★★★回执④：★**拒收**（验签不过）⇒ 写一份 `ok:false` ＋ `disposition:'refused'` ✗✓
+        //   （2026-10-10 从正本移植；★"主人 2026-10-06 01:5x 令"＋正本判据 90 ✓）
+        //   ★为什么该写 ✗：★不写的话**发信人永远等不到回执** ✓ —— ★它会一直以为"信在路上" ✓。
+        //   ★★正本那条护栏的另一半 ✗✓：★"**坏信封（没 `from`／`id` ⇒ 连回执都不知道写给谁）
+        //     绝不许把邮局搞崩 ⇒ 直接不写回执**" ✓ ⇒ ★**反过来：只要 `from`／`id` 在，就该写一份** ✓✓。
+        //   ⚠️ ★信封可能是**坏 JSON**（★上面已 `continue` ✓）或**验签不过但结构可读** ✓ ⇒ 这里只碰后者 ✓。
+        writeRefusal(as, env, probs.join('；'))
         out.push({ ok: false, file: f, id: env.id, why: probs.join('；') + moveDead(f, JSON.stringify(env, null, 2)) })
         continue
       }
@@ -636,17 +685,11 @@ export function createBus(config = {}) {
             ? 'delivered-offline-by-declaration'
             : (env.deliveryNote === 'no-handshake' ? 'delivered-offline-by-stale' : 'accepted-online'))
           : 'delivered-offline'
-        const myHello = paths().hello(as)
-        const meState = (() => {
-          try {
-            const h = JSON.parse(readFileSync(myHello, 'utf8'))
-            const age = Date.now() - Number(h.sentAtMs ?? 0)
-            if (!Number.isFinite(age) || age < -60000) return 'offline'
-            return age < cfg.helloMaxAgeMs ? 'online' : 'stale-online'
-          } catch { return 'offline' }
-        })()
         const ackEnv = seal({ v: V, kind: 'ack', id: env.id, from: as, to: env.from, seq: env.seq ?? 0, body: '', sha256: '', sentAtMs: Date.now(), re: env.id,
-          by: as, ok: true, note: '', recipientState: meState, disposition })
+          by: as, ok: true, note: '', recipientState: meStateOf(as), disposition,
+          // ★★`peerStateAtSend` ✗✓（★正本判据 99：★"回执带上**发信人当时看到的状态**" ✓）——
+          //   ★它**从信封里读** ✓（★发信时写下的 ✓）—— ★事后谁也推不出来"当时看到什么" ✓。
+          ...(env.peerStateAtSend ? { peerStateAtSend: env.peerStateAtSend } : {}) })
         atomicWrite(join(paths().ack(env.from), `${env.id}.${as}.ack.json`), JSON.stringify(ackEnv, null, 2))
         saveState(as, { ...st, seen: [...(st.seen ?? []), env.id] })
       }
@@ -662,7 +705,13 @@ export function createBus(config = {}) {
     env.body,
   ].filter(Boolean).join('\n')
 
-  const api = { apiVersion, send, pump, verify, hello, helloFresh, declaredOnlineCap, format, paths, root, keyHex, digest, seal, sign, loadState }
+  const api = { apiVersion, send, pump, verify, hello, helloFresh, declaredOnlineCap, format, paths, root, keyHex, digest, seal, sign, loadState,
+    // ★★★签名域**必须暴露出来** ✗✓（2026-10-10 修）——
+    //   ★"一套真相"的前提是**别人拿得到** ✓：★`verify` 包原来自己抄了一份 ⇒ 两边会漂移
+    //     ⇒ ★我加 `peerStateAtSend` 之后，**完全合法的信被判"未登记字段"、当场挪进退信** ✗（实测抓出来的 ✓）。
+    //   ★★`FIELD_ORDER` 就是**签名域的唯一真相** ✓ ⇒ ★`verify` 通过 `cfg.bus.fields()` 读它 ✓。
+    //   ★（不知道这条链的人会以为"加个字段进 FIELD_ORDER 就够了" —— ★而**下游那份没跟上** ✓）
+    FIELD_ORDER: [...FIELD_ORDER], LEGACY_FIELDS: [...LEGACY_FIELDS] }
   return api
 }
 

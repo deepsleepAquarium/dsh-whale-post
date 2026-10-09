@@ -325,6 +325,20 @@ try {
       return sendAndAck({ as: 'alice', to: 'dave', mode: 'offline', subject: 'f', body: '收件人状态（正文有货，别当回执）' }, 'dave')?.recipientState === 'online'
     })())
 
+  // ★★★签名域**必须暴露出来** ✗✓（2026-10-10 修）——
+  //   ★"一套真相"的前提是**别人拿得到** ✓：★`verify` 包原来自己抄了一份 ⇒ 两边漂移 ⇒
+  //     ★我加 `peerStateAtSend` 之后**合法的信被判"未登记字段"、当场挪进退信** ✗（实测抓出来的 ✓）。
+  check('★★签名域暴露：`api.FIELD_ORDER` 在，且**含新加的字段**（★下游才拿得到 ✓）',
+    Array.isArray(bus.FIELD_ORDER) && bus.FIELD_ORDER.includes('peerStateAtSend') && bus.FIELD_ORDER.includes('deliveryNote'),
+    JSON.stringify(bus.FIELD_ORDER ?? null))
+  //   ⓘ ★"它是不是**副本**"这一条**没有判** ✗ —— ★不暴露内部那份就验不了 ✓；
+  //     只保证"**条数够、含新字段、下游拿得到**" ✓（★要验副本得再开一个内部出口，不值当 ✓）。
+  check('★签名域暴露：条数与内部一致（★不是空壳 ✓）',
+    bus.FIELD_ORDER.length >= 20 && new Set(bus.FIELD_ORDER).size === bus.FIELD_ORDER.length,
+    `len=${bus.FIELD_ORDER?.length}`)
+  check('★签名域暴露：`LEGACY_FIELDS` 也在（★老信的 `auth` 认得出 ✓）',
+    Array.isArray(bus.LEGACY_FIELDS) && bus.LEGACY_FIELDS.includes('auth'))
+
   // ⑦ 坏信：挪进"退信"，不炸
   writeFileSync(join(tmp, 'inbox', 'bob', 'garbage.msg.json'), '{ 这不是 JSON', 'utf8')
   const bad = bus.pump({ as: 'bob', reader: true })

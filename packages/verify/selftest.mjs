@@ -155,6 +155,28 @@ try {
   check('坏输入：状态文件不是 JSON ⇒ 不炸，从零起', vb.status().enabled === false && vb.nag() !== null)
   const vb2 = createVerify({ root: join(tmp, '不存在'), enabled: false, now: t0 })
   check('坏输入：根目录不存在 ⇒ 不炸', vb2.status().enabled === false && vb2.nag() !== null)
+
+  // ★★★签名域**只有一套真相** ✗✓（2026-10-10 修）——
+  //   ★病：★本包原来自己抄了一份 `FIELD_ORDER` ✓ ⇒ ★而"两边都写一份"再怎么写注释都会**漂** ✓：
+  //     ★`bus` 加了 `peerStateAtSend` 等字段 ⇒ ★本包把它判成"**未登记字段**"
+  //     ⇒ ★**一封完全合法的信被拒收、当场挪进退信** ✗（★实测抓出来的：`cli` 自测红 ✓）。
+  //   ★方：★**接了 `bus` 就认它那份** ✓ —— ★用**延迟函数**读（★函数体延迟 ⇒ 躲过暂时性死区 ✓）。
+  const ref = {}
+  const vf = createVerify({ root: tmp, enabled: true, keysDir: join(tmp, 'keys'), bus: { fields: () => ref.bus?.FIELD_ORDER } })
+  ref.bus = { FIELD_ORDER: [...FIELD_ORDER, 'brandNewFieldFromBus'] }     // ★模拟"bus 那边加了字段"
+  check('★★一套真相：接了 `bus` ⇒ 用**它**那份（★新字段不再被判"未登记" ✓）',
+    (() => {
+      const r = vf.verify({ v: 1, kind: 'msg', id: 'x1', from: 'a', to: 'b', seq: 1, body: 'b', sentAtMs: Date.now(), brandNewFieldFromBus: 'ok' })
+      return !(r.ok === false && /未登记字段/.test(String(r.why)))
+    })())
+  check('★一套真相：**没接** bus ⇒ 用本包兜底那份（★不含 bus 的新字段 ⇒ 退回原行为 ✓）',
+    (() => {
+      const v2 = createVerify({ root: tmp, enabled: true, keysDir: join(tmp, 'keys') })
+      //   ⓘ ★这里**直接判表**，不判 `verify()` 的返回值 ✗ ——
+      //     ★我第一版判的是 `r.ok === false && /未登记字段/` ⇒ ★而它**先被"签名不符"拦住了**
+      //     （★那封信本来就签不出正确 MAC ✓）⇒ `why` 里没有"未登记" ⇒ **假红** ✓（★又一次"判据写得比事实窄" ✓）。
+      return !v2.FIELD_ORDER.includes('brandNewFieldFromBus')
+    })())
 } catch (err) {
   check('自测没有抛异常', false, err && err.stack ? err.stack.split('\n')[0] : err)
 }

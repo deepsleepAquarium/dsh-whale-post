@@ -83,13 +83,26 @@ function wire({ root, live, allow: allowIn, verifyEnabled } = {}) {
   const allow = (Array.isArray(allowIn) && allowIn.length)
     ? allowIn
     : String(opt('allow', '')).split(',').map((s) => s.trim()).filter(Boolean)
+  const vSvc = createVerify({ root: r, enabled: flag('enable-verify') || verifyEnabled === true, allow,
+    // ★★签名域的**唯一真相**用**延迟函数**交过去 ✗✓（2026-10-10 修）——
+    //   ★`() => services.busRef?.FIELD_ORDER`：★函数体**延迟求值** ⇒ ★天然躲过暂时性死区 ✓
+    //   （★我第一版写成立即求值的属性 ⇒ `Cannot access 'services' before initialization` ✓；
+    //    第二版改成建完 bus 回填 `vSvc.cfg.bus` ⇒ ★**没生效** ⇒ 还是被判"未登记字段" ✓ ⇒ 才改成这个 ✓）
+    bus: { sign: (env) => services.busRef?.sign(env), fields: () => services.busRef?.FIELD_ORDER } })
   const services = {
     roster: createRoster({ file: opt('roster') ?? join(r, 'roster.json') }),
     types: createTypes(),
     // ★`--no-gate` ⇒ **整套闸都不要** ✓（★并发压测要用 ✓ —— 12 路同对发信会被回环闸**正确地**拦住 ✓，
     //   而压测要看的是"发号会不会撞"，不是"闸拦不拦" ✓；★缸里正本用的是环境变量 `WHALE_POST_NO_GATE` ✓）
     ...(flag('no-gate') ? {} : { gate: createGate({ root: r }) }),
-    verify: createVerify({ root: r, enabled: flag('enable-verify') || verifyEnabled === true, allow }),
+    // ★★把**签名域那一份真相**交给 verify ✗✓（2026-10-10 修）——
+    //   ★`verify` 原来自己抄了一份 `FIELD_ORDER` ⇒ ★**两边会漂移** ✗：
+    //     我在 `bus` 里加字段（`peerStateAtSend` 等）⇒ ★那封**完全合法**的信被判成"未登记字段"
+    //     ⇒ ★**被拒收、挪进退信** ✗（★这是实测抓出来的：`cli` 自测当场红 ✓）。
+    //   ⚠️ ★`bus` 得等 `services` 建完才存在 ✗ ⇒ ★**不能在这里读它**（★我第一版写 `services.busRef?.FIELD_ORDER`
+    //      ⇒ **暂时性死区** ⇒ `Cannot access 'services' before initialization` ✓ —— ★而箭头函数那种延迟写法**躲得过** ✓，
+    //      立即求值的属性**躲不过** ✓）；★所以这里**先建**，等 `bus` 建好再**回填 `cfg.bus`** ✓。
+    verify: vSvc,
     deliver: createDeliver({
       sessionOf: (id) => (liveSet.has(id) ? { live: true, inject: (text) => injected.push({ id, text }) } : undefined),
     }),
@@ -103,6 +116,7 @@ function wire({ root, live, allow: allowIn, verifyEnabled } = {}) {
     ...(opt('only-offline') ? { offlineOnlyFlag: opt('only-offline') } : {}),
     ...(opt('dormant') ? { dormantFlag: opt('dormant') } : {}),
   })
+  services.busRef = bus     // ★回填：★`verify` 那边通过**延迟函数**读它（★"一套真相" ✓ —— 见上面 `vSvc` 那段的注释 ✓）
   return { root: r, bus, services, injected, liveSet, allow }
 }
 

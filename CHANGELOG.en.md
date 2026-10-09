@@ -140,6 +140,19 @@
   (★they **must** be in the domain —— "one receipt states two things" has to be **detectable if altered** ✓; ★old acknowledgements are unaffected ✓).
   ★Criteria 88 → 95: one per state plus ★**a criterion for the opposite mistake** (an offline letter to an offline-only member stays `delivered-offline` ✓), field completeness, and `recipientState` being computed by the recipient.
   ★Negative test: breaking the "offline letter" branch turns **2 criteria genuinely red** ✓.
+* ★★★ **There is exactly one source of truth for the signature domain** ✗✓ (fixed 2026-10-10, exposed by a **real bug**) ——
+  ★**The illness** ✗: ★the `verify` package had **copied `FIELD_ORDER` for itself** ✓ (★its comment even claimed "identical to `whale-bus`" ✓)
+  ⇒ ★and **two lists will always drift** ✓: ★I added fields such as `peerStateAtSend` in `bus` ⇒
+  ★`verify` judged that **perfectly valid** letter as having an "**unregistered field in the envelope**" ⇒ ★**refused on the spot and moved it to `退信`** ✗✓
+  (★the live scene: `pump` printed `安全校验不过：信封里有未登记字段：peerStateAtSend ⇒ 已挪进"退信"` ✓).
+  ★**The cure** ✗: ★**if `bus` is wired in, use its table** —— ★`bus` now **exposes `FIELD_ORDER` / `LEGACY_FIELDS` on its `api`** ✓,
+  ★and `verify` reads them through **`cfg.bus.fields()` (a lazy function)** ✓. ★No `bus` ⇒ falls back to this package's own copy (★behaviour unchanged ✓).
+  ★★Why a **lazy function** rather than handing over the array ✗✓: ★`bus` does not exist until `services` (which contains `verify`) is built ⇒
+  ★**eager evaluation hits the temporal dead zone** (`Cannot access 'services' before initialization` ✗);
+  ★a **function body is deferred**, so it sidesteps that ✓ (★my first attempt evaluated eagerly; my second — back-filling `cfg.bus` after construction — **did not take effect** ✓).
+  ★Criteria: `bus` 98 (**`api.FIELD_ORDER` exists + contains the new fields + is not an empty shell** ✓);
+  `verify` 47 (**wired in ⇒ use its table** / **not wired ⇒ use the fallback** ✓).
+  ★Negative test: removing the lazy-function branch turns **both `verify` and `cli` red** ✓.
 * ★**`cli`: `--only-offline <attribute>` / `--dormant <attribute>`** —— ★both rules can finally be switched on from the command line ✓.
 * ★★★ **No handshake no longer means "refused"** ✗✓ (ported from the original on 2026-10-10; ★its criteria 1-3 plus "**the keeper's order of 2026-10-06 01:5x**" ✓)
   —— ★**another "opposite direction"** ✗: ★it used to throw and refuse when there was no handshake ✓; the new rule is
