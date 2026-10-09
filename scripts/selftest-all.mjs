@@ -13,6 +13,24 @@ const only = process.argv.includes('--each')
 const items = ['bus', 'roster', 'types', 'deliver', 'gate', 'verify', 'cli']
 
 const results = []
+
+// ★★ 静态判据（接真引擎那一关换来的 ✗）：**源码里不许读写 `ctx.whale` 这个属性**。
+//   真 Cordis 里读 `ctx.whale` 要先 `inject`，没声明就抛
+//   `cannot get property "whale" without inject` ⇒ ★六个插件**全都加载不上** ✓；
+//   而 `--dump-config` 只组配置树、不跑 `apply()` ⇒ **完全看不出来**，
+//   只有"真启一遍"才会炸。所以把它钉成一条静态判据，免得下一个人再踩。
+import { readFileSync as _readFileSync, readdirSync as _readdirSync } from 'node:fs'
+{
+  const offenders = []
+  for (const p of ['bus', 'roster', 'types', 'deliver', 'gate', 'verify', 'cli']) {
+    let src = ''
+    try { src = _readFileSync(join(repo, 'packages', p, 'index.js'), 'utf8') } catch { continue }
+    const codeOnly = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+    if (/ctx\.whale\s*=|ctx\?\.whale\?\./.test(codeOnly)) offenders.push(p)
+  }
+  console.log(`— ${'static'.padEnd(9)} ${offenders.length === 0 ? 'PASS  无 ctx.whale 属性读写（★真引擎上会抛 without inject）' : 'FAIL  这几件还在读 ctx.whale：' + offenders.join('、')}`)
+  if (offenders.length) process.exitCode = 1
+}
 for (const p of items) {
   const file = join(repo, 'packages', p, 'selftest.mjs')
   process.stdout.write(`— ${p.padEnd(9)} `)

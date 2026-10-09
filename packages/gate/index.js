@@ -179,6 +179,5 @@ export function createGate(config = {}) {
 export function apply(ctx, config = {}) {
   const gate = createGate(config)
   if (typeof ctx?.provide === 'function') ctx.provide('whale.gate', gate)
-  if (ctx && typeof ctx === 'object') ctx.whale = { ...(ctx.whale ?? {}), gate }
   return gate
 }

@@ -55,6 +55,5 @@ export function createDeliver(config = {}) {
 export function apply(ctx, config = {}) {
   const deliver = createDeliver(config)
   if (typeof ctx?.provide === 'function') ctx.provide('whale.deliver', deliver)
-  if (ctx && typeof ctx === 'object') ctx.whale = { ...(ctx.whale ?? {}), deliver }
   return deliver
 }

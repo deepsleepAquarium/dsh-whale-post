@@ -59,6 +59,5 @@ export function createRoster(config = {}) {
 export function apply(ctx, config = {}) {
   const roster = createRoster(config)
   if (typeof ctx?.provide === 'function') ctx.provide('whale.roster', roster)
-  if (ctx && typeof ctx === 'object') ctx.whale = { ...(ctx.whale ?? {}), roster }
   return roster
 }

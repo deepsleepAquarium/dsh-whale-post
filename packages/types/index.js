@@ -45,6 +45,5 @@ export function createTypes(config = {}) {
 export function apply(ctx, config = {}) {
   const types = createTypes(config)
   if (typeof ctx?.provide === 'function') ctx.provide('whale.types', types)
-  if (ctx && typeof ctx === 'object') ctx.whale = { ...(ctx.whale ?? {}), types }
   return types
 }

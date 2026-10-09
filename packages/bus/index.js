@@ -411,16 +411,15 @@ export function createBus(config = {}) {
 /** 插件入口：挂进 Cordis 风格的 ctx（拿不到容器也能被 CLI 直接 import 使用） */
 export function apply(ctx, config = {}) {
   const services = {
-    roster: ctx?.get?.('whale.roster') ?? ctx?.whale?.roster,
-    types: ctx?.get?.('whale.types') ?? ctx?.whale?.types,
-    gate: ctx?.get?.('whale.gate') ?? ctx?.whale?.gate,
-    deliver: ctx?.get?.('whale.deliver') ?? ctx?.whale?.deliver,
+    roster: ctx?.get?.('whale.roster'),
+    types: ctx?.get?.('whale.types'),
+    gate: ctx?.get?.('whale.gate'),
+    deliver: ctx?.get?.('whale.deliver'),
     // ★安全校验的**策略**（开关／白名单／提示）—— 由第七件提供；
     //   没装 ⇒ `undefined` ⇒ 核心照旧验签（向后兼容 ✓）
-    verify: ctx?.get?.('whale.verify') ?? ctx?.whale?.verify,
+    verify: ctx?.get?.('whale.verify'),
   }
   const bus = createBus({ ...config, services })
   if (typeof ctx?.provide === 'function') ctx.provide('whale.bus', bus)
-  if (ctx && typeof ctx === 'object') ctx.whale = { ...(ctx.whale ?? {}), bus }
   return bus
 }

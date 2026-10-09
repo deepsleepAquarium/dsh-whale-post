@@ -234,9 +234,8 @@ export function createVerify(config = {}) {
 
 /** 插件入口：挂进 Cordis 风格的 ctx（拿不到容器也能被 CLI 直接 import 使用 ✓） */
 export function apply(ctx, config = {}) {
-  const bus = ctx?.get?.('whale.bus') ?? ctx?.whale?.bus
+  const bus = ctx?.get?.('whale.bus')
   const v = createVerify({ ...config, bus })
   if (typeof ctx?.provide === 'function') ctx.provide('whale.verify', v)
-  if (ctx && typeof ctx === 'object') ctx.whale = { ...(ctx.whale ?? {}), verify: v }
   return v
 }
