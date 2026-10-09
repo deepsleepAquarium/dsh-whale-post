@@ -74,6 +74,11 @@
   ★**addressing someone by name is unaffected** ✗ (the rule from the tank: "broadcasts skip it, naming it gets through").
   An explicit `without: null` means "do not drop anyone this time".
 * ★**`cli`: `verify` / `nag` subcommands** —— the three-state design is finally visible from the command line.
+* ★★**`cli`: `pickup` (remote root)** ✗✓ —— ★**go to another mailbox root and fetch your own letters** ✓ (★**it works offline** ✓ ——
+  this is the step to take once the bell in "3 offline : 1 online" has rung ✓). The remote root comes from `--remote <dir>` or `WHALE_POST_REMOTE_ROOT` ✓.
+  ★Three hard rules: ★★**verify every letter first** (a failing one is **not moved**, and the remote copy is **left in place** ✗) ✓;
+  ★**delete the remote copy only after it is written locally** (**otherwise that is a lost letter** ✓);
+  ★**skip what is already there** (idempotent ✓ —— a second run reports "fetched 0" ✓). A missing remote directory or a missing `--remote` ⇒ **a clear reason + exit code 2** ✓.
 
 ### ★ Documentation
 

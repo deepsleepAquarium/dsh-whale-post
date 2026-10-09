@@ -192,6 +192,7 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* 把这段文字送进那�
 |---|---|
 | ★发一封信 | ★`bus.send({ as, to, subject, body, mode })` ✓ |
 | ★收信 | ★`bus.pump({ as, reader: true })` ✓ |
+| ★★**去别的信箱根取信** ✗ | ★★`pickup --as <谁> --remote <别处的信箱根>` ✓（★离线可用；亦可设 `WHALE_POST_REMOTE_ROOT` ✓） |
 | ★群发 | ★`send({ to: 'all' })` 或 `to: '<组名>'` ✓ |
 | ★让某人不收群发 | ★`roster` 的 **`groupWithout`** ✓（点名照样到 ✓） |
 | ★让某人只收离线 | ★`bus` 的 **`offlineOnlyFlag`** ✓（发在线会**拒发并告诉你怎么办** ✓） |

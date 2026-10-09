@@ -7,6 +7,9 @@
  *                     [--type direct|broadcast|club|…] [--re <父信 id>] [--force]
  *                     [--live bob,carol]     # 哪些收件人此刻有"活体会话"（在线件才会真投出去）
  *   whale-post pump   --as bob [--keep]      # 收信（默认消费：搬进 seen ＋ 写 ack）
+ *   whale-post pickup --as web --remote <别处的信箱根>
+ *                                            # ★去**别的信箱根**把自己的信取回来（★离线也能用）
+ *                                            #   远端根也可用环境变量 WHALE_POST_REMOTE_ROOT
  *   whale-post quota  --as alice [--days 7]
  *   whale-post roster / types / key / selftest
  *
@@ -14,7 +17,7 @@
  * 退出码：0 ＝ 成功；2 ＝ 拒发／输入不合法；1 ＝ 没料到的错。
  * ★判据看**退出码**，不要看输出里的中文。
  */
-import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync, renameSync, unlinkSync } from 'node:fs'
 import { join } from 'node:path'
 import { createBus } from 'dsh-whale-post-bus'
 import { createRoster } from 'dsh-whale-post-roster'
@@ -246,6 +249,37 @@ function main() {
         if (r.ok && r.body) console.log(r.body.split('\n').map((l) => '    | ' + l).join('\n'))
       }
       return 0
+    }
+    if (cmd === 'pickup') {
+      // ★★去**别的信箱根**把我自己的信取回来 ✗（2026-10-10 缸内口径移植 ——
+      //   这正是"离 3 在 1"里那只铃响过之后该做的事：我人不在那儿，但信在）
+      //   ① 从远端读  ② **每封先验签**（不过的**不搬** ✗）  ③ 写进本地（先 .tmp 再 rename）
+      //   ④ ★★**写成功之后才删远端** ✗（否则就是丢信）  ⑤ 已在 seen／已有的**跳过**（幂等 ✓）
+      const as = opt('as') || die(2, 'pickup 需要 --as')
+      const remote = opt('remote') ?? process.env.WHALE_POST_REMOTE_ROOT
+      if (!remote) die(2, 'pickup 需要 --remote <远端信箱根>（或环境变量 WHALE_POST_REMOTE_ROOT）')
+      const rInbox = join(remote, 'inbox', as)
+      if (!existsSync(rInbox)) die(2, `远端没有这个收件箱：${rInbox}（★远端根要指到"信箱根"那一层 ✓）`)
+      const mine = bus.paths().inbox(as)
+      mkdirSync(mine, { recursive: true })
+      const seenDir = bus.paths().seen(as)
+      const seen = existsSync(seenDir) ? new Set(readdirSync(seenDir).filter((x) => x.endsWith('.msg.json'))) : new Set()
+      let took = 0, skipped = 0, bad = 0
+      for (const f of readdirSync(rInbox).filter((x) => x.endsWith('.msg.json'))) {
+        if (seen.has(f) || existsSync(join(mine, f))) { skipped++; continue }   // ★幂等：已经有 ⇒ 一律不动 ✓
+        let env = null
+        try { env = JSON.parse(readFileSync(join(rInbox, f), 'utf8')) } catch { bad++; console.log(`坏件   ${f}（读不出来 ⇒ 不搬）`); continue }
+        const probs = bus.verify(env)
+        if (probs.length) { bad++; console.log(`不过   ${f} :: ${probs.join('；')}（★不搬、远端那封留着 ✓）`); continue }
+        const tmp = join(mine, `.${f}.tmp`)
+        writeFileSync(tmp, JSON.stringify(env, null, 2), 'utf8')
+        renameSync(tmp, join(mine, f))          // ★落地（抛了就轮不到下一行 ✓）
+        unlinkSync(join(rInbox, f))             // ★★只有落地成功才删远端 ✗
+        took++
+        console.log(`取回   ${f} :: ${env.from} → ${as}《${env.subject ?? ''}》[${env.mode ?? 'online'}]`)
+      }
+      console.log(`\n取回 ${took} 封，跳过 ${skipped} 封（已有），没搬 ${bad} 封 —— ★远端没搬走的都还在那儿 ✓`)
+      return bad > 0 && took === 0 ? 2 : 0
     }
     if (cmd === 'quota') {
       const as = opt('as')

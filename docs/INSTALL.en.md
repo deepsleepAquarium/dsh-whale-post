@@ -194,6 +194,7 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* deliver this text into th
 |---|---|
 | ★send a letter | ★`bus.send({ as, to, subject, body, mode })` ✓ |
 | ★receive letters | ★`bus.pump({ as, reader: true })` ✓ |
+| ★★**fetch letters from another mailbox root** ✗ | ★★`pickup --as <who> --remote <the other mailbox root>` ✓ (★works offline; `WHALE_POST_REMOTE_ROOT` also works ✓) |
 | ★broadcast | ★`send({ to: 'all' })` or `to: '<group>'` ✓ |
 | ★keep someone off broadcasts | ★`roster`'s **`groupWithout`** ✓ (addressing them by name still works ✓) |
 | ★make someone receive offline letters only | ★`bus`'s **`offlineOnlyFlag`** ✓ (an online letter is **refused, with the way out spelled out** ✓) |
