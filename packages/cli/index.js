@@ -326,8 +326,16 @@ function main() {
     }
     if (cmd === 'hello') {
       const as = opt('as') || die(2, 'hello 需要 --as')
-      bus.hello({ as })
-      console.log(`hello 已写：${as}（这是"我活着、可以收信"的握手；别人发信前会看它新不新鲜）`)
+      //   ★★`--recv` / `--cap`：★**收件习惯由邮差自己声明** ✗✓（2026-10-10 补；
+      //     ★正本《跨设备邮局-1.0局域网实现清单》附录三 ✓）——
+      //     · ★`--recv offline-only` ⇒ ★对它发在线件时**明示"按离线寄达"** ✓（★不拒发 ✓）；
+      //     · ★`--cap 3` ⇒ ★自报"每天最多收几封在线件" ✓（★闸取 `min(自报, 天花板)` ✓）。
+      //   ★两个都**进签名域** ✓（★"自报"也要能被验出改过 ✓）；不给 ⇒ 不进信封 ✓（老 hello 照旧 ✓）。
+      const recv = opt('recv') || undefined
+      const cap = opt('cap') ? Number(opt('cap')) : undefined
+      bus.hello({ as, recv, onlineCapPerDay: cap })
+      const extra = [recv ? `收件习惯=${recv}` : '', Number.isFinite(cap) ? `自报在线上限=${cap}` : ''].filter(Boolean).join('，')
+      console.log(`hello 已写：${as}（这是"我活着、可以收信"的握手；别人发信前会看它新不新鲜）${extra ? '【' + extra + '】' : ''}`)
       return 0
     }
     if (cmd === 'roster') {
@@ -370,6 +378,17 @@ function main() {
         console.log(`★没投：${r.skippedDormant.join('、')} 被明确标成休眠 ⇒ 信没进它们的信箱（换人或先让它们醒）`)
       }
       console.log(`投递策略：${verdictTxt}`)
+      //   ★★★"**明示**"必须打到**发信人眼前** ✗✓（2026-10-10 补）——
+      //     ★★**病** ✗：★`wakePrediction.offlineOnly` 原来**只落在信封里** ✓ ⇒ ★**发信人看不到** ✗ ——
+      //       ★而"**不许静默降级**"的本意正是"**如实告诉发件人**" ✓（★不是"悄悄写进信封" ✓）。
+      //     ★所以这里把它说出来 ✓：★哪儿个人是**按离线寄达**的 ✓、★哪几个是**没握手**的 ✓。
+      const wp = r.wakePrediction ?? {}
+      if (Array.isArray(wp.offlineOnly) && wp.offlineOnly.length) {
+        console.log(`★对 ${wp.offlineOnly.join('、')} **按离线寄达**（★它们自己声明只收离线 ⇒ 这封不会叫醒它们）—— ★不是故障，信已在它们的信箱里 ✓`)
+      }
+      if (Array.isArray(wp.willWait) && wp.willWait.length) {
+        console.log(`★对 ${wp.willWait.join('、')} **没叫醒**（★没有新鲜握手 ⇒ 降级为离线寄达）—— ★信已留箱等人来收 ✓`)
+      }
       const bucket = r.mode === 'offline' ? 'offline' : r.type
       const b = services.gate?.report({ as }).buckets.find((x) => x.bucket === bucket)
       if (b) console.log(`配额（${bucket} 桶）：今日 ${b.used}/${Number.isFinite(b.limit) ? b.limit : '∞'}${r.mode === 'offline' ? ' 条' : ' 单位'}`)

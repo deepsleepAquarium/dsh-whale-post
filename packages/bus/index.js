@@ -22,7 +22,7 @@ import { join, dirname } from 'node:path'
 export const name = 'whale-bus'
 export const apiVersion = 1
 export const V = 1
-const FIELD_ORDER = ['v', 'kind', 'id', 'from', 'to', 'seq', 'subject', 'body', 'sha256', 'sentAtMs', 'type', 'mode', 're', 'hop', 'onlineCapPerDay',
+const FIELD_ORDER = ['v', 'kind', 'id', 'from', 'to', 'seq', 'subject', 'body', 'sha256', 'sentAtMs', 'type', 'mode', 're', 'hop', 'onlineCapPerDay', 'recv',
   // ★★结构化回执的字段（2026-10-10，正本"主人 2026-10-06 01:5x 令"✓）——
   //   ★它们**必须进签名域** ✓：★"一张回执说清两件事"是要**能验出改过**的 ✓。
   //   ★对老 ack **无影响** ✓（canonical 只收**出现过的**字段 ✓）。
@@ -229,17 +229,47 @@ export function createBus(config = {}) {
    *   ★缸里 S8 的口径：★**每封在线件 ＝ 叫醒一个成员做一次满上下文推理**（**最贵的那一步** ✓）
    *   ⇒ 收件习惯**由它自己声明** ✓，★而**声明只能更保守** ✗（闸那边取 `min(自报, 天花板)` ✓）。
    *   ★它**进签名域** ✓（"自报"也要能被验出改过 ✓）；★不给 ⇒ **不进信封** ✓ ⇒ 老 hello 的签名照旧有效 ✓。
+   *
+   * ★★★`recv` ＝ **收件习惯的第二个声明位** ✗✓（2026-10-10 补；★正本《跨设备邮局-1.0局域网实现清单》
+   *   附录三「收件习惯应由邮差自己声明」✓ —— ★那一份我 2026-10-10 才读到 ✓）：
+   *   · ★`'offline-only'` ⇒ ★**对它发在线件 ⇒ 按"只收离线"办** ✓（★不拒发、**明示** ✓ —— ★同
+   *     `offlineOnlyFlag` 那一套 ✓）；
+   *   · ★`'online-ok'` ⇒ ★**明确说"能被叫醒"** ✓（★今天**不改行为** ✗ —— ★见下面的 ⚠️）；
+   *   · ★★**不给这个字段 ⇒ 什么都不变** ✗✓（★按名册／按老配置 ✓）。
+   *   ⚠️ ★★**正本附录三原话是"没有新鲜 hello ⇒ 按最保守：只许离线"** ✗ ——
+   *     ★**而直接照做会误伤** ✓✓：★**缸内成员平时也可能没有新鲜 hello** ✓
+   *     ⇒ ★"没有 ⇒ 只许离线"会把**缸内的在线件全拦掉** ✗（★今天没有任何一条判据这么要求 ✓）。
+   *     ★⇒ 这里**只做"显式声明"那一支** ✓；★"说不清就往保守倒"**留给手机那条线** ✓
+   *     （★那一条的真意是"**手机不在时本来就没有 hello ⇒ 天然只收离线**" ✓，★不是"改造缸内" ✓）。
+   *   ★正本还有两条护栏 ✓，**都已成立** ✗：★**声明只能更保守**（`min(自报, 天花板)` ✓）／
+   *     ★**假声明骗不了别人**（hello 是**它自己签的** ✓）。
    */
-  function hello({ as, onlineCapPerDay } = {}) {
+  function hello({ as, onlineCapPerDay, recv } = {}) {
     if (!as) throw new Error('hello 需要 as')
     ensure()
     const cap = Number(onlineCapPerDay)
+    const rc = recv === 'offline-only' || recv === 'online-ok' ? recv : null
     const env = seal({
       v: V, kind: 'hello', id: `hello-${as}`, from: as, to: '*', seq: 0, body: '', sentAtMs: Date.now(),
       ...(Number.isFinite(cap) && cap >= 0 ? { onlineCapPerDay: Math.floor(cap) } : {}),
+      ...(rc ? { recv: rc } : {}),
     })
     atomicWrite(paths().hello(as), JSON.stringify(env, null, 2))
     return env
+  }
+  /**
+   * ★读某个成员**自己签的 hello** 里那份收件习惯（★没有 ⇒ `null` ✓ —— **不替它猜** ✗）
+   *
+   * ⚠️ ★只认**新鲜**的 hello ✗（★过期的租约不算声明 ✓ —— ★否则"一年前说过 offline-only"
+   *   会**永久**生效 ✗）。★`helloFresh` 是现成的 ✓。
+   */
+  function declaredRecv(as) {
+    try {
+      if (!helloFresh(as)) return null
+      const env = JSON.parse(readFileSync(paths().hello(as), 'utf8'))
+      const v = env.recv
+      return v === 'offline-only' || v === 'online-ok' ? v : null
+    } catch { return null }
   }
   /** ★读某个成员**自己签的 hello** 里那份自报上限（没有 ⇒ `null` ✓ —— **不替它猜** ✗） */
   function declaredOnlineCap(as) {
@@ -442,8 +472,17 @@ export function createBus(config = {}) {
     //     配了（真值）⇒ **照发 ＋ 明示** ✓；★**配成 `'reject'` ⇒ 保留旧的"拒发"** ✓（老部署一字不变 ✓）。
     //   ⚠️ 用**展开后的 targets** ✓ ⇒ 发给一个组、组里有人只收离线，也一样能明示出来 ✓。
     let offlineOnly = []
-    if (m === 'online' && cfg.offlineOnlyFlag && services.roster && typeof services.roster.flag === 'function') {
-      const stuck = targets.filter((t) => services.roster.flag(t, cfg.offlineOnlyFlag))
+    if (m === 'online') {
+      //   ★★判据有**两个来源** ✗✓（2026-10-10 补；★正本附录三 ✓）：
+      //     · ★**名册钉死位**（`offlineOnlyFlag` ✓ —— ★老配置照旧管用 ✓）；
+      //     · ★★**它自己签的 hello 里的 `recv: 'offline-only'`** ✓（★"收件习惯由邮差自己声明" ✓）。
+      //   ★★**并集** ✗✓ —— ★声明能**扩大**保护面 ✓，★而**不缩小** ✓（★名册说它只收离线 ⇒ 声明说 online-ok 也不算数 ✓
+      //     —— ★"声明只能更保守" ✓）。
+      const fromRoster = (cfg.offlineOnlyFlag && services.roster && typeof services.roster.flag === 'function')
+        ? targets.filter((t) => services.roster.flag(t, cfg.offlineOnlyFlag))
+        : []
+      const fromDecl = targets.filter((t) => declaredRecv(t) === 'offline-only')
+      const stuck = [...new Set([...fromRoster, ...fromDecl])]
       if (stuck.length) {
         if (cfg.offlineOnlyMode === 'reject') {
           throw new Error(`拒发：${stuck.join('、')} 只收离线件（配置 offlineOnlyFlag='${cfg.offlineOnlyFlag}' ＋ offlineOnlyMode='reject'）—— ` +
@@ -723,7 +762,7 @@ export function createBus(config = {}) {
     env.body,
   ].filter(Boolean).join('\n')
 
-  const api = { apiVersion, send, pump, verify, hello, helloFresh, declaredOnlineCap, format, paths, root, keyHex, digest, seal, sign, loadState,
+  const api = { apiVersion, send, pump, verify, hello, helloFresh, declaredOnlineCap, declaredRecv, format, paths, root, keyHex, digest, seal, sign, loadState,
     // ★★★签名域**必须暴露出来** ✗✓（2026-10-10 修）——
     //   ★"一套真相"的前提是**别人拿得到** ✓：★`verify` 包原来自己抄了一份 ⇒ 两边会漂移
     //     ⇒ ★我加 `peerStateAtSend` 之后，**完全合法的信被判"未登记字段"、当场挪进退信** ✗（实测抓出来的 ✓）。

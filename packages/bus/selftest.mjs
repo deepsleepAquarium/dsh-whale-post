@@ -493,6 +493,52 @@ check('★★**字段多寡会改变签名值** ✓（★同一封→相同；�
     } catch { return false }
   })())
 
+// ★★★`recv`：**收件习惯由邮差自己声明** ✗✓（2026-10-10 补；
+//   ★正本《跨设备邮局-1.0局域网实现清单》附录三 ✓ ——
+//   ★★“收件习惯应由**邮差自己声明**” ✓：★判据从“**名册钉死位**”换成“**它自己的声明**” ✓。
+//   ★★两个来源取**并集** ✗✓（★声明能**扩大**保护面、★**不能缩小** ✓）。
+//   ⚠️ ★★正本原话是“没有新鲜 hello ⇒ 只许离线” ✗ —— ★而**直接照做会误伤** ✓：
+//     ★**缸内成员平时也可能没有新鲜 hello** ✓ ⇒ ★那一支会把缸内在线件**全拦掉** ✗。
+//     ★⇒ 这里**只做“显式声明”那一支** ✓；★“说不清就往保守倒”**留给手机那条线** ✓。
+check('★★★`recv`：声明 `offline-only` 的人 ⇒ 对它的**在线件会明示** ✗✓（★不拒发、**明示** ✓）',
+  (() => {
+    try {
+      const r = join(tmp, 'recv-decl'); mkdirSync(r, { recursive: true })
+      const rf = join(r, 'roster.json')
+      writeFileSync(rf, JSON.stringify({ apiVersion: 1, members: [{ id: 'alice' }, { id: 'bob' }, { id: 'carol' }] }), 'utf8')
+      const ro = createRoster({ file: rf })
+      const bu = createBus({ root: r, services: { roster: ro }, offlineOnlyMode: 'warn' })
+      bu.hello({ as: 'alice' }); bu.hello({ as: 'bob' }); bu.hello({ as: 'carol', recv: 'offline-only' })
+      const s = bu.send({ as: 'alice', to: 'carol', body: '在线件发给“只收离线”的人（★正文有货，别当回执）', mode: 'online', type: 'direct' })
+      return JSON.stringify(s.wakePrediction ?? {}).includes('offlineOnly')
+    } catch { return false }
+  })())
+check('★★★声明了才算 ✓：**没声明的人不受影响** ✓（★不能误伤缸内 ✗）',
+  (() => {
+    try {
+      const r = join(tmp, 'recv-null'); mkdirSync(r, { recursive: true })
+      const rf = join(r, 'roster.json')
+      writeFileSync(rf, JSON.stringify({ apiVersion: 1, members: [{ id: 'alice' }, { id: 'bob' }, { id: 'carol' }] }), 'utf8')
+      const ro = createRoster({ file: rf })
+      const bu = createBus({ root: r, services: { roster: ro }, offlineOnlyMode: 'warn' })
+      bu.hello({ as: 'alice' }); bu.hello({ as: 'bob' }); bu.hello({ as: 'carol', recv: 'offline-only' })
+      const s = bu.send({ as: 'alice', to: 'bob', body: '给普通人的在线件（★正文有货，别当回执）', mode: 'online', type: 'direct' })
+      return JSON.stringify(s.wakePrediction ?? {}).includes('offlineOnly') === false
+    } catch { return false }
+  })())
+check('★♙离线件发给声明者 ⇒ **不提示** ✓（★它本来就收离线件 ✓）',
+  (() => {
+    try {
+      const r = join(tmp, 'recv-off'); mkdirSync(r, { recursive: true })
+      const rf = join(r, 'roster.json')
+      writeFileSync(rf, JSON.stringify({ apiVersion: 1, members: [{ id: 'alice' }, { id: 'bob' }, { id: 'carol' }] }), 'utf8')
+      const ro = createRoster({ file: rf })
+      const bu = createBus({ root: r, services: { roster: ro }, offlineOnlyMode: 'warn' })
+      bu.hello({ as: 'alice' }); bu.hello({ as: 'carol', recv: 'offline-only' })
+      const s = bu.send({ as: 'alice', to: 'carol', body: '离线件（★正文有货，别当回执）', mode: 'offline', type: 'direct' })
+      return JSON.stringify(s.wakePrediction ?? {}).includes('offlineOnly') === false
+    } catch { return false }
+  })())
 } catch (err) {
   check('自测没有抛异常', false, err && err.stack ? err.stack.split('\n')[0] : err)
 }

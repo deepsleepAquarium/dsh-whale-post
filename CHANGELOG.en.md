@@ -447,6 +447,38 @@
     ★★what it does catch is the most common case: ★**commenting out a criterion while editing code** ✓.
   ★ⓘ ★**While writing this, `doccheck` immediately caught a table row of mine missing a column** ✓ (★in both the Chinese and English copies ✓) ——
     ★★**the tools watch each other** ✓, which has now happened several times tonight ✓.
+* ★★★ **Added the `recv` field from the original's "receiving habits are declared by the courier itself"** ✗✓ (2026-10-10) ——
+  ★★**I only read that document in round 60** ✗✓: 《跨设备邮局-1.0局域网实现清单》 (★2026-10-06 02:0x ✓)
+  appendix three —— ★**all eight slices S1–S8 were done** ✓, ★**but two things in that appendix were not** ✗:
+  ★`onlineCapPerDay` was done ✓, ★**`recv` (★`'offline-only'` / `'online-ok'` ✓) was not** ✗.
+  ★**What it means** ✗✓: ★"**the criterion moves from a **roster pin** to **the declaration it makes itself****" ✓ ——
+  ★★that is: ★**who receives offline-only should be said by that member in its own `hello`** ✓, ★**not always by a field in the roster** ✓.
+
+  1. ★`bus`
+     · `hello({ as, onlineCapPerDay, recv })` ⇒ ★`recv` **enters the signature domain** ✓ (★a self-declaration must be detectable if altered ✓);
+     · ★`declaredRecv(as)` ⇒ ★**only a fresh hello counts** ✓ (★an expired lease is not a declaration ⇒ otherwise "said it a year ago" would hold forever ✗);
+     · ★★`send`'s `offlineOnly` criterion is now the **union of two sources** ✗✓: ★the roster pin ✓ + ★**its own declaration** ✓ ——
+       ★★**a declaration can widen protection, never narrow it** ✓ (★"a declaration may only be more conservative" ✓).
+     · ⚠️ ★★**The original says "no fresh hello ⇒ be most conservative: offline only"** ✗ ——
+       ★**and doing that literally does harm** ✗✓: ★**in-tank members may have no fresh hello either** ⇒ ★that branch would **block every online letter inside the tank** ✗.
+       ★⇒ ★**only the "explicit declaration" branch was implemented** ✓; ★"when in doubt, lean conservative" **is left to the phone line** ✓
+       (★its real meaning is "**a phone that is away naturally has no hello ⇒ offline-only by default**" ✓, ★not "rework the tank" ✗).
+
+  2. ★`cli`
+     · `hello --recv offline-only` / `hello --cap 2` ✓ (★both enter the signature domain ✓, ★omitted means absent from the envelope ✓);
+     · ★★★**and more importantly: the disclosure now reaches the sender's eyes** ✗✓ ——
+       ★★**The illness** ✗: `wakePrediction.offlineOnly` used to live **only inside the envelope** ⇒ ★**the sender never saw it** ✗ ——
+       ★and "**no silent downgrade**" means "**tell the sender plainly**" ✓ (★not "quietly write it into the envelope" ✓).
+       ⇒ ★`send` now says: ★"★for carol **delivered as offline** (★they declared offline-only ⇒ this letter will not wake them) —— ★not a failure" ✓
+       / ★"★for bob **not woken** (★no fresh handshake ⇒ downgraded to offline delivery) —— ★the letter waits in the box" ✓.
+
+  3. Criteria: `bus` 100 → **103** ✓ (★a declarer is disclosed / ★non-declarers are unaffected / ★offline letters produce no notice ✓);
+     `cli` 48 → **50** ✓ (★"delivered as offline" appears in the output / ★"not woken" appears in the output ✓). ★**346 criteria** in all ✓.
+     ★Negative tests: ★disabling the `declaredRecv` branch ⇒ **genuinely red** ✓; ★disabling the output disclosure ⇒ **genuinely red** ✓.
+
+  ★ⓘ ★★**The criterion-count baseline caught me on its very first real outing** ✗✓: ★I inserted the criterion in the wrong place
+    (★`cli/selftest` has **no** `} catch (err) {` door ✓), ★**while the baseline had already been changed to 49** ✓ ⇒
+    the run reported ★"criteria **shrank**: cli 49 → 48" ✓ —— ★★**the check installed in round 59 caught my ordering mistake in round 60** ✓✓.
 * ★**`cli`: `--only-offline <attribute>` / `--dormant <attribute>`** —— ★both rules can finally be switched on from the command line ✓.
 * ★**`cli`: `verify` / `nag` subcommands** —— ★the three-state design is finally visible from the command line
   (★`verify --enable` / `--disable` / `--allow a,b`; `nag` tells you whether a notice is due ✓).

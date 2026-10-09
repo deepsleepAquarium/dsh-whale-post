@@ -291,6 +291,29 @@ check('★★S12：够不着的 UNC ⇒ **快速判死**（不是挂几十秒）
 check('★S12：判死时说清"一个文件都没动"',
   /一个文件都没动/.test(deadRes.stdout + deadRes.stderr), String(deadRes.stdout + deadRes.stderr).slice(0, 60))
 
+// ★★★"**明示**"必须打到**发信人眼前** ✗✓（2026-10-10 补）——
+//   ★★**病** ✗：`wakePrediction.offlineOnly` 原来**只落在信封里** ✓ ⇒ ★**发信人看不到** ✗ ——
+//     ★而"**不许静默降级**"的本意正是"**如实告诉发件人**" ✓（★不是"悄悄写进信封" ✓）。
+//   ★ⓘ ★这一条我**第一次插错了位置**（★`cli/selftest` 里**没有** `} catch (err) {` 那道门 ✓）——
+//     ★★而**条数基准当场把我抓住了** ✓：★我先把基准从 48 改成 49 ✓ ⇒ ★跑出来报
+//     「★判据**变少**了：cli 49 → 48」✓ —— ★★**新装的检查第一次实战就抓到了我自己的顺序错误** ✓✓。
+const rcRoot = join(process.env.TEMP ?? '/tmp', `whale-cli-recv-${Date.now()}`)
+mkdirSync(rcRoot, { recursive: true })
+writeFileSync(join(rcRoot, 'roster.json'), JSON.stringify({ apiVersion: 1, members: [{ id: 'alice' }, { id: 'carol' }, { id: 'bob2' }] }), 'utf8')
+run(['hello', '--as', 'alice', '--root', rcRoot])
+run(['hello', '--as', 'carol', '--recv', 'offline-only', '--root', rcRoot])
+const rcSend = run(['send', '--as', 'alice', '--to', 'carol', '--mode', 'online', '--no-gate',
+  '--body', '明示测试（★正文有货，别当回执）', '--root', rcRoot])
+check('★★★对"只收离线"者发**在线**件 ⇒ 输出里**明说"按离线寄达"** ✗✓（★不只写进信封 ✓）',
+  rcSend.status === 0 && String(rcSend.stdout).includes('按离线寄达'),
+  String(rcSend.stdout).slice(0, 80))
+//   ★★"没握手"也要明示 ✗（★同样不许静默 ✓）—— ★bob2 故意**不写 hello** ✓
+const rcSend2 = run(['send', '--as', 'alice', '--to', 'bob2', '--mode', 'online', '--no-gate',
+  '--body', '没握手测试（★正文有货，别当回执）', '--root', rcRoot])
+check('★★对**没新鲜握手**者发在线件 ⇒ 输出里**明说"没叫醒"** ✗✓（★降级要大声说 ✓）',
+  rcSend2.status === 0 && String(rcSend2.stdout).includes('没叫醒'),
+  String(rcSend2.stdout).slice(0, 80))
+
 for (const c of checks) console.log(`${c.ok ? 'PASS' : 'FAIL'}  ${c.name}${c.ok ? '' : '  :: ' + c.extra}`)
 const pass = checks.filter((c) => c.ok).length
 console.log(`\n${pass}/${checks.length} 通过`)
