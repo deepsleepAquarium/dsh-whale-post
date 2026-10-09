@@ -172,6 +172,9 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* 把这段文字送进那�
 | | `extra` | 不配 | ★在样例之外**追加**注册 ✓ |
 | `deliver` | `sessionOf` | 不接 | ★**接真引擎的唯一接线口** ✓（见 §三） |
 | | `blocked` | `[]` | ★明确挡掉的收件人（信不进它的信箱 ✓） |
+| | ★★`oldestPendingMs` ✗ | 不接 | ★★**休眠推断路的探针** ✗：`(id) => 该收件箱里"最老的一封没读的信"的落盘时间（ms；0 ⇒ 没有积压 ✓）`。★不接 ⇒ **如实报 `unknown`** ✓（★"不知道"就说不知道 ✓） |
+| | ★`declaredDormant` ✗ | 不接 | ★**明示休眠探针**：`(id) => boolean` ✓（★"谁被标了休眠"由名单/配置给 ✓） |
+| | ★`dormantSoftDays`／`HardDays` ✗ | `3`／`7` | ★★"醒着"／"安静"／"休眠"的门槛 ✓（★**硬纪律：没有积压 ⇒ 不许判休眠** ✗） |
 | `gate` | `quota.onOver` | `'reject'` | ★`'reject'` 拒发 ／ ★`'price'` **照发但计费**（"价格闸，不是封嘴闸"✓） |
 | | `quota.dayBoundaryHour` | `0` | ★日界：0 ＝ 自然日；★写 `9` ＝ 早九点到次日早九点算一天 ✓ |
 | | `quota.types` | 四个样例桶 | ★每桶 `limit`；★**离线桶可 `perSend: true`**（按发信次数计，组发不翻倍 ✓） |

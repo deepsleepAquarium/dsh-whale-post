@@ -18,6 +18,10 @@
 export const name = 'whale-deliver'
 export const apiVersion = 1
 
+/** ★休眠阈值（天）：soft 天内算"醒着"／soft～hard 算"安静"／≥ hard 算休眠 ✓（与缸里正本同值 ✓） */
+const DORMANT_SOFT_DEFAULT = 3
+const DORMANT_HARD_DEFAULT = 7
+
 export function createDeliver(config = {}) {
   const sessionOf = typeof config.sessionOf === 'function' ? config.sessionOf : () => undefined
   const blocked = new Set((config.blocked ?? []).map(String))
@@ -28,9 +32,47 @@ export function createDeliver(config = {}) {
     letter.body,
   ].filter(Boolean).join('\n')
 
+  // ── ★★S10 v2 休眠判定（2026-10-10 从缸里正本移植 ✓）─────────────────────────
+  //   ⚠️ v1 的教训 ✗：★**不许拿「邮差还活着」当「它在读信」** ✗ —— 真局一照就穿帮：
+  //      ★缸里的"小毛咪"邮差每 10 分钟替她续 `hello` ✓，**可她本人不读信** ✓（量到的是邮差 ✗）。
+  //   ⇒ 判定走两路 ✓（★都带 `source`，**不许把推断说成声明** ✗）：
+  //      ① **明示位** ⇒ `source: 'declared'` ✓（★"谁被标了休眠"由配置/名单给 —— 本件不认识具体词 ✓）
+  //      ② **推断** ⇒ ★**它信箱里最老的一封没读的信，躺了多久** ✓ —— 这才是「没读信」的**明证** ✓
+  //   ⚠️ 两条硬纪律 ✗：
+  //      · ★**没有积压 ⇒ 不许判休眠** ✗（★"没信可读" ≠ "不读信" ✓）
+  //      · ★**只用落盘 mtime** ✓（★不信内容里的时间戳 —— "这封信什么时候到的"是盘说了算 ✓）
+  //   ⚠️ `unknown` ＝ ★**"我们不知道"** ✗ —— **不是"它休眠"** ✓（没明示位、也没积压时就是它 ✓）
+  const softDays = Number(config.dormantSoftDays) > 0 ? Number(config.dormantSoftDays) : DORMANT_SOFT_DEFAULT
+  const hardDays = Number(config.dormantHardDays) > 0 ? Number(config.dormantHardDays) : DORMANT_HARD_DEFAULT
+  /** ★收件箱探针：`(id) => 该收件箱里"最老的一封没读的信"的落盘时间（ms；0 ⇒ 没有积压 ✓）`
+   *  ★不接 ⇒ 推断路如实报 `unknown` ✓（★"不知道"就说不知道 ✗，不许猜 ✓） */
+  const oldestPendingMs = typeof config.oldestPendingMs === 'function' ? config.oldestPendingMs : () => 0
+  /** ★明示休眠探针：`(id) => boolean`（★由名单/配置给 ✓ —— 本件不认识任何具体属性名 ✓） */
+  const declaredDormant = typeof config.declaredDormant === 'function' ? config.declaredDormant : () => false
+  const DAY = 24 * 3600 * 1000
+  const nowMs = () => (typeof config.now === 'function' ? Number(config.now()) : Date.now())
+
+  /**
+   * ★判定 ⇒ `{ state, days, lastMs, source }` ✗
+   *   `awake`（soft 天内）／`quiet`（soft～hard）／`dormant`（≥ hard）／`unknown`（★无证据 ✓）
+   */
+  function dormancyOf(id) {
+    const w = String(id)
+    if (declaredDormant(w)) return { state: 'dormant', days: null, lastMs: 0, source: 'declared' }
+    const oldest = Number(oldestPendingMs(w)) || 0
+    if (!oldest) return { state: 'unknown', days: null, lastMs: 0, source: 'none' }   // ★没有积压 ⇒ 不判 ✓
+    const days = (nowMs() - oldest) / DAY
+    const state = days >= hardDays ? 'dormant' : (days >= softDays ? 'quiet' : 'awake')
+    return { state, days, lastMs: oldest, source: 'inferred' }
+  }
+
   function deliver(letter, ctx = {}) {
     const targets = Array.isArray(ctx.targets) && ctx.targets.length ? ctx.targets : [letter.to]
     if (targets.every((t) => blocked.has(t))) return 'rejected'
+    // ★★明示休眠 ⇒ **退回** ✗（★核心那边**先于闸**就拦掉了 ✓ —— 这里再判一次是为了
+    //   ★"换掉核心、只留这一件也答得出来"（策略件该能独立回答问题 ✓）；
+    //   ★与核心同口径：**`--force` 也不豁免** ✓ —— 那是"信到不了"，不是"闸" ✓）
+    if (targets.every((t) => dormancyOf(t).source === 'declared')) return 'rejected'
     if (letter.mode === 'offline') {
       log.push({ id: letter.id, verdict: 'kept', why: '离线件：留在对方信箱里等人来收（不叫醒）' })
       return 'kept'
@@ -49,7 +91,7 @@ export function createDeliver(config = {}) {
     log.push({ id: letter.id, verdict: 'kept', why: '对方没有活体会话 ⇒ 不投也不消费（信只会晚到，不会不到）' })
     return 'kept'
   }
-  return { apiVersion, deliver, blocked: (id) => blocked.has(String(id)), sessionOf, log }
+  return { apiVersion, deliver, blocked: (id) => blocked.has(String(id)), sessionOf, log, dormancyOf }
 }
 
 export function apply(ctx, config = {}) {

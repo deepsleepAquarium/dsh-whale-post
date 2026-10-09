@@ -89,6 +89,14 @@
   (the CLI prints **"not delivered to: …"** ✓ —— **no silence** ✓).
   ★The attribute name comes from **configuration** ✓; unset ⇒ the rule is entirely off (backward compatible ✓).
 * ★**`cli`: `--only-offline <attribute>` / `--dormant <attribute>`** —— ★both rules can finally be switched on from the command line ✓.
+* ★★★ **`deliver`: dormancy detection v2 (`dormancyOf`)** ✗✓ —— ★**the second "half" ported from the tank's original** ✓:
+  ★**the v1 lesson** (verbatim from the original): ★"**do not take 'the postman is alive' for 'they are reading their mail'** ✗ ——
+  a real deployment exposes it at once: **小毛咪's postman renews her `hello` every 10 minutes, but she herself does not read letters** (★what you measure is the postman, not her ✗)" ✓.
+  ⇒ Two paths, ★**both carrying `source` (an inference must never be reported as a declaration ✗)**: ① **declared** ⇒ `'declared'` ✓;
+  ② ★★**inferred** ✗✓: ★**"how long the oldest unread letter in their mailbox has been lying there"** ✓.
+  Four states: `awake` / `quiet` / `dormant` ★plus **`unknown`** (★**"we do not know" ≠ "they are dormant"** ✓).
+  ★Two hard rules: ★**no backlog ⇒ never call it dormant** ✗ ("nothing to read ≠ not reading" ✓) / ★**only on-disk mtime is used** ✓ (never a timestamp from the content ✓).
+  ★Thresholds `dormantSoftDays: 3` / `dormantHardDays: 7` ✓; ★**a merely `quiet`/`inferred` recipient is never bounced** ✗ (we do not guess ✓).
 * ★**`cli`: `verify` / `nag` subcommands** —— the three-state design is finally visible from the command line.
 * ★★**`cli`: `pickup` (remote root)** ✗✓ —— ★**go to another mailbox root and fetch your own letters** ✓ (★**it works offline** ✓ ——
   this is the step to take once the bell in "3 offline : 1 online" has rung ✓). The remote root comes from `--remote <dir>` or `WHALE_POST_REMOTE_ROOT` ✓.

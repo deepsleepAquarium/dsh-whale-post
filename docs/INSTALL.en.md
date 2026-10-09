@@ -174,6 +174,9 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* deliver this text into th
 | | `extra` | unset | ★**register more** on top of the samples ✓ |
 | `deliver` | `sessionOf` | not wired | ★**the only wiring point into a real engine** ✓ (see §3) |
 | | `blocked` | `[]` | ★recipients that are explicitly blocked (letters never enter their mailbox ✓) |
+| | ★★`oldestPendingMs` ✗ | not wired | ★★**the probe for the inferred dormancy path** ✗: `(id) => the on-disk time of the oldest unread letter in that mailbox (ms; 0 ⇒ no backlog ✓)`. ★Not wired ⇒ **it truthfully reports `unknown`** ✓ (★"we do not know" is said as such ✓) |
+| | ★`declaredDormant` ✗ | not wired | ★**the explicit-dormancy probe**: `(id) => boolean` ✓ (★who is marked dormant comes from the roster/config ✓) |
+| | ★`dormantSoftDays` / `HardDays` ✗ | `3` / `7` | ★★the thresholds for "awake" / "quiet" / "dormant" ✓ (★**hard rule: no backlog ⇒ never call it dormant** ✗) |
 | `gate` | `quota.onOver` | `'reject'` | ★`'reject'` refuses to send / ★`'price'` **sends anyway and bills it** ("a price gate, not a gag" ✓) |
 | | `quota.dayBoundaryHour` | `0` | ★day boundary: `0` = calendar day; ★`9` = "9am to 9am the next day counts as one day" ✓ |
 | | `quota.types` | four sample buckets | ★each bucket has a `limit`; ★**the offline bucket may set `perSend: true`** (counted per send, group sends do not multiply ✓) |

@@ -51,6 +51,38 @@ try {
   //    ⇒ 仍**不许**投 —— 不许拿"有 inject"替代"会话活着"
   const halfLive = createDeliver({ sessionOf: () => ({ live: false, inject: () => { throw new Error('不该被调用') } }) })
   check('live:false 但给了 inject ⇒ 仍 kept（不许用 inject 顶替"活着"）', halfLive.deliver(letter({ mode: 'online' }), { targets: ['bob'] }) === 'kept')
+
+  // ★★S10 v2 休眠判定（2026-10-10 从缸里正本移植）——
+  //   ★v1 的教训：**不许拿「邮差还活着」当「它在读信」**（缸里小毛咪的邮差每 10 分钟续 hello，可她本人不读信）
+  //   ⇒ ① 明示位（declared）② **推断**（★信箱里最老的一封没读的信躺了多久 —— 这才是"没读信"的明证）
+  //   ⚠️ ★**没有积压 ⇒ 不许判休眠** ✗；★**不知道就说 `unknown`** ✗（不许把"不知道"说成"休眠" ✓）
+  const DAY = 24 * 3600 * 1000
+  const NOW = Date.parse('2026-10-10T02:00:00Z')
+  const mkD = (oldestDays, declared) => createDeliver({
+    now: () => NOW,
+    declaredDormant: (w) => declared === true && w === 'sleepy',
+    oldestPendingMs: (w) => (oldestDays === null ? 0 : NOW - oldestDays * DAY),
+  })
+  check('★休眠：明示位 ⇒ dormant ＋ source=declared（★是"声明"，不是"推断"）',
+    (() => { const d = mkD(0, true).dormancyOf('sleepy'); return d.state === 'dormant' && d.source === 'declared' })())
+  check('★★休眠：无明示位、无积压 ⇒ **unknown**（★"我们不知道" ≠ "它休眠" ✗）',
+    (() => { const d = mkD(null, false).dormancyOf('bob'); return d.state === 'unknown' && d.source === 'none' })())
+  check('★休眠：**没接探针** ⇒ 也如实报 unknown（不知道就说不知道）', createDeliver({}).dormancyOf('bob').state === 'unknown')
+  check('★休眠：积压 1 天（soft=3）⇒ awake ＋ source=inferred',
+    (() => { const d = mkD(1, false).dormancyOf('bob'); return d.state === 'awake' && d.source === 'inferred' })())
+  check('★休眠：积压 4 天（soft～hard）⇒ quiet',
+    mkD(4, false).dormancyOf('bob').state === 'quiet')
+  check('★休眠：积压 9 天（≥hard=7）⇒ dormant',
+    mkD(9, false).dormancyOf('bob').state === 'dormant')
+  check('★休眠：阈值可配（soft=1／hard=2 ⇒ 积压 3 天就是 dormant）',
+    createDeliver({ dormantSoftDays: 1, dormantHardDays: 2, now: () => NOW, oldestPendingMs: () => NOW - 3 * DAY }).dormancyOf('bob').state === 'dormant')
+  check('★★休眠：明示位**优先于**推断（积压 0 天但被明确标了 ⇒ 仍是 dormant/declared）',
+    (() => { const d = mkD(null, true).dormancyOf('sleepy'); return d.state === 'dormant' && d.source === 'declared' })())
+  // ★明示休眠的收件人 ⇒ 退回（与核心同口径：--force 也不豁免）
+  check('★休眠：明示休眠的收件人 ⇒ rejected（退回）',
+    mkD(0, true).deliver(letter({ to: 'sleepy', mode: 'online' }), { targets: ['sleepy'] }) === 'rejected')
+  check('★休眠：**只是安静**（inferred quiet）⇒ 不退回（★不许自己猜休眠 ✗）',
+    mkD(4, false).deliver(letter({ to: 'bob', mode: 'offline' }), { targets: ['bob'] }) === 'kept')
 } catch (err) {
   check('自测没有抛异常', false, err && err.stack ? err.stack.split('\n')[0] : err)
 }
