@@ -379,27 +379,32 @@ export function createBus(config = {}) {
     const dir = paths().inbox(as)
     const files = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.msg.json')).sort() : []
     const out = []
+    // ★★校验不过的信要不要**挪进退信**，看**这一整次调用**的意图 ✗（2026-10-10 修的）：
+    //   `keep: true`（只看一眼）／`keep` 是函数／**没有读者** ⇒ ★**不消费** ⇒ **只报不移** ✓
+    //   ★不这样就会**违反 keep 自己的承诺**：`pump --keep` 号称"只看不消费"，却把文件挪走了 ✗
+    //   （★这是实测踩出来的：我在共享邮局根上用 `--keep` 只想看一眼，三封信当场被挪进退信 ✓）
+    const willConsume = (keep === false) ? true : ((keep === true || typeof keep === 'function') ? false : canRead)
+    const moveDead = (f, text) => {
+      if (!willConsume) return '（★keep：没动它 ✓）'
+      atomicWrite(join(paths().dead, f), text)
+      unlinkSync(join(dir, f))
+      return ' ⇒ 已挪进"退信"'
+    }
     for (const f of files) {
       const p = join(dir, f)
       let env
       try { env = JSON.parse(readFileSync(p, 'utf8')) } catch (err) {
-        atomicWrite(join(paths().dead, f), readFileSync(p, 'utf8'))
-        unlinkSync(p)
-        out.push({ ok: false, file: f, why: `读不成信（${err.message}）⇒ 已挪进"退信"` })
+        out.push({ ok: false, file: f, why: `读不成信（${err.message}）` + moveDead(f, readFileSync(p, 'utf8')) })
         continue
       }
       const probs = verify(env)
       if (probs.length) {
-        atomicWrite(join(paths().dead, f), JSON.stringify(env, null, 2))
-        unlinkSync(p)
-        out.push({ ok: false, file: f, id: env.id, why: probs.join('；') + ' ⇒ 已挪进"退信"' })
+        out.push({ ok: false, file: f, id: env.id, why: probs.join('；') + moveDead(f, JSON.stringify(env, null, 2)) })
         continue
       }
       // ★只处理"信"（独立审计 2026-10-05：hello／ack 信封原来会被当普通信消费 ✗）
       if (env.kind !== 'msg') {
-        atomicWrite(join(paths().dead, f), JSON.stringify(env, null, 2))
-        unlinkSync(p)
-        out.push({ ok: false, file: f, id: env.id, why: `这不是一封信（kind=${env.kind}）⇒ 已挪进"退信"` })
+        out.push({ ok: false, file: f, id: env.id, why: `这不是一封信（kind=${env.kind}）` + moveDead(f, JSON.stringify(env, null, 2)) })
         continue
       }
       // ★收件人核对（独立审计 2026-10-05：原来不看 `to` ⇒ 别人掉进我信箱的信会被我消费并回执 ✗）
@@ -408,9 +413,7 @@ export function createBus(config = {}) {
       const memberOfGroup = rosterHasGroup ? services.roster.group(env.to) : undefined
       const isMine = env.to === as || (Array.isArray(memberOfGroup) && memberOfGroup.includes(as))
       if (!isMine && rosterHasGroup) {
-        atomicWrite(join(paths().dead, f), JSON.stringify(env, null, 2))
-        unlinkSync(p)
-        out.push({ ok: false, file: f, id: env.id, why: `这封信不是给你的（to=${env.to}）⇒ 已挪进"退信"` })
+        out.push({ ok: false, file: f, id: env.id, why: `这封信不是给你的（to=${env.to}）` + moveDead(f, JSON.stringify(env, null, 2)) })
         continue
       }
       const st = loadState(as)

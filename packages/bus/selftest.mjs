@@ -70,6 +70,30 @@ try {
   check('★旧字段：**别的**未知字段仍然拒（别把 fail-closed 弄丢了）',
     bus.verify({ ...raw, zzz: 1 }).some((x) => /没进签名域/.test(x)))
 
+  // ★★`keep` 的承诺是"只看不消费" ✗ —— 但它以前会把**校验不过**的信挪进退信，那是**消费性动作** ✓
+  //   ★2026-10-10 实测踩到：在共享邮局根上用 `pump --keep` 只想看一眼，三封信当场被挪进退信 ✗
+  //   ⇒ 现在：不消费的调用**只报不移**；真消费时才挪 ✓
+  // ★这一段**自带根与名单** ✗ —— 不蹭后面的 `tmpOff`／`offFile`／`types`
+  //   （★教训：判据之间会互相影响，别假设"后面的变量这儿也能用" ✓）
+  const keepRoot = join(process.env.TEMP ?? '/tmp', `whale-bus-keep-${Date.now()}`)
+  mkdirSync(keepRoot, { recursive: true })
+  const keepRosterFile = join(keepRoot, 'roster.json')
+  writeFileSync(keepRosterFile, JSON.stringify({ apiVersion: 1, members: [{ id: 'alice' }, { id: 'bob' }] }), 'utf8')
+  const busKeep = createBus({ root: keepRoot, services: { roster: createRoster({ file: keepRosterFile }), types: createTypes() } })
+  busKeep.hello({ as: 'alice' }); busKeep.hello({ as: 'bob' })
+  const rk = busKeep.send({ as: 'alice', to: 'bob', mode: 'offline', subject: 's', body: '会被改坏的一封（正文有货，别当回执）' })
+  const kp = join(busKeep.paths().inbox('bob'), `${rk.id}.msg.json`)
+  writeFileSync(kp, readFileSync(kp, 'utf8').replace('会被改坏的一封', '被改过了'), 'utf8')   // ★模拟"信封被篡改"
+  const keepOut = busKeep.pump({ as: 'bob', keep: true })
+  check('★★keep：校验不过的信**只报不移**（keep 的承诺就是"只看不消费"）',
+    keepOut.length === 1 && !keepOut[0].ok && /没动它/.test(keepOut[0].why), JSON.stringify(keepOut.map((x) => x.why)))
+  check('★★keep：那封信**还在 inbox**（没被挪进退信）', existsSync(kp))
+  check('★keep：退信目录**没多出东西**', !existsSync(join(busKeep.paths().dead, `${rk.id}.msg.json`)))
+  const eatOut = busKeep.pump({ as: 'bob', reader: true })
+  check('★默认（有 reader ⇒ 消费）：校验不过的信**这回真挪进退信**',
+    eatOut.length === 1 && /已挪进/.test(eatOut[0].why) && !existsSync(kp) && existsSync(join(busKeep.paths().dead, `${rk.id}.msg.json`)),
+    JSON.stringify(eatOut.map((x) => x.why)))
+
   // ★★"只收离线"的成员（2026-10-10 缸内口径移植）：
   //   属性名**由配置给**（offlineOnlyFlag）—— ★核心不认识任何具体属性名 ✓；
   //   对它们发在线 ⇒ 拒发（非 0 ＋ 不落信箱 ＋ 不许静默降级 ＋ 文案带出路），★且 --force 不豁免（物理约束 ≠ 闸）
