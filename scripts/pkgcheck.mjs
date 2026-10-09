@@ -15,6 +15,7 @@
  * ★判据看**退出码** ✓：0 全对／非 0 有不对 ✓。
  */
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -159,6 +160,48 @@ check('⑨ ★`exports` 指向的文件**真的存在** ✗（★指向空气是
 // ★⑩ 仓库里不该有散落的临时文件（★我这几轮写过好几个探针 ✓）
 const strays = readdirSync(repo).filter((f) => /^t-.*\.(mjs|cjs|js)$/.test(f))
 check('⑩ ★仓库根目录没有散落的临时探针 ✗（`t-*.mjs` ✓ —— ★我自己犯过 ✓）', strays.length === 0, strays.join('、'))
+
+// ★★★⑫ **仓库领先 npm 多少** ✗✓（2026-10-10 加 —— ★★这是**报告**，不是错误 ✓）
+//   ★★**为什么要它** ✗✓：★第 65 轮我**临时用 `git log` 去数**"tag 之后有几个提交、有没有改过代码" ✓ ——
+//     ★★而那种"临时数一下"的东西**下次还得再数** ✗（★同"把临时探针固化成工具"那条纪律 ✓）。
+//   ★★★**它为什么不判红** ✗✓：★"仓库领先于 npm"是**正常状态** ✓（★总得先写完、再发 ✓）——
+//     ★拿它判红会逼人**为了消红而草率发版** ✗。★**它只把事实摆出来** ✓，★发不发由人定 ✓。
+//   ⚠️ ★**第一版把"目录"当成了"代码"** ✗✓（★当场发现 ✓）：★我数的是 `packages/` **整个目录** ✓ ⇒
+//     ★而 `packages/cli/README.md` 也在里面 ✓ ⇒ ★它报"有使用者可见的改动" ✗ ——
+//     ★**而那次只改了包内 README** ✓（★不是代码 ✓）。
+//   ★★**所以分三档** ✗✓：★**`*.js`（真代码 ✓）／`package.json`（元数据 ✓）／文档 ✓** ——
+//     ★前两档变了 ⇒ **真要发版** ✓；★只有文档变了 ⇒ **报告，并说清"功能面没变"** ✓。
+//   ⓘ ★★**我第一版写它时踩了一个更狠的坑** ✗✓：★**写完它之后我造了个探针提交（★`git add -A` ✓）**，
+//     ★★**而那个探针把这段新代码也一起提交了** ✓ ⇒ ★**紧接着 `git reset --hard HEAD~1` 回退探针** ✓
+//     ⇒ ★★★**连这段代码一起回退了** ✗✓（★`reflog` 里看得清清楚楚 ✓）。
+//     ★★**教训**：★**`git reset --hard` 带走的是"当时未提交的一切"** ✓ —— ★**不只是你想丢的那一个提交** ✓。
+let driftLine = '（★没有 `v<当前版本>` tag ⇒ 还没发过 ⇒ 谈不上"领先" ✓）'
+try {
+  const mine = JSON.parse(readFileSync(join(repo, 'package.json'), 'utf8')).version
+  const tag = `v${mine}`
+  const hasTag = spawnSync('git', ['rev-parse', '--verify', '--quiet', `refs/tags/${tag}`], { cwd: repo }).status === 0
+  const count = (spec) => {
+    const args = ['rev-list', '--count', `${tag}..HEAD`]
+    if (spec) args.push('--', ...spec)
+    return Number(String(spawnSync('git', args, { cwd: repo, encoding: 'utf8' }).stdout ?? '').trim() || 0)
+  }
+  if (hasTag) {
+    const n = count(null)
+    const codeN = count(['packages/**/*.js'])
+    const metaN = count(['packages/**/package.json'])
+    const docN = count(['packages/**/README.md', 'docs/**/*.md', '*.md'])
+    if (codeN > 0 || metaN > 0) {
+      driftLine = `★★仓库领先 npm **${n} 个提交**，其中 ★**${codeN} 个动了代码** ✗` +
+        (metaN ? `、${metaN} 个动了包元数据` : '') +
+        ` ⇒ ★**有使用者可见的改动** —— ★**该评估发下一个版本**（★见 \`docs/RELEASE.md\` ✓）`
+    } else {
+      driftLine = `★仓库领先 npm **${n} 个提交**，★**其中零个动了代码／包元数据** ✓` +
+        (docN ? `（★有 ${docN} 个动了文档 ✓）` : '') +
+        ` ⇒ ★★**功能面与 npm 上的 \`${mine}\` 一致 ⇒ 不必发新版** ✓`
+    }
+  }
+} catch { driftLine = '（★算不出来 —— 大概不在 git 仓库里 ✓）' }
+console.log(`ⓘ ⑫ ${driftLine}`)
 
 for (const c of checks) console.log(`${c.ok ? 'PASS' : 'FAIL'}  ${c.name}${c.ok ? '' : '  :: ' + c.extra}`)
 const pass = checks.filter((c) => c.ok).length
