@@ -88,6 +88,16 @@
   after touching the core, **re-run everything** (not just the piece you changed).
 * ★Two stale facts fixed ✗: the `gate` example configured `dailyUnits` (**the source never reads it**);
   "not published to npm" contradicted "published" (now: "six packages are on npm, `verify` is not").
+* ★★**Fixed the YAML indentation of `INSTALL`'s "minimal wiring"** ✗✓ (found by measurement on 2026-10-10):
+  every entry in that block was indented by only **1 space** (level with the element of `- insert:`), so YAML saw
+  "a pile of sibling `- id:` document items"; actually running
+  `dsh --profile <p> --patch <that block> --dump-config` failed with
+  `YAMLException: end of the stream or a document separator is expected` ⇒ ★**copying it verbatim installed not a single plugin** ✗.
+  ★Now correctly indented (matching [`example/cordis.patch.yml`](example/cordis.patch.yml)), with a note that this indentation must not be changed.
+  ★★**Verified**: following the fixed block from scratch —— install six packages (all exit code 0) ⇒ `--dump-config` shows **six layers** ⇒
+  **one real boot: exit code 0, zero error lines** ✓; the three in-service profiles never changed mtime ✓.
+* ★**Both "works out of the box" paths were really exercised** ✗: ① `npx -y dsh-whale-post-cli@0.2.0 …` (★the README quick start) ✓;
+  ② **the wiring** (★the block in `INSTALL` §2 + install into a throwaway profile + a real boot) ✓.
 
 ### ★ Engineering
 

@@ -19,40 +19,46 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post
 2. ★运行中的引擎**按 URL 缓存 ESM** ⇒ **改完代码必须重启引擎**（改一行也重启，否则你测的是旧码）。
 
 ## 二、最小接线（`cordis.patch.yml`）
+
+> ★★**这段的缩进不能改** ✗ —— 2026-10-10 实测：原来这里每一项只缩进 **1 空格**（跟 `- insert:` 的元素**平级**），
+> YAML 看到的是"一堆平级的 `- id:` 文档项"，直接报
+> `YAMLException: end of the stream or a document separator is expected` ⇒ **一个插件都装不上** ✓。
+> ★下面这份是**缩进正确、且真跑过 `--dump-config` 与真启**的版本 ✓（与 [`../example/cordis.patch.yml`](../example/cordis.patch.yml) 一致 ✓）。
+
 ```yaml
 - insert:
- - id: whale-bus
- name: dsh-whale-post-bus
- config:
- root: '~/.dsh/whale-mail' # 信箱根，自定；★不写则代码默认 ./.whale-mail（当前目录）
- apiVersion: 1
+    - id: whale-bus
+      name: dsh-whale-post-bus
+      config:
+        root: '~/.dsh/whale-mail'      # 信箱根，自定；★不写则代码默认 ./.whale-mail（当前目录）
+        apiVersion: 1
 
- - id: whale-roster-json
- name: dsh-whale-post-roster
- config:
- file: '~/.dsh/whale-mail/roster.json' # 名单内容由你填
+    - id: whale-roster-json
+      name: dsh-whale-post-roster
+      config:
+        file: '~/.dsh/whale-mail/roster.json'   # 名单内容由你填
 
- - id: whale-types-sample
- name: dsh-whale-post-types
- config:
- types: [direct, broadcast, club] # 示例类型；你自己的类型自己注册
+    - id: whale-types-sample
+      name: dsh-whale-post-types
+      config:
+        types: [direct, broadcast, club]        # 示例类型；你自己的类型自己注册
 
- - id: whale-deliver
- name: dsh-whale-post-deliver # 示例①：离线邮局
+    - id: whale-deliver
+      name: dsh-whale-post-deliver              # 示例①：离线邮局（★接真引擎的探针在这一件 ✓）
 
- - id: whale-gate
- name: dsh-whale-post-gate # 示例②：配额与计费闸
- config:
- quota: # ★注意：gate 读的是 config.quota.* —— 以前这里写的 dailyUnits 根本不生效 ✗
- onOver: reject # reject 拒发（退出码非 0）／price 照发但计费
- types:
- direct: { label: 'direct', limit: 120 }
- offline: { label: '离线', limit: 80, perSend: true } # ★离线件按发信次数计
+    - id: whale-gate
+      name: dsh-whale-post-gate                 # 示例②：配额与计费闸
+      config:
+        quota:                                  # ★gate 读的是 config.quota.*
+          onOver: reject                        # reject 拒发（退出码非 0）／price 照发但计费
+          types:
+            direct: { label: 'direct', limit: 120 }
+            offline: { label: '离线', limit: 80, perSend: true }   # ★离线件按发信次数计
 
- - id: whale-verify
- name: dsh-whale-post-verify # ★安全校验（验签 ＋ 白名单）
- config:
- enabled: false # ★默认禁用；要开就写 true（禁用期间会提示你开启，连提三天后不再提）
+    - id: whale-verify
+      name: dsh-whale-post-verify               # ★安全校验（验签 ＋ 白名单）
+      config:
+        enabled: false                          # ★默认禁用；要开就写 true（禁用期间会提示你开启，连提三天后不再提）
 ```
 ★**接线要点**：六个插件之间**只靠接口**（`ctx.whale.*`）⇒ **书写顺序无关**；★核心**不认识任何名字与类型** —— 你换掉名单实现、改掉类型表，核心一行都不用动。
 ★**每条 quota 数值都是示例** ⇒ 按自己的量级改；`limit: 0` 之类的极端值会立刻把闸拉死 ✓。

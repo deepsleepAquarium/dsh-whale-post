@@ -19,40 +19,48 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post
 2. ★A running engine **caches ESM by URL** ⇒ **after changing code you must restart the engine** (restart even for a one-line change, otherwise you are testing the old code).
 
 ## 2. Minimal wiring (`cordis.patch.yml`)
+
+> ★★**Do not change the indentation of this block** ✗ —— measured on 2026-10-10: it used to indent every entry by only **1 space**
+> (level with the element of `- insert:`), so YAML saw "a pile of sibling `- id:` document items" and failed with
+> `YAMLException: end of the stream or a document separator is expected` ⇒ **not a single plugin could be installed** ✓.
+> ★The version below has **correct indentation and was really run through `--dump-config` and a real boot** ✓
+> (it matches [`../example/cordis.patch.yml`](../example/cordis.patch.yml) ✓).
+
 ```yaml
 - insert:
- - id: whale-bus
-  name: dsh-whale-post-bus
-  config:
-  root: '~/.dsh/whale-mail' # your choice; ★code default is ./.whale-mail (current dir)
-  apiVersion: 1
+    - id: whale-bus
+      name: dsh-whale-post-bus
+      config:
+        root: '~/.dsh/whale-mail'      # your choice; ★code default is ./.whale-mail (current dir)
+        apiVersion: 1
 
- - id: whale-roster-json
-  name: dsh-whale-post-roster
-  config:
-  file: '~/.dsh/whale-mail/roster.json' # the roster contents are filled in by you
+    - id: whale-roster-json
+      name: dsh-whale-post-roster
+      config:
+        file: '~/.dsh/whale-mail/roster.json'   # the roster contents are filled in by you
 
- - id: whale-types-sample
-  name: dsh-whale-post-types
-  config:
-  types: [direct, broadcast, club] # example types; register your own types yourself
+    - id: whale-types-sample
+      name: dsh-whale-post-types
+      config:
+        types: [direct, broadcast, club]        # example types; register your own types yourself
 
- - id: whale-deliver
-  name: dsh-whale-post-deliver # example ①: offline post office
+    - id: whale-deliver
+      name: dsh-whale-post-deliver              # example ①: offline post office (★the live-session probe lives here ✓)
 
- - id: whale-gate
-  name: dsh-whale-post-gate # example ②: quota and billing gate
-  config:
-  quota: # ★NOTE: the gate reads config.quota.* —— the old `dailyUnits` here did nothing ✗
-  onOver: reject # reject = refuse to send (non-zero exit) ／ price = send anyway, bill it
-  types:
-  direct: { label: 'direct', limit: 120 }
-  offline: { label: 'offline', limit: 80, perSend: true } # ★offline is counted per send
+    - id: whale-gate
+      name: dsh-whale-post-gate                 # example ②: quota and billing gate
+      config:
+        quota:                                  # ★the gate reads config.quota.*
+          onOver: reject                        # reject = refuse to send (non-zero exit) ／ price = send anyway, bill it
+          types:
+            direct: { label: 'direct', limit: 120 }
+            offline: { label: 'offline', limit: 80, perSend: true }   # ★offline is counted per send
 
- - id: whale-verify
-  name: dsh-whale-post-verify # ★security check (envelope signature + allow-list)
-  config:
-  enabled: false # ★disabled by default; set true to enable (while disabled it nags you, for three days)
+    - id: whale-verify
+      name: dsh-whale-post-verify               # ★security check (envelope signature + allow-list)
+      config:
+        enabled: false                          # ★disabled by default; set true to enable (while disabled it nags you, for three days)
+```
 ```
 ★**Wiring points**: the six plugins rely on each other **only through interfaces** (`ctx.whale.*`) ⇒ **the order in which they are written does not matter**; ★the core **does not know any names or types** —— you can replace the roster implementation or change the type table without touching a single line of the core.
 ★**Every quota number above is an example** ⇒ scale it to your own volume; extreme values (like `limit: 0`) will slam the gate shut immediately ✓.

@@ -82,6 +82,15 @@
   改了核心就**重跑全量**（不是只跑改的那一件）。
 * ★修掉两处过期事实 ✗：`gate` 的示例原来配 `dailyUnits`（**源码根本不读它**）；
   "本仓尚未发 npm"与"已发布"自相矛盾（现在是"六件已发 npm，`verify` 未发"）。
+* ★★**修掉 `INSTALL` "最小接线"的 YAML 缩进** ✗✓（2026-10-10 实测抓出）：
+  那段里每一项只缩进 **1 空格**（跟 `- insert:` 的元素**平级**）⇒ YAML 看到的是"一堆平级的 `- id:` 文档项"，
+  真跑 `dsh --profile <p> --patch <那段> --dump-config` 直接报
+  `YAMLException: end of the stream or a document separator is expected` ⇒ ★**照抄的话一个插件都装不上** ✗。
+  ★已改成正确缩进（与 [`example/cordis.patch.yml`](example/cordis.patch.yml) 一致），并加了一句"这段的缩进不能改"。
+  ★★**验过**：照修好的那段从零走一遍 —— 装六件（退出码全 0）⇒ `--dump-config` **六层齐** ⇒
+  **真启一遍：退出码 0、错误 0 行** ✓；在役三个 profile 全程 mtime 未变 ✓。
+* ★**"开箱即用"两条路都真验过** ✗：① `npx -y dsh-whale-post-cli@0.2.0 …`（★README 的快速开始那段）✓；
+  ② **接线**（★`INSTALL` §二 那段 ＋ 装进一次性 profile ＋ 真启）✓。
 
 ### ★ 工程
 
