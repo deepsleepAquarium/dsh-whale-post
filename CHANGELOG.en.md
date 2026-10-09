@@ -153,6 +153,21 @@
   ★Criteria: `bus` 98 (**`api.FIELD_ORDER` exists + contains the new fields + is not an empty shell** ✓);
   `verify` 47 (**wired in ⇒ use its table** / **not wired ⇒ use the fallback** ✓).
   ★Negative test: removing the lazy-function branch turns **both `verify` and `cli` red** ✓.
+* ★★★ **An injectable clock (`gate`'s `now`) —— and the day boundary can finally be tested for real** ✗✓ (2026-10-10) ——
+  ★**The illness** ✗: ★`gate` used **bare `Date.now()` everywhere** ✓ ⇒ ★**fake time was impossible** ✓ ——
+  and rules like "**when does this take effect**" (★original criteria 134-136: ★"**before** 09:00 `relay` / `authorized`
+  keep the old accounting; **after** it the three buckets split" ✓) **need a fake clock** ✓.
+  ★★**A deeper layer** ✗✓: ★the "day boundary" is computed **separately** in `gate` and in `verify` ✓
+  (★the arithmetic is identical ✓, but the **config keys differ** ✗: `quota.dayBoundaryHour` vs `dayBoundaryHour`
+  ⇒ ★**configure 9 in one and forget it in the other ⇒ the two disagree by a day, and nobody reports anything** ✓✓ ——
+  ★★"silent disagreement" is the worst kind: ★it does not blow up, it just means **the two sides are not counting the same day** ✓).
+  ★**The cure** ✗: ★`gate` now uses the **same `clockMs` shape** (★copied from `verify` ✓: functions, finite numbers, and ★a **warning** when the value is invalid ✓).
+  ★Criteria (gate 46 → 50): ★with `now` set, the ledger follows **it** ✓ / ★**before** the boundary (boundary 9, time 08:00) ⇒ the **previous** day ✓ /
+  ★**after** the boundary (10:00) ⇒ the **same** day ✓ / ★unset ⇒ real time ✓.
+  ★Negative test: making `now` ineffective turns **1 criterion genuinely red** ✓.
+  ★★Also recorded: a trap **the criterion itself fell into** ✗✓: ★the "unset `now`" criterion first used `toISOString().slice(0,10)` (**UTC** date ✓),
+  while `localDay()` uses the **local** date ⇒ ★at local midnight they **differ by a day** ⇒ **false red** ✓ ——
+  ★★yet another "one thing, two algorithms" (★UTC vs local ✓), this time **inside a criterion** ✓.
 * ★**`cli`: `--only-offline <attribute>` / `--dormant <attribute>`** —— ★both rules can finally be switched on from the command line ✓.
 * ★★★ **No handshake no longer means "refused"** ✗✓ (ported from the original on 2026-10-10; ★its criteria 1-3 plus "**the keeper's order of 2026-10-06 01:5x**" ✓)
   —— ★**another "opposite direction"** ✗: ★it used to throw and refuse when there was no handshake ✓; the new rule is

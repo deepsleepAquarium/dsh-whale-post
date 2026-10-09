@@ -84,6 +84,21 @@ export function createGate(config = {}) {
     loop: { ...DEFAULTS.loop, ...(config.loop ?? {}) },
     quota: { ...DEFAULTS.quota, ...(config.quota ?? {}), types: { ...DEFAULTS.quota.types, ...(config.quota?.types ?? {}) } },
   }
+  /**
+   * ★★★时钟**可注入** ✗✓（2026-10-10 加，照 `verify` 包那份写）——
+   *   ★病 ✗：★本包原来**处处用裸 `Date.now()`** ✓ ⇒ ★**没法用"假时间"测** ✓ ——
+   *     而★"生效时刻"（★正本判据 134-136：09:00 **前**按旧口径、**到点后**才分桶 ✓）**正是要假时钟**的 ✓。
+   *   ★★更根本的是 ✗：★"日界"这件事 `gate` 与 `verify` **各算一份** ✓ ⇒
+   *     ★两边漂了就会"**一边已过期、一边还在记账**" ✗，而且**谁都不报错** ✓（★静默不一致最坏 ✓）。
+   *   ⇒ ★现在两边走**同一个形状**的 `clockMs` ✓（★日界仍是 `dayBoundaryHour` 那一个语义 ✓）。
+   */
+  const _nowCfg = config.now
+  let clockWarning = null
+  const clockMs =
+    typeof _nowCfg === 'function' ? () => Number(_nowCfg())
+      : (typeof _nowCfg === 'number' && Number.isFinite(_nowCfg)) ? () => _nowCfg
+        : _nowCfg === undefined ? () => Date.now()
+          : (() => { clockWarning = `now 取值无效（${typeof _nowCfg}）：只接受函数或有限数字，已退回 Date.now()`; return () => Date.now() })()
   const root = () => cfg.root ?? process.env.WHALE_POST_ROOT ?? join(process.cwd(), '.whale-mail')
   const stateOf = (as) => join(root(), 'state', `quota-${as}.json`)
   const atomic = (file, text) => {
@@ -104,7 +119,7 @@ export function createGate(config = {}) {
     try { unlinkSync(tmp) } catch { /* 临时文件清不掉不是错 ✓ */ }
     return file
   }
-  const localDay = (ms = Date.now()) => {
+  const localDay = (ms = clockMs()) => {
     const d = new Date(ms - Number(cfg.quota.dayBoundaryHour) * 3600 * 1000)
     const p = (n) => String(n).padStart(2, '0')
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
@@ -204,7 +219,7 @@ export function createGate(config = {}) {
         return { reject: true, reason: `回环闸①（纯回执）：正文去掉空白标点后只剩「${flat}」这类字样 —— ` +
           `回执不必发信（收信方会自动写 ack）。真要有新事实／新决定就写进正文；确需照发加 --force。` }
       }
-      const recent = (load(letter.as).recent ?? []).filter((r) => Date.now() - r.atMs < loop.pairWindowMs && r.to === letter.to)
+      const recent = (load(letter.as).recent ?? []).filter((r) => clockMs() - r.atMs < loop.pairWindowMs && r.to === letter.to)
       if (recent.length >= loop.pairMax) {
         return { reject: true, reason: `回环闸②（同对回环）：最近 ${Math.round(loop.pairWindowMs / 60000)} 分钟内你已给「${letter.to}」发过 ${recent.length} 封 —— ` +
           `每多一封就多叫醒对方一次。把要说的**合并成一封**再发；确需照发加 --force。` }
@@ -231,7 +246,7 @@ export function createGate(config = {}) {
     const as = letter.as ?? letter.from                       // ★信封里字段叫 from，check 里叫 as —— 两处都认
     const tg = Array.isArray(targets) && targets.length ? targets : (letter.targets ?? [letter.to])
     const j = load(as)
-    const day = localDay(letter.sentAtMs ?? Date.now())
+    const day = localDay(letter.sentAtMs ?? clockMs())
     const d = j.days[day] ?? (j.days[day] = { letters: 0, units: 0, byBucket: {}, recent: [] })
     const bucket = bucketOf(letter)
     const cap = cfg.quota.types[bucket] ?? { label: bucket, limit: cfg.quota.defaultLimit }
@@ -260,8 +275,8 @@ export function createGate(config = {}) {
     //   ★为什么：★离线件**豁免整套回环闸** ✓（它不叫醒任何人 ✓）⇒ ★**让它占满 `recent`
     //   会把后面的**在线件**误拦** ✗✓ —— 那是"用不会叫醒的信，挤掉真的该发的那封" ✓。
     if (letter.mode !== 'offline') {
-      d.recent = [...(d.recent ?? []), { to: letter.to, atMs: letter.sentAtMs ?? Date.now() }].slice(-200)
-      j.recent = [...(j.recent ?? []), { to: letter.to, atMs: letter.sentAtMs ?? Date.now() }].slice(-200)
+      d.recent = [...(d.recent ?? []), { to: letter.to, atMs: letter.sentAtMs ?? clockMs() }].slice(-200)
+      j.recent = [...(j.recent ?? []), { to: letter.to, atMs: letter.sentAtMs ?? clockMs() }].slice(-200)
     }
     save(as, j)
     return { bucket, units, used: b.units, limit: cap.limit, over: charge, feeCent }

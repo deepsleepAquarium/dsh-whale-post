@@ -2,7 +2,7 @@
  * dsh-whale-post-gate 的加载级自测：回环闸三道 ＋ 配额分桶 ＋ 两种越额档位。
  * 判据看退出码：0 过／非 0 不过。临时根，真数据零接触。
  */
-import { mkdirSync, existsSync } from 'node:fs'
+import { mkdirSync, existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { apply, createGate, apiVersion } from './index.js'
 
@@ -155,6 +155,44 @@ try {
   check('★S8：拿不到名单 ⇒ **不拦**（宁可放过，不冤枉 ✓）',
     createGate({ root: tmp, quota: { phoneFlag: 'ph', phoneOnlineCap: 1 } })
       .check(L8({ as: 's8noroster' }), { declaredCaps: {} }) === 'pass')
+
+  // ★★★时钟**可注入** ✗✓（2026-10-10 加，照 `verify` 包那份写）——
+  //   ★病：★原来处处裸 `Date.now()` ⇒ ★**没法用"假时间"测** ✓；而"生效时刻"
+  //     （★正本判据 134-136：09:00 **前**按旧口径、**到点后**才分桶 ✓）**正是要假时钟**的 ✓。
+  //   ★★更根本：★"日界" `gate` 与 `verify` 各算一份 ⇒ ★漂了就是"一边已过期、一边还在记账"，★谁都不报错 ✓。
+  const clockRoot = (s) => join(tmp, `clock-${s}-${Date.now()}`)
+  const readDay = (r, as = 'a') => Object.keys(JSON.parse(readFileSync(join(r, 'state', `quota-${as}.json`), 'utf8')).days)
+  const Lc = () => ({ as: 'a', to: 'b', targets: ['b'], mode: 'offline', type: 'direct', body: '正文有货，别当回执' })
+  check('★★假时钟：配了 `now` ⇒ 台账按**它**算（★不是按真时间 ✓）',
+    (() => {
+      const r = clockRoot('a')
+      createGate({ root: r, now: Date.parse('2026-10-15T12:00:00+08:00') }).record(Lc(), ['b'])
+      return readDay(r)[0] === '2026-10-15'
+    })())
+  check('★★日界生效前：日界 9 点、时刻 10-15 **08:00** ⇒ 台账落**前一天**（★正本判据 134 ✓）',
+    (() => {
+      const r = clockRoot('b')
+      createGate({ root: r, now: Date.parse('2026-10-15T08:00:00+08:00'), quota: { dayBoundaryHour: 9 } }).record(Lc(), ['b'])
+      return readDay(r)[0] === '2026-10-14'
+    })())
+  check('★★日界生效后：日界 9 点、时刻 10-15 **10:00** ⇒ 台账落**当天**（★正本判据 135 ✓）',
+    (() => {
+      const r = clockRoot('c')
+      createGate({ root: r, now: Date.parse('2026-10-15T10:00:00+08:00'), quota: { dayBoundaryHour: 9 } }).record(Lc(), ['b'])
+      return readDay(r)[0] === '2026-10-15'
+    })())
+  check('★不配 `now` ⇒ 退回真时间（★默认行为一字不变 ✓）',
+    (() => {
+      const r = clockRoot('d')
+      createGate({ root: r }).record(Lc(), ['b'])
+      //   ⚠️ ★**必须用本地日期拼** ✗ —— ★我第一版用 `toISOString().slice(0,10)`（**UTC** 日期）⇒
+      //     ★而 `localDay()` 用的是**本地**日期 ⇒ ★本地凌晨时两者**差一天** ⇒ **假红** ✓
+      //     （★这又是一处"同一件事两套算法"：★UTC vs 本地 ✓ —— ★判据自己踩了它 ✓）。
+      const d = new Date()
+      const p = (n) => String(n).padStart(2, '0')
+      const today = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+      return readDay(r)[0] === today
+    })())
 
   // ★★★离线件豁免**整套回环闸** ✗✓（2026-10-10 从正本移植；★正本 29-31 三条 ＋ 「主人 2026-10-06 令」✓）
   //   ★为什么：★三道回环闸拦的是"**别多叫醒人一次**" ✓ —— ★而离线件**根本不叫醒任何人** ✓
