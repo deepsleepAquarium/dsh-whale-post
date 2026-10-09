@@ -19,20 +19,52 @@
 
 ## 快速开始
 
-> ★**已发 npm** ⇒ 直接用 `npx dsh-whale-post-cli …`（或先 `npm i -D dsh-whale-post-cli`）；想在仓内开发，用 `node packages/cli/index.js …` 也一样。
+### ★最快的一次试跑（★不用 clone、不用 `npm install` ✗ —— 就这四步 ✓）
+
+★先起一个**干净的临时邮局**（★**不碰你机器上的任何东西** ✓），再让它跑起来：
+
 ```bash
-dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post # 或用 registry 名
+# 0) ★先备名单 ✗ —— 不备的话，下面 send 会报"未知收件人"
+#    （协议不许"像 UDP 那样"直接发：组名要名单里有定义，人名要已在名单里 ✓）
+mkdir whale-mail && cd whale-mail
+printf '%s' '{"apiVersion":1,"members":[{"id":"alice"},{"id":"bob"}],"groups":{"all":["alice","bob"]}}' > roster.json
+
+# 1) 握手（★没握过手不许发信 ✓）
+npx -y dsh-whale-post-cli@0.2.0 hello --as alice --root .
+npx -y dsh-whale-post-cli@0.2.0 hello --as bob   --root .
+
+# 2) 发一封（★默认离线 ⇒ 信落在对方信箱里，不叫醒任何人 ✓）
+npx -y dsh-whale-post-cli@0.2.0 send --as alice --to bob --subject 'hi' --body 'first letter' --root .
+
+# 3) 收信（★投出去／留下来，都由这一句决定 ✓）
+npx -y dsh-whale-post-cli@0.2.0 pump --as bob --root .
+```
+
+★**跑完你会看到** ✗（★下面是**真跑出来的**输出 ✓）：
+
+```
+已投递 …-alice-0001-… → bob（seq 1）【离线（落在对方信箱，不唤醒）】
+投递策略：kept（留在信箱里等人来收）
+配额（offline 桶）：今日 1/80 条
+OK   …-alice-0001-….msg.json :: [离线] alice → bob：《hi》
+| first letter
+```
+
+★`--root .` 指的是**信箱根＝当前目录** ✓ —— `inbox/`／`seen/`／`ack/`／`hello/` 都在里面 ✓。
+★**判据看退出码** ✗：`0` 过 ／ `2` 拒发 ／ `1` 没料到的错 ✓。
+
+### ★在仓内开发（要改源码就走这条 ✓）
+
+```bash
+dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post
 npm install                          # ★仓内要先装一次（把六个插件链进 node_modules；否则 CLI 找不到兄弟件）
 node packages/cli/index.js selftest  # ★看退出码
-node packages/cli/index.js hello --as alice
-node packages/cli/index.js hello --as bob   # ★先握手：没握过手不许发（协议如此）
-node packages/cli/index.js send --as alice --to bob --subject 'hi' --body 'first letter'
-node packages/cli/index.js pump --as bob    # bob 读信（读走即消费）
-
-# 或者用 npm 上那一份（不用 clone、不用 npm install）：
-npx -y dsh-whale-post-cli@0.2.0 selftest
+# ★其余命令与上面 npx 那几行完全一样，把 `npx -y dsh-whale-post-cli@0.2.0` 换成
+#   `node packages/cli/index.js` 即可（★记得同样先备 roster.json ✓）
 ```
-★装法、接线、接口表、写插件规范 ⇒ 见 [`docs/INSTALL.md`](docs/INSTALL.md)；★**给 AI 体看的用法纪律** ⇒ 见 [`docs/FOR-AGENTS.md`](docs/FOR-AGENTS.md)。
+
+★装法、接线、接口表、配置项表、写插件规范 ⇒ 见 [`docs/INSTALL.md`](docs/INSTALL.md)；
+★**给 AI 体看的用法纪律** ⇒ 见 [`docs/FOR-AGENTS.md`](docs/FOR-AGENTS.md)。
 
 ## 现状
 

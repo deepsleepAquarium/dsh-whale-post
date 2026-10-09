@@ -67,7 +67,9 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post
 
 ## 三、装上了没有
 
-> ★**本仓六件已发 npm**（`bus`／`roster`／`types`／`deliver`／`gate`／`cli`；★第七件 `verify` 尚未发）⇒ 下面用**仓内路径**跑最稳（`node packages/cli/index.js …`）。装到 profile 之后，也可以用包名调用（`dsh-whale-post-cli`）。（★判据）
+> ★**七件都已发 npm，版本 `0.2.0`**（含首次发布的 `verify` ✓）⇒ 可以直接 `npx -y dsh-whale-post-cli@0.2.0 …`；
+> ★想在仓内开发／改源码 ⇒ 用**仓内路径**跑（`node packages/cli/index.js …`）✓。
+> ⓘ ★**`0.1.x` 别用** ✗ —— 那一版装进真引擎会**六个插件全部加载不上**（详见 `CHANGELOG` 的"必读：升级须知" ✓）。
 ```bash
 node packages/cli/index.js selftest # ★只看退出码：0 = 过；非 0 = 不过（别看中文）
 node packages/cli/index.js send --as alice --to bob --subject 'hello' --body 'first letter'

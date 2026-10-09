@@ -67,7 +67,9 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post
 
 ## 3. Is it installed or not
 
-> ★**Six of the packages are already on npm** (`bus` / `roster` / `types` / `deliver` / `gate` / `cli`; ★the seventh, `verify`, is not published yet) ⇒ running **from inside the repo** is still the most reliable way (`node packages/cli/index.js …`). Once installed into a profile you can also call it by package name (`dsh-whale-post-cli`). (★criteria)
+> ★**All seven packages are on npm at `0.2.0`** (including the first release of `verify` ✓) ⇒ you can go straight to `npx -y dsh-whale-post-cli@0.2.0 …`;
+> ★to develop inside the repository (or change the source) ⇒ run from the repo path (`node packages/cli/index.js …`) ✓.
+> ⓘ ★**Do not use `0.1.x`** ✗ —— with it, all six plugins fail to load in a real engine (see the "read this before upgrading" section of `CHANGELOG` ✓).
 ```bash
 node packages/cli/index.js selftest # ★look only at the exit code: 0 = pass; non-zero = fail (do not read the Chinese)
 node packages/cli/index.js send --as alice --to bob --subject 'hello' --body 'first letter'
