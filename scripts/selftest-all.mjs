@@ -47,10 +47,28 @@ for (const p of items) {
 
 console.log('')
 const bad = results.filter((r) => r.code !== 0)
-console.log(bad.length === 0
-  ? `全过：${results.length}/${results.length} 件（退出码 0）`
-  : `有件没过：${bad.map((b) => b.p).join('、')}（退出码 ${bad[0].code}）`)
+
+// ★★★跨包一致性（`xcheck`）✗✓ —— ★**漂移探测器**
+//   ★为什么单列一步 ✗：★它盯的**不是"某一件事对不对"，而是"**同一件事在两件里算得一样吗**"** ✓ ——
+//   ★我们踩过两次：★`verify` 自己抄了一份 `FIELD_ORDER`（合法信被判"未登记"、当场退信 ✗）／
+//     ★`gate` 与 `verify` 各算一份日界（★差一天而**谁都不报错** ✓）。
+//   ★★它的判据也是**退出码** ✓（0 全一致／非 0 有漂移 ✓）。
+process.stdout.write(`— ${'xcheck'.padEnd(9)} `)
+{
+  const xr = spawnSync(process.execPath, [join(repo, 'scripts', 'xcheck.mjs')], { stdio: only ? 'inherit' : 'pipe', encoding: 'utf8' })
+  const xout = only ? '' : String(xr.stdout ?? '')
+  const xall = xout.match(/(\d+)\/(\d+) 一致/g) ?? []
+  const xfails = (xout.match(/^FAIL.*$/gm) ?? [])
+  results.push({ p: 'xcheck', code: xr.status, summary: xall.length ? xall[xall.length - 1] : '' })
+  console.log(`${xr.status === 0 ? 'PASS' : 'FAIL'}  ${xall.length ? xall[xall.length - 1] : ''}${xfails.length ? '   ← ' + xfails.length + ' 条漂移' : ''}`)
+}
+
+console.log('')
+const bad2 = results.filter((r) => r.code !== 0)
+console.log(bad2.length === 0
+  ? `全过：${results.length}/${results.length} 项（退出码 0）`
+  : `有件没过：${bad2.map((b) => b.p).join('、')}（退出码 ${bad2[0].code}）`)
 // ★★另有一个**并发压测**不在这里跑 ✗（它起十几个真子进程、慢一些）：
 //   `node scripts/racetest.mjs` —— ★**改了发号或落盘就要跑它** ✓（发号撞号只在那里才看得见 ✓）
 console.log('ⓘ 另有并发压测：node scripts/racetest.mjs（★改了发号／落盘就一定要跑 ✓）')
-process.exit(bad.length === 0 ? 0 : 1)
+process.exit(bad2.length === 0 ? 0 : 1)

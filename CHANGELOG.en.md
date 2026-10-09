@@ -168,6 +168,25 @@
   ★★Also recorded: a trap **the criterion itself fell into** ✗✓: ★the "unset `now`" criterion first used `toISOString().slice(0,10)` (**UTC** date ✓),
   while `localDay()` uses the **local** date ⇒ ★at local midnight they **differ by a day** ⇒ **false red** ✓ ——
   ★★yet another "one thing, two algorithms" (★UTC vs local ✓), this time **inside a criterion** ✓.
+* ★★★ **`xcheck`: cross-package consistency check (a drift detector)** ✗✓ (added 2026-10-10; ★`npm run xcheck` ✓) ——
+  ★**Why it exists** ✗: ★we hit the **same illness** twice in a row ——
+  ① the `verify` package **had copied `FIELD_ORDER` for itself** ⇒ ★I added `peerStateAtSend` in `bus` ⇒
+     ★a **perfectly valid** letter was judged an "unregistered field" and **bounced on the spot** ✗;
+  ② `gate` and `verify` **each computed the day boundary** (★identical arithmetic, but **the config keys differed** ✓) ⇒
+     ★configure 9 on one side and forget it on the other ⇒ ★**off by a day, and nobody reports anything** ✓.
+  ★★The common shape ✗✓: ★**one thing written twice, in two packages** ✓ —— ★and "a copy on each side" will always **drift**, however the comment is worded ✓.
+  ★**It checks six things** ✗: ★① digest (`bus.digest` ≡ `verify.digestOf`, several samples ✓) / ② signature domain (`bus.FIELD_ORDER` ≡ `verify.fields()` ✓) /
+  ③ day boundary (★same **fake instant** plus the same boundary ⇒ `verify.localDay()` ≡ the day in `gate`'s ledger ✓) /
+  ④ ★**MAC** (★**does `verify` accept a letter that `bus` signed** ✓ —— ★exactly the "each side is self-consistent, and they explode on contact" case ✓) /
+  ⑤ legacy fields (`LEGACY_FIELDS` ✓) / ⑥ whether the fallback table "says what it is" ✓.
+  ★Its criterion is the **exit code** too: 0 = all agree / non-zero = drift ✓. ★Temporary root, zero contact with real data ✓.
+  ★**It is now part of `npm run selftest`** ✓ (★8 items ✓ —— ★you no longer have to remember to run it separately after touching something implemented on both sides ✓).
+  ★★The negative test (★and it is persuasive ✗) ✓: ★make `verify` **use its own** digest ⇒ `xcheck` immediately reports **4/6**:
+    · "① digest: **7 samples differ**"
+    · "④ MAC: `{"ok":false,"why":"body digest mismatch (**body was modified**)"}`" ★★ **and the body was never modified** ✓
+      —— ★changing only the digest triggers both ① and ④ ✓, and ④'s wording is the **verbatim scene** of that illness ✓✓.
+  ★Also wrote "which three things to run after changing code" into `docs/FOR-AGENTS` (CN/EN ✓): ★`selftest` / `racetest` / `xcheck` plus
+    ★**"booting it for real cannot be skipped"** ✓ (★a green `selftest` ≠ the engine can load ✓) and ★**"cut the negative test off at the root"** ✓.
 * ★**`cli`: `--only-offline <attribute>` / `--dormant <attribute>`** —— ★both rules can finally be switched on from the command line ✓.
 * ★★★ **No handshake no longer means "refused"** ✗✓ (ported from the original on 2026-10-10; ★its criteria 1-3 plus "**the keeper's order of 2026-10-06 01:5x**" ✓)
   —— ★**another "opposite direction"** ✗: ★it used to throw and refuse when there was no handshake ✓; the new rule is

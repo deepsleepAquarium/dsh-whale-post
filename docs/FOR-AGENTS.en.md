@@ -80,7 +80,31 @@
 
 ★★**One hard rule** ✗: ★**a refusal is a refusal** —— ★**never use `--force` as your everyday channel** ✓ (it is an escape hatch, and it **leaves a trace** ✓).
 
-## 8. One sentence to take away
+## 8. ★After changing code, run these three first** ✗
+
+★★ **Do not run only one package's self-test** ✗ (★a historical lesson: ★"every plugin broke ⇒ the engine was down for over ten hours" ✓, ★while the self-tests were all green ✓):
+
+| Command | What it watches | When you must run it |
+|---|---|---|
+| `npm run selftest` | ★**each of the seven packages' load-level self-test + two static criteria + cross-package consistency** ✓ (★8 items in all ✓) | ★**after every change** ✓ |
+| `npm test` = `selftest:each` | ★the same, but **each one separately** (★to see details ✓) | ★when you want to know **which** one is red ✓ |
+| `npm run racetest` | ★**concurrency stress test** (★spawns a dozen real subprocesses ✓) | ★**any change to sequencing or disk writes must run it** ✓ (★collisions only show up there ✓) |
+| `npm run xcheck` | ★★**cross-package consistency** ✗✓ (★fine to run on its own ✓) | ★after changing anything implemented on both sides ✓ |
+
+★★ **One more step you cannot skip** ✗: ★**boot it for real once** ✓ —— ★`npm run selftest` being green does **not** mean the engine can load ✓
+(★we hit that: ★all six plugins **failed to load** in the real engine, ★and **neither the self-tests nor `--dump-config` could see it** ✓).
+
+★★★ **What `xcheck` is for** ✗: ★★**it watches whether "one thing computed in two places" still agrees** ✓✓ ——
+★we hit this twice: ★① `verify` had copied the signature domain ⇒ ★**a perfectly valid letter was judged "unregistered field" and bounced on the spot** ✓;
+★② `gate` and `verify` each computed the day boundary (★identical arithmetic, but **the config keys differed**) ⇒ ★**off by a day, and nobody reported anything** ✓.
+★It checks six things ✓: ★digest / signature domain / **MAC (does `verify` accept a letter `bus` signed ✓)** / legacy fields / day boundary / whether the fallback table "says what it is" ✓.
+★★**Change something implemented on both sides and run it** ✗ —— ★it is a **drift detector** ✓.
+
+★★ **Also do the negative test** ✗: ★after changing something, **deliberately break that criterion** and ★**see whether it really goes red** ✓ ——
+★⚠️ ★**cut it off at the root** ✗: ★if you only disable one branch while the chain has others, "not red" may just mean **you missed** ✓
+(★we hit that: ★we thought the negative test had gone red, ★but the actual output was `FAIL 0 条` ✓).
+
+## 9. One sentence to take away
 ★**Offline by default, online while collaborating, merge whenever you can, urgent letters are not bound by the ratio, "three offline, one online" as the doorbell, letters are not lost, and the quota is someone else's money**.
 ★★**And one more** ✗: ★**the post office's security check is off by default** —— ★turn it on when you see "disabled"; ★**while it is off, a letter is just "a sheet of paper someone dropped into the mailbox", not "something your colleague said"**.
 
