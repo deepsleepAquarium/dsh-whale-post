@@ -120,6 +120,14 @@
   but **the tolerance must be small**: ★"the future" should never be a reason to call something fresh ✓). ★★The fail-safe rule (verbatim) ✗:
   ★"**a misjudgement may only lean towards offline**" ✓ —— ★better to treat "just checked in" as "has not checked in" (the letter waits in the box ✓)
   than to treat "has not checked in" as "just checked in" (which means the letter **cannot be delivered at all** ✗).
+* ★★★ **S6h-①②: how to clean up a half-finished fetch** ✗✓ (ported from the original on 2026-10-10; ★its criteria 73-76 ✓) ——
+  ★**① half-written `.tmp` files** ✗: ★a **fresh** one ⇒ **leave it alone** ✓ (★neither import nor delete —— another process may be fetching right now ✓);
+  ★a **stale** one (older than `--tmp-stale-ms`, default 1 hour) ⇒ ★**MOVE it into the mailbox's `垃圾/`** ✓✓ —— ★★**never delete** ✗
+  (★"if you cannot read it, move it aside; do not decide its fate for it" ✓).
+  ★**② convergent MOVE** ✗✓: the "half-finished" scene is ★**the local `inbox/` already has it (step ① done) while the mailbox copy is still in `inbox/` (step ② not done)** ✓.
+  ★The cost of not cleaning it ✗: ★idempotency marks it "skipped" ⇒ ★**the mailbox copy stays in `inbox/` forever** ✓ (one receipt missing, one letter that can never leave ✓).
+  ⇒ ★**do the MOVE** ✓ plus ★★**no accounting** ✗ (it was accounted when first imported ⇒ accounting again would double-count ✓).
+  ★Criteria: a fresh half-file is left alone / a stale one goes to `垃圾/` (**not deleted**) / the scene is set up correctly / **the convergent MOVE happens** / **nothing is imported twice**.
 * ★**`cli`: `--only-offline <attribute>` / `--dormant <attribute>`** —— ★both rules can finally be switched on from the command line ✓.
 * ★★★ **No handshake no longer means "refused"** ✗✓ (ported from the original on 2026-10-10; ★its criteria 1-3 plus "**the keeper's order of 2026-10-06 01:5x**" ✓)
   —— ★**another "opposite direction"** ✗: ★it used to throw and refuse when there was no handshake ✓; the new rule is

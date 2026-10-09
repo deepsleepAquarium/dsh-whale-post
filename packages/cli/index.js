@@ -360,11 +360,43 @@ function main() {
       }
 
       // ②③④ 搬信
-      let took = 0, skipped = 0, bad = 0
+      let took = 0, skipped = 0, bad = 0, swept = 0, converged = 0
       const files = existsSync(rInbox) ? readdirSync(rInbox).filter((x) => x.endsWith('.msg.json')) : []
       if (!existsSync(rInbox)) console.log(`ⓘ 远端没有这个收件箱：${rInbox}（★只做了 hello 镜像 ✓）`)
       mkdirSync(rSeenDir, { recursive: true })          // ★准备"消费凭证"那一格 ✓
+      // ★★★S6h-①②（2026-10-10 从正本移植；正本判据 73-76 ✓）——★"搬一半崩了"这个现场怎么收拾 ✗✓：
+      //   ① ★**半截 `.tmp` ⇒ 不理它** ✓（★既不导入 ✓ 也不删 ✓ —— ★我们自己的 `.tmp` 就是半截的意思 ✓）；
+      //      ★**陈旧**的 `.tmp`（★躺过 `tmpStaleMs`）⇒ ★**MOVE 进邮筒的 `垃圾/`** ✓✓ —— ★★**绝不删** ✗
+      //      （★"绝不删"是我们这一族的老规矩：★看不懂的东西就挪到一边，别替别人决定它的死活 ✓）。
+      //   ② ★**收敛式 MOVE** ✗✓：★如果某封信**已经在本机 `seen/` 里**（＝上次搬到一半崩了 ✓），
+      //      而邮筒那份**还在 `inbox/`** ⇒ ★**把它补 MOVE 进 `seen/`** ✓ —— ★★且**不记账** ✗
+      //      （★账在第一次导入时就记过了 ⇒ 再记就是**双记** ✓）。
+      const rTrash = join(remote, '垃圾')
+      const tmpStaleMs = Number(opt('tmp-stale-ms', 3600 * 1000))
+      if (existsSync(rInbox)) {
+        for (const x of readdirSync(rInbox)) {
+          if (!x.startsWith('.') || !x.endsWith('.tmp')) continue          // ★只碰"看起来像我们半截"的 ✓
+          // ⚠️ ★**不要**按 `as` 收窄 ✗ —— ★第一版我写成 `x.startsWith('.'+as+'.')` ⇒
+          //   ★而邮筒上的半截可能**不属于任何收件人**（★比如别的进程留下的 ✓）⇒ ★那样就永远清不掉 ✓。
+          //   ★这个收件箱是**我的**（★`inbox/<as>/` ✓）⇒ ★在里面的半截就是"该收拾的" ✓。
+          let old = false
+          try { old = Date.now() - statSync(join(rInbox, x)).mtimeMs > tmpStaleMs } catch { old = false }
+          if (!old) { console.log(`半截   ${x}（★不理它 ✓ —— 可能是别的进程正在搬 ✓）`); continue }
+          mkdirSync(rTrash, { recursive: true })
+          try { renameSync(join(rInbox, x), join(rTrash, x)); swept++; console.log(`陈旧   ${x} ⇒ MOVE 进邮筒 垃圾/ ✓（★没删 ✗）`) } catch { /* 挪不动就算了 ✓ */ }
+        }
+      }
       for (const f of files) {
+        // ★★S6h-② 收敛：★**"搬了一半"的现场** ✗✓ —— ★★它的样子是：
+        //   ★**本机 `inbox/` 已经有这封信**（第①步做完了 ✓）★**而邮筒那份还没 MOVE 进 `seen/`**（第②步没做 ✓）。
+        //   ⚠️ ★不收拾的后果 ✗：★幂等（`existsSync(mine,f)`）会把它判成"跳过" ⇒
+        //     ★**邮筒那份永远留在 `inbox/`** ✓ —— ★"消费凭证"缺一份，而邮筒上多一份**永远搬不走的信** ✓✓。
+        //   ⇒ 把邮筒那份**补 MOVE** ✓ —— ★★且**不记账** ✗（★账在第一次导入时就记过了 ⇒ 再记就是双记 ✓）。
+        //   ⚠️ 必须**排在幂等判断之前** ✗（★否则先被 `existsSync` 拦成"跳过" ✓ —— 我第一版就这么写的 ✓）。
+        if (existsSync(join(mine, f)) && !remoteSeen.has(f)) {
+          try { renameSync(join(rInbox, f), join(rSeenDir, f)); converged++; console.log(`收敛   ${f} ⇒ 搬了一半：邮筒那份补 MOVE 进 seen/ ✓（★不记账 ✗）`) } catch { /* 挪不动下次再来 ✓ */ }
+          continue
+        }
         // ★③ 幂等认三处 ✓
         if (mineSeen.has(f) || remoteSeen.has(f) || existsSync(join(mine, f))) { skipped++; continue }
         let env = null
@@ -395,7 +427,8 @@ function main() {
         }
         console.log(`取回   ${f} :: ${env.from} → ${as}《${env.subject ?? ''}》[${env.mode ?? 'online'}]${quota}`)
       }
-      console.log(`\n取回 ${took} 封，跳过 ${skipped} 封（已有），没搬 ${bad} 封，镜像 hello ${mirrored} 份`)
+      console.log(`\n取回 ${took} 封，跳过 ${skipped} 封（已有），没搬 ${bad} 封，镜像 hello ${mirrored} 份` +
+        (swept || converged ? `，清理陈旧半截 ${swept} 个，收敛补 MOVE ${converged} 封` : ''))
       console.log('★远端没搬走的都还在那儿 ✓；搬走的留在它的 seen/ 里当消费凭证 ✓；★记账记在**发件人**名下 ✓')
       return bad > 0 && took === 0 ? 2 : 0
     }

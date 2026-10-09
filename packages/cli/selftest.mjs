@@ -9,7 +9,7 @@
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { mkdirSync, writeFileSync, readdirSync, readFileSync, unlinkSync, existsSync, statSync } from 'node:fs'
+import { mkdirSync, writeFileSync, readdirSync, readFileSync, unlinkSync, existsSync, statSync, utimesSync, copyFileSync } from 'node:fs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const bin = join(here, 'index.js')
@@ -144,6 +144,39 @@ const mLocalStat = mLocalFile ? statSync(join(mLocal, 'inbox', 'web', mLocalFile
 check('★★S6h-③：搬信**保住原始 mtime** ✗（★否则等于用假在线骗自己的闸 ✓）',
   !!mLocalStat && Math.abs(mLocalStat.mtimeMs - mSrcStat.mtimeMs) < 2000,
   `src=${mSrcStat.mtime.toISOString()} dst=${mLocalStat ? mLocalStat.mtime.toISOString() : '（没搬进来）'}`)
+
+// ★★★S6h-①②："搬一半崩了"这个现场怎么收拾 ✗✓（2026-10-10 从正本移植；★正本判据 73-76 ✓）
+//   ① 半截 `.tmp` ⇒ **不理它** ✓（既不导入也不删 ✓）；**陈旧**的 ⇒ **MOVE 进邮筒 `垃圾/`** ✓（**绝不删** ✗）
+//   ② **收敛式 MOVE** ✓：本机 `inbox/` 已有 ＋ 邮筒那份还没进 `seen/` ⇒ **补 MOVE** ＋ **不记账** ✓
+const hRoot = join(process.env.TEMP ?? '/tmp', `whale-cli-s6h-rem-${Date.now()}`)
+const hLocal = join(process.env.TEMP ?? '/tmp', `whale-cli-s6h-loc-${Date.now()}`)
+for (const d of [hRoot, hLocal, join(hLocal, 'inbox', 'web')]) { mkdirSync(d, { recursive: true }); }
+for (const d of [hRoot, hLocal]) writeFileSync(join(d, 'roster.json'), mRoster, 'utf8')
+run(['hello', '--as', 'phone', '--root', hRoot]); run(['hello', '--as', 'web', '--root', hRoot])
+run(['send', '--as', 'phone', '--to', 'web', '--body', 'S6h-①② 测试件（正文有货，别当回执）', '--root', hRoot])
+const hFile = lsDir(join(hRoot, 'inbox', 'web'))[0]
+// ① 新的半截（★该不理它 ✓）＋ 陈旧的（★该 MOVE 进 垃圾/ ✓）
+writeFileSync(join(hRoot, 'inbox', 'web', `.${hFile}.tmp`), '半截', 'utf8')
+const staleTmp = join(hRoot, 'inbox', 'web', '.old-one.tmp')
+writeFileSync(staleTmp, '陈旧', 'utf8')
+const oldTime = new Date(Date.now() - 5 * 3600 * 1000)
+utimesSync(staleTmp, oldTime, oldTime)
+run(['pickup', '--as', 'web', '--root', hLocal, '--remote', hRoot, '--only-offline', 'phone'])
+check('★S6h-①：**新的半截 `.tmp` ⇒ 不理它** ✓（★既不导入也不删 ✓）',
+  existsSync(join(hRoot, 'inbox', 'web', `.${hFile}.tmp`)))
+check('★★S6h-①：**陈旧 `.tmp` ⇒ MOVE 进邮筒 `垃圾/`** ✓（★**绝不删** ✗）',
+  existsSync(join(hRoot, '垃圾', '.old-one.tmp')) && !existsSync(staleTmp))
+// ② 模拟"搬一半崩了"：★**邮筒 `seen/` 里没有它**（第②步没做 ✓）★而邮筒 `inbox/` 还有 ＋ 本机 inbox 有（第①步做了 ✓）
+//   ⚠️ ★不能只 copy 回去 ✗ —— ★第一次 pickup 已经把它放进邮筒 `seen/` 了 ⇒ 那样 `remoteSeen` 会认出来 ⇒ **不需要收敛** ✓
+//     （★我第一版就这么写的 ⇒ 判据红 ⇒ 而那是**判据的模拟错**，不是代码错 ✓）
+unlinkSync(join(hRoot, 'seen', 'web', hFile))                        // ★先撤掉那份"消费凭证"（模拟第②步没做）
+writeFileSync(join(hRoot, 'inbox', 'web', hFile), readFileSync(join(hLocal, 'inbox', 'web', hFile), 'utf8'), 'utf8')
+check('★S6h-②：现场造好了（本机 inbox 有 ＋ 邮筒 inbox 有 ＋ **邮筒 seen 没那份**）',
+  existsSync(join(hLocal, 'inbox', 'web', hFile)) && existsSync(join(hRoot, 'inbox', 'web', hFile)) && !existsSync(join(hRoot, 'seen', 'web', hFile)))
+run(['pickup', '--as', 'web', '--root', hLocal, '--remote', hRoot, '--only-offline', 'phone'])
+check('★★S6h-②：**收敛式 MOVE** —— 邮筒那份补进 `seen/`（★"搬一半"不再卡住 ✓）',
+  !existsSync(join(hRoot, 'inbox', 'web', hFile)) && existsSync(join(hRoot, 'seen', 'web', hFile)))
+check('★S6h-②：本机**没重复导入** ✓（★幂等仍在管事 ✓）', lsDir(join(hLocal, 'inbox', 'web')).length === 1)
 
 // ⑥ ★★S12 断线不卡死（2026-10-10 从缸里正本移植）：动"邮筒"之前先探活
 //    ★病：SMB 掉线时**同步 fs 会挂住几十秒** ✗（本地盘不会 ✓）⇒ pickup 会卡住 ✓
