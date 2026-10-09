@@ -49,6 +49,9 @@ const DEFAULTS = {
   maxBody: 64 * 1024,           // 正文上限（字节）
   requireHello: true,           // 要不要握手（协议不许"像 UDP 那样"直接发）
   helloMaxAgeMs: 24 * 3600 * 1000,
+  // ★★时钟容差（2026-10-10 按正本 S6h-④ 加）：★`hello` 的 `sentAtMs` 比"现在"还晚多少以内**不算未来** ✓
+  //   ★机器之间差几秒很常见 ✓；★但**容差必须小** —— ★"未来"永远不该是"新鲜"的理由 ✓（fail-safe 偏向离线 ✓）
+  helloClockSkewMs: 60 * 1000,
   // ★默认邮件类型：**这是配置** ✗，不是写死在核心里的常量 —— 独立审计 2026-10-05 指出
   //   "核心不认识任何类型标识"与这里硬编码 `'direct'` 矛盾 ⇒ 挪进 config ✓。
   //   配成 `null` ⇒ **不替调用方猜类型** ✗：没显式给 type 的信直接被拒（宁可拒，不替人决定 ✓）。
@@ -243,7 +246,18 @@ export function createBus(config = {}) {
     try {
       const env = JSON.parse(readFileSync(paths().hello(as), 'utf8'))
       if (verify(env).length) return false
-      return Date.now() - Number(env.sentAtMs ?? 0) < cfg.helloMaxAgeMs
+      const age = Date.now() - Number(env.sentAtMs ?? 0)
+      // ★★★未来时间戳 ⇒ **判不新鲜** ✗✓（2026-10-10 按正本 S6h-④ 加）
+      //   ★病 ✗：原来是 `Date.now() - sentAtMs < 上限` ⇒ ★**未来的 `sentAtMs` 差值是负数**
+      //     ⇒ ★永远"新鲜" ⇒ ★**伪造一个 2099 年的 hello 就能让握手闸形同虚设** ✓✓
+      //   ★★fail-safe 口径（正本原话）✗：★"**误判只许偏向离线**" ✓
+      //     —— ★宁可把"刚报到"当成"没报到"（信留在箱里等人 ✓），
+      //        也**不许把"没报到"当成"刚报到"**（那会让信**投不进去** ✗）。
+      //   ⚠️ 留一点**时钟容差**（默认 60 秒、可配）✓ —— ★机器之间差几秒很常见，
+      //     ★但容差必须小：★"未来"永远不该是"新鲜"的理由 ✓。
+      const skew = Number(cfg.helloClockSkewMs) >= 0 ? Number(cfg.helloClockSkewMs) : 60000
+      if (!Number.isFinite(age) || age < -skew) return false
+      return age < cfg.helloMaxAgeMs
     } catch { return false }
   }
 

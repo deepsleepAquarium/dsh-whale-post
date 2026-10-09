@@ -109,6 +109,17 @@
   ★It sits **after `seal()`** (★a bounced letter still needs an `id` ✓) and **before delivery and accounting** (★so "not in their mailbox + no quota" follows naturally ✓).
   ★Criteria 81 → 84: bounced / not in their mailbox / into `退信/` / **a note is left** / `bounced` disclosed / **quota really unchanged** (gate attached, ledger compared) / `--force` bounces too / a different attribute name still bounces.
   ★Negative test: short-circuiting the bounce branch turns **5 criteria red immediately** ✓.
+* ★★★ **S6h-③④: mtimes must not lie** ✗✓ (ported from the original on 2026-10-10; ★its criteria 77-79 ✓) ——
+  ★**③ fetching a letter preserves its original mtime** ✗✓: ★`pickup` used `writeFileSync` + `renameSync`, which stamps it with **now** ⇒
+  ★a letter "just fetched" looks like one "just arrived" ⇒ ★★**that is letting a fake online letter fool your own gate** ✗
+  (★both dormancy inference and freshness checks **read mtime** ✓). ⇒ immediately after moving, `utimesSync` **restores the original mtime** ✓
+  (★measured: the fetched timestamp matches the remote one **to the second** ✓).
+  ★**④ a future timestamp ⇒ judged stale** ✗✓: ★`helloFresh` used `Date.now() - sentAtMs < limit` ⇒
+  ★a future `sentAtMs` makes the difference **negative** ⇒ it is "fresh" forever ⇒ ★★**forging a hello dated 2099 makes the handshake gate meaningless** ✗✓.
+  ⇒ a check was added plus **a small skew tolerance** (`helloClockSkewMs`, default **60 seconds**, configurable ✓ —— ★a few seconds of drift between machines is normal,
+  but **the tolerance must be small**: ★"the future" should never be a reason to call something fresh ✓). ★★The fail-safe rule (verbatim) ✗:
+  ★"**a misjudgement may only lean towards offline**" ✓ —— ★better to treat "just checked in" as "has not checked in" (the letter waits in the box ✓)
+  than to treat "has not checked in" as "just checked in" (which means the letter **cannot be delivered at all** ✗).
 * ★**`cli`: `--only-offline <attribute>` / `--dormant <attribute>`** —— ★both rules can finally be switched on from the command line ✓.
 * ★★★ **No handshake no longer means "refused"** ✗✓ (ported from the original on 2026-10-10; ★its criteria 1-3 plus "**the keeper's order of 2026-10-06 01:5x**" ✓)
   —— ★**another "opposite direction"** ✗: ★it used to throw and refuse when there was no handshake ✓; the new rule is

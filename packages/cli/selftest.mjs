@@ -9,7 +9,7 @@
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { mkdirSync, writeFileSync, readdirSync, readFileSync, unlinkSync, existsSync } from 'node:fs'
+import { mkdirSync, writeFileSync, readdirSync, readFileSync, unlinkSync, existsSync, statSync } from 'node:fs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const bin = join(here, 'index.js')
@@ -127,6 +127,23 @@ check('★★S6：**默认不记账**（★远端自己可能记过 ⇒ 再记�
 run(['send', '--as', 'phone', '--to', 'web', '--body', '第二封离线件（正文有货，别当回执）', '--root', s6Remote])
 const pk6b = run(['pickup', '--as', 'web', '--root', s6Local, '--remote', s6Remote, '--only-offline', 'phone', '--account'])
 check('★S6：`--account` 开了才记，且**记在发件人名下**', pk6b.status === 0 && existsSync(join(s6Local, 'state', 'quota-phone.json')), String(pk6b.stdout).slice(0, 60))
+
+// ★★★S6h-③：搬信要**保住原始 mtime** ✗✓（2026-10-10 从正本移植）
+//   ★否则"刚取回来的信"看起来像"刚到" ⇒ ★**等于用假在线骗自己的闸** ✗（休眠推断／新鲜度判定都看 mtime ✓）
+const mRoot = join(process.env.TEMP ?? '/tmp', `whale-cli-mtime-rem-${Date.now()}`)
+const mLocal = join(process.env.TEMP ?? '/tmp', `whale-cli-mtime-loc-${Date.now()}`)
+const mRoster = JSON.stringify({ apiVersion: 1, members: [{ id: 'web' }, { id: 'phone', phone: true }] })
+for (const d of [mRoot, mLocal]) { mkdirSync(d, { recursive: true }); writeFileSync(join(d, 'roster.json'), mRoster, 'utf8') }
+run(['hello', '--as', 'phone', '--root', mRoot]); run(['hello', '--as', 'web', '--root', mRoot])
+run(['send', '--as', 'phone', '--to', 'web', '--body', 'S6h 保 mtime 测试件（正文有货，别当回执）', '--root', mRoot])
+const mSrcFile = lsDir(join(mRoot, 'inbox', 'web'))[0]
+const mSrcStat = statSync(join(mRoot, 'inbox', 'web', mSrcFile))
+run(['pickup', '--as', 'web', '--root', mLocal, '--remote', mRoot, '--only-offline', 'phone'])
+const mLocalFile = lsDir(join(mLocal, 'inbox', 'web'))[0]
+const mLocalStat = mLocalFile ? statSync(join(mLocal, 'inbox', 'web', mLocalFile)) : null
+check('★★S6h-③：搬信**保住原始 mtime** ✗（★否则等于用假在线骗自己的闸 ✓）',
+  !!mLocalStat && Math.abs(mLocalStat.mtimeMs - mSrcStat.mtimeMs) < 2000,
+  `src=${mSrcStat.mtime.toISOString()} dst=${mLocalStat ? mLocalStat.mtime.toISOString() : '（没搬进来）'}`)
 
 // ⑥ ★★S12 断线不卡死（2026-10-10 从缸里正本移植）：动"邮筒"之前先探活
 //    ★病：SMB 掉线时**同步 fs 会挂住几十秒** ✗（本地盘不会 ✓）⇒ pickup 会卡住 ✓

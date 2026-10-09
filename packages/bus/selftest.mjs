@@ -257,6 +257,32 @@ try {
   try { strictHello.send({ as: 'alice', to: 'dave', mode: 'online', subject: 'x', body: '配了 reject 就该拒（正文有货）' }) } catch (e) { strictMsg = e.message }
   check('★握手：`requireHello: "reject"` ⇒ **保留旧的拒发**（老部署一字不变 ✓）', /未与 dave 建立握手/.test(strictMsg), strictMsg)
 
+  // ★★★S6h-④：★**未来时间戳 ⇒ 判不新鲜** ✗✓（2026-10-10 从正本移植）
+  //   ★病：原来是 `Date.now() - sentAtMs < 上限` ⇒ ★未来的 `sentAtMs` 差值是**负数**
+  //     ⇒ ★永远"新鲜" ⇒ ★**伪造一个 2099 年的 hello 就能让握手闸形同虚设** ✓
+  //   ★fail-safe（正本原话）：★"**误判只许偏向离线**" ✓
+  const skewRoot = join(process.env.TEMP ?? '/tmp', `whale-bus-skew-${Date.now()}`)
+  mkdirSync(skewRoot, { recursive: true })
+  const bSkew = createBus({ root: skewRoot })
+  bSkew.hello({ as: 'faker' })
+  const fakerPath = join(skewRoot, 'hello', 'faker.json')
+  const fakerEnv = JSON.parse(readFileSync(fakerPath, 'utf8'))
+  fakerEnv.sentAtMs = Date.now() + 100 * 365 * 24 * 3600 * 1000      // ★2099 年
+  writeFileSync(fakerPath, JSON.stringify(bSkew.seal(fakerEnv), null, 2), 'utf8')
+  check('★★S6h-④：**未来 100 年的 hello ⇒ 判不新鲜** ✗（★否则握手闸形同虚设 ✓）', bSkew.helloFresh('faker') === false)
+  bSkew.hello({ as: 'ok' })
+  check('★S6h-④：正常 hello 仍算新鲜（★不许误判 ✓）', bSkew.helloFresh('ok') === true)
+  const okPath = join(skewRoot, 'hello', 'ok.json')
+  const okEnv = JSON.parse(readFileSync(okPath, 'utf8'))
+  okEnv.sentAtMs = Date.now() + 30 * 1000                            // ★只差 30 秒
+  writeFileSync(okPath, JSON.stringify(bSkew.seal(okEnv), null, 2), 'utf8')
+  check('★S6h-④：**时钟容差内**的"未来"仍算新鲜（★机器差几秒很常见 ✓）', bSkew.helloFresh('ok') === true)
+  check('★S6h-④：容差**可配**（配成 0 ⇒ 未来 30 秒就不新鲜 ✓）',
+    (() => {
+      const b0 = createBus({ root: skewRoot, helloClockSkewMs: 0 })
+      return b0.helloFresh('ok') === false
+    })())
+
   // ⑦ 坏信：挪进"退信"，不炸
   writeFileSync(join(tmp, 'inbox', 'bob', 'garbage.msg.json'), '{ 这不是 JSON', 'utf8')
   const bad = bus.pump({ as: 'bob', reader: true })

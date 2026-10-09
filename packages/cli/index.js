@@ -22,7 +22,7 @@
  * 退出码：0 ＝ 成功；2 ＝ 拒发／输入不合法；1 ＝ 没料到的错。
  * ★判据看**退出码**，不要看输出里的中文。
  */
-import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync, renameSync, unlinkSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync, renameSync, unlinkSync, statSync, utimesSync } from 'node:fs'
 import { join } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { createBus } from 'dsh-whale-post-bus'
@@ -372,8 +372,14 @@ function main() {
         const probs = bus.verify(env)
         if (probs.length) { bad++; console.log(`不过   ${f} :: ${probs.join('；')}（★不搬、不消费、不删 —— 留在远端等人查 ✓）`); continue }
         const tmp = join(mine, `.${f}.tmp`)
+        // ★★★搬信要**保住原始 mtime** ✗✓（2026-10-10 按正本 S6h-③ 加）
+        //   ★病 ✗：★`writeFileSync` ＋ `renameSync` 会给它**现在**的 mtime ⇒
+        //     ★**"刚取回来的信"看起来像"刚到"** ✓ ⇒ ★★而休眠推断／新鲜度判定**正是看 mtime 的**
+        //     ⇒ ★**等于用假在线骗自己的闸** ✗✓（★正本原话 ✓）。
+        const srcStat = statSync(join(rInbox, f))
         writeFileSync(tmp, JSON.stringify(env, null, 2), 'utf8')
         renameSync(tmp, join(mine, f))                  // ★落地（抛了就轮不到下面两行 ✓）
+        try { utimesSync(join(mine, f), srcStat.atime, srcStat.mtime) } catch { /* ★设不上不拦住搬信 ✓ */ }
         renameSync(join(rInbox, f), join(rSeenDir, f))  // ★★远端那份 MOVE 进 seen ✗（消费凭证 ✓）
         took++
         // ★★④ 到达侧记账：记**发件人**的配额 ✗ —— ★**默认不记，要 `--account` 显式开** ✓
