@@ -10,10 +10,12 @@
   },
   "scripts": {
     "selftest": "node scripts/selftest-all.mjs",
-    "selftest:each": "node scripts/selftest-all.mjs --each"
+    "selftest:each": "node scripts/selftest-all.mjs --each",
+    "racetest": "node scripts/racetest.mjs"
   },
   "workspaces": [
     "packages/*"
   ]
 }
+
 

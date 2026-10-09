@@ -134,8 +134,10 @@
   ★**`--force` bypasses the three loop gates** ✓ (a deliberate escape hatch, and it leaves a trace).
 * ★★ **When `verify` is disabled it blocks nothing** ✗ —— ★it is **not "secure by default"**:
   the default tier is "**known insecure + nags you every day**" ✓.
-* ★★ **Still untested** ✗: several processes **racing for the same letter** (code walk-through only);
-  the truncation path once the `seen` state array grows very long (hand-crafted only).
+* ★**Concurrent sequence claiming: from "untested" to "tested"** ✗✓ (2026-10-10) —— new `scripts/racetest.mjs` (★ported from the tank's original ✓):
+  **12 real sub-processes sending at once** ⇒ all exit codes 0 + 12 letters delivered + **every `seq` unique** ✓;
+  ★it also reproduces "the `state` file written backwards" (write `nextSeq` back to 1 ⇒ a new letter still gets a **new number** ✓ —— the **watermark** catches it ✓).
+  ★**Still untested** ✗: the truncation path once the `seen` state array grows very long (hand-crafted only).
 
 ---
 

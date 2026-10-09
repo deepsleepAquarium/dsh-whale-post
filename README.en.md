@@ -39,6 +39,9 @@ npx -y dsh-whale-post-cli@0.2.0 selftest
 * **Seven pieces are already implemented** under `packages/`: `bus` (the core: envelope / signature / handshake / idempotency / persist to disk) / `roster` (roster interface) / `types` (type registry interface) / `deliver` (delivery strategy) / `gate` (quota and billing gate + loop gate) / `verify` (**security check: envelope signature + allow-list**, ★disabled by default) / `cli` (zero-dependency command line); `example/` is a composition example of "**how to wire them together**".
 * **Run the whole self-test in one go**: `node scripts/selftest-all.mjs` —— **exit code 0 = all seven passed** (it prints the criteria count itself; this file does not hard-code a number).
 * Every piece passes three gates: **it loads + it runs + it goes red when it is wrong** (acceptance specification in [`docs/ACCEPTANCE.md`](docs/ACCEPTANCE.en.md)).
+* ★★**Concurrent sequence claiming: tested** ✗✓ (2026-10-10) —— `node scripts/racetest.mjs`: **12 real sub-processes sending at once** ⇒
+  **all exit codes 0 + every `seq` unique** ✓; ★it also replays "the `state` file written backwards" (write `nextSeq` back to 1 ⇒ a new letter still gets a new number ✓).
+  ★**Still untested** ✗: the truncation path once the `seen` state array grows very long (hand-crafted only).
 * Version `0.2.0` (★**`0.1.x` has all six plugins failing to load in a real engine** ✗ ⇒ do not pin the old tag; pin **`v0.2.0`**);
   the interfaces carry `apiVersion`, and **types can be extended at any time** (adding a type does not require touching the core).
   ★What changed in each version, and why ⇒ see [`CHANGELOG.en.md`](CHANGELOG.en.md).
@@ -73,6 +76,7 @@ npx -y dsh-whale-post-cli@0.2.0 selftest
 ★★ **One criterion** ✗: ★**"I need it to do this right now" ⇒ use a sub-agent ✓; "it may not be there right now" ⇒ use the post office** ✓✓.
 
 ## Three design trade-offs (★each one states its reason)
+
 | Trade-off | Why |
 |---|---|
 | ★**Offline by default** | Waking the other side = making them pay one full-context inference; by default we save it |

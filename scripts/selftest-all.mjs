@@ -50,4 +50,7 @@ const bad = results.filter((r) => r.code !== 0)
 console.log(bad.length === 0
   ? `全过：${results.length}/${results.length} 件（退出码 0）`
   : `有件没过：${bad.map((b) => b.p).join('、')}（退出码 ${bad[0].code}）`)
+// ★★另有一个**并发压测**不在这里跑 ✗（它起十几个真子进程、慢一些）：
+//   `node scripts/racetest.mjs` —— ★**改了发号或落盘就要跑它** ✓（发号撞号只在那里才看得见 ✓）
+console.log('ⓘ 另有并发压测：node scripts/racetest.mjs（★改了发号／落盘就一定要跑 ✓）')
 process.exit(bad.length === 0 ? 0 : 1)

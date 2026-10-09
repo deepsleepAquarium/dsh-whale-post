@@ -68,4 +68,6 @@ The self-test builds a fake post office in a **temporary directory** and **never
 * ★★**When `verify` is disabled it blocks nothing** ✗ —— ★**it is not "secure by default"**: the default tier is "**known insecure + nags you every day**". To be secure, write `enabled: true`; installing this piece **is not** the same as turning verification on.
 * ★**`--force` bypasses all three loop gates**: that is a deliberate escape hatch, but it **leaves a trace** (the ledger counts `forced`).
 * ★**It only solves "one machine"**: the mailbox is a directory on disk; crossing machines needs a shared directory.
-* ★**Not tested**: several processes **racing for the same letter** (code walk-through only), and the truncation path once the `seen` state array grows very long (hand-crafted only). ★Do **not** treat these two as guaranteed.
+* ★**Now tested** (added 2026-10-10): ★**several processes racing for a sequence number** —— `node scripts/racetest.mjs`:
+  **12 real sub-processes sending at once** ⇒ all exit codes 0 + 12 letters delivered + **every `seq` unique** ✓ + the "`state` written backwards" replay ✓.
+* ★**Not tested**: the truncation path once the `seen` state array grows very long (hand-crafted only). ★Do **not** treat that one as guaranteed.

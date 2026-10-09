@@ -27,6 +27,9 @@
 4. **Zero credentials**: keys, credentials, passphrases and private paths **must not enter the repository at all** (including examples and comments).
 5. **Anonymization**: personal names in examples are always `alice` / `bob`; quota numbers are always **example values**; do not write real machine names, internal network addresses or absolute paths.
 6. ★**Touched the core? Re-run everything**: `node scripts/selftest-all.mjs` —— ★all seven packages must pass (exit code 0), ★not just the one you changed.
+7. ★★**Touched "sequence numbering" or "writing to disk"? Always run the concurrency test** ✗: `node scripts/racetest.mjs` (★12 real sub-processes sending at once ✓) ——
+   ★**a colliding sequence number is only visible there** ✗: the module self-tests are **single-process**, so they cannot show two processes reading the same `nextSeq` ✓.
+   ★It also reproduces "the `state` file being written backwards" (write `nextSeq` back to 1 ⇒ a new letter must still not reuse a number ✓).
 
 ## 3. How a single change gets merged
 
