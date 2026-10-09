@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import { apply, createBus, apiVersion } from './index.js'
 import { createRoster } from '../roster/index.js'
 import { createTypes } from '../types/index.js'
+import { createGate as createGateSync } from '../gate/index.js'
 
 const tmp = join(process.env.TEMP ?? '/tmp', `whale-bus-selftest-${Date.now()}`)
 const checks = []
@@ -175,14 +176,31 @@ try {
   const busDorm = createBus({ root: tmpOff, services: { roster: rosterDorm, types }, dormantFlag: 'zzz' })
   busDorm.hello({ as: 'alice' }); busDorm.hello({ as: 'bob' }); busDorm.hello({ as: 'sleepy' })
   const beforeSleepy = lsInbox('sleepy')
-  let eDorm = ''
-  try { busDorm.send({ as: 'alice', to: 'sleepy', mode: 'offline', subject: 's', body: '发给明确休眠的人（正文有货）' }) } catch (e) { eDorm = e.message }
-  check('★休眠：对**明确**标成休眠的成员发信 ⇒ 当场拒发', /休眠/.test(eDorm), eDorm.slice(0, 60))
-  check('★休眠：拒发**不落信箱**（信不会永远堆着）', lsInbox('sleepy') === beforeSleepy, `${beforeSleepy} ⇒ ${lsInbox('sleepy')}`)
-  check('★休眠：文案带出路（换人／先让它醒）', /换个人|先让它醒/.test(eDorm))
-  let eDormForce = ''
-  try { busDorm.send({ as: 'alice', to: 'sleepy', mode: 'offline', subject: 's', body: '休眠＋force（正文有货）', force: true }) } catch (e) { eDormForce = e.message }
-  check('★★休眠：--force 也不豁免（那是"信到不了"，不是"闸"）', /休眠/.test(eDormForce), eDormForce.slice(0, 50))
+  // ★★★S11：收件人**全休眠** ⇒ **退信**（不是"拒发"）✗✓ —— ★正本判据 100-104 ＋「主人 2026-10-06 02:5x 令」：
+  //   ① 不落它信箱 ② 进缸里 `退信/`（**没删** ✗）③ 留说明 ④ 结果里明示 ⑤ **不占配额** ✓
+  const rDorm = busDorm.send({ as: 'alice', to: 'sleepy', mode: 'offline', subject: '退信测试', body: '发给明确休眠的人（正文有货）' })
+  check('★★休眠：对明确休眠的成员发信 ⇒ **退信**（`verdict === "bounced"`，★不是拒发 ✗）', rDorm.verdict === 'bounced', String(rDorm.verdict))
+  check('★休眠：**不落它信箱** ✗（它不会有人来取 ⇒ 落进去就是永远堆着 ✓）', lsInbox('sleepy') === beforeSleepy, `${beforeSleepy} ⇒ ${lsInbox('sleepy')}`)
+  check('★★休眠：**进缸里 `退信/`** ✓（★**没删** ✗ —— 发信人还能找回来 ✓）',
+    existsSync(join(tmpOff, '退信', `${rDorm.id}.msg.json`)))
+  const whyTxt = join(tmpOff, '退信', `${rDorm.id}.why.txt`)
+  check('★★休眠：**留说明** ✓（写明"无法收到邮件"✓）',
+    existsSync(whyTxt) && /无法收到邮件/.test(readFileSync(whyTxt, 'utf8')), existsSync(whyTxt) ? readFileSync(whyTxt, 'utf8').slice(0, 40) : '（没有）')
+  check('★休眠：结果里**明示退回** ✗（不许静默 ✓）', JSON.stringify(rDorm.bounced) === '["sleepy"]', JSON.stringify(rDorm.bounced))
+  check('★★休眠：退回的信**不占配额** ✓（★真验：挂上 gate，看台账没动 ✓）',
+    (() => {
+      const gRoot = join(process.env.TEMP ?? '/tmp', `whale-bus-bounce-quota-${Date.now()}`)
+      mkdirSync(gRoot, { recursive: true })
+      const gq = createGateSync({ root: gRoot })
+      const bq = createBus({ root: gRoot, services: { roster: rosterDorm, types, gate: gq }, dormantFlag: 'zzz' })
+      bq.hello({ as: 'alice' })
+      const before = JSON.stringify(gq.report({ as: 'alice' }).buckets)
+      const rr = bq.send({ as: 'alice', to: 'sleepy', mode: 'offline', subject: 's', body: '退回的信不该占配额（正文有货）' })
+      const after = JSON.stringify(gq.report({ as: 'alice' }).buckets)
+      return rr.verdict === 'bounced' && before === after
+    })())
+  const rDormForce = busDorm.send({ as: 'alice', to: 'sleepy', mode: 'offline', subject: '退信＋force', body: '休眠＋force（正文有货）', force: true })
+  check('★休眠：`--force` 下同样**退信** ✓（★信到不了就是到不了 ✓）', rDormForce.verdict === 'bounced', String(rDormForce.verdict))
   // ★部分休眠（发给组）⇒ 只投醒着的，并把剔掉谁**如实带回去** ✓
   const rDormG = busDorm.send({ as: 'alice', to: 'pair', mode: 'offline', subject: 's', body: '发给组：组里有休眠的（正文有货）' })
   check('★休眠：部分休眠 ⇒ 只投醒着的', rDormG.targets.includes('bob') && !rDormG.targets.includes('sleepy'), JSON.stringify(rDormG.targets))
@@ -193,9 +211,9 @@ try {
     (() => {
       writeFileSync(join(tmpOff, 'roster-dormant2.json'), JSON.stringify({ apiVersion: 1, members: [{ id: 'alice' }, { id: 'sleepy', zzz2: true }] }), 'utf8')
       const r2 = createRoster({ file: join(tmpOff, 'roster-dormant2.json') })
-      let m = ''
-      try { createBus({ root: tmpOff, services: { roster: r2, types }, dormantFlag: 'zzz2' }).send({ as: 'alice', to: 'sleepy', mode: 'offline', subject: 's', body: 'x' }) } catch (e) { m = e.message }
-      return /休眠/.test(m)
+      const b2 = createBus({ root: tmpOff, services: { roster: r2, types }, dormantFlag: 'zzz2' })
+      b2.hello({ as: 'alice' })
+      return b2.send({ as: 'alice', to: 'sleepy', mode: 'offline', subject: 's', body: '换个属性名照样退信（正文有货）' }).verdict === 'bounced'
     })())
 
   // ③ 收信：消费 ＋ ack ＋ 幂等（★要声明 reader：CLI 把信打到终端时才敢消费）

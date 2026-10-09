@@ -383,10 +383,6 @@ export function createBus(config = {}) {
     //   ★部分休眠 ⇒ 只投给醒着的，并把"剔掉了谁"**如实带回去** ✓（不许静默 ✓）。
     if (cfg.dormantFlag && services.roster && typeof services.roster.flag === 'function') {
       const asleep = targets.filter((t) => services.roster.flag(t, cfg.dormantFlag))
-      if (asleep.length === targets.length) {
-        throw new Error(`拒发：${asleep.join('、')} 被明确标成休眠（配置 dormantFlag='${cfg.dormantFlag}'）—— ` +
-          `信不会有人来取，所以不合信箱。★换个人发，或先让它醒（把名单里那个标记去掉再发）；--force 也不豁免。`)
-      }
       if (asleep.length) {
         targets = targets.filter((t) => !asleep.includes(t))
         skippedDormant = asleep
@@ -433,6 +429,25 @@ export function createBus(config = {}) {
     const id = `${Date.now().toString(36)}-${as}-${String(seq).padStart(4, '0')}-${randomUUID().slice(0, 8)}`
     const hop = hop0
     const env = seal({ v: V, kind: 'msg', id, from: as, to, seq, subject, body, sha256: digest(body), sentAtMs: Date.now(), type, mode: m, ...(hop === undefined ? {} : { re, hop }) })
+    // ★★★S11：收件人**全休眠** ⇒ **退信** ✗✓（2026-10-10 从正本移植；正本判据 100-104 ＋「主人 2026-10-06 02:5x 令」✓）
+    //   ★五条口径 ✗：① ★**不落它信箱** ✓（它不会有人来取 ⇒ 落进去就是永远堆着 ✓）
+    //     ② ★**进缸里 `退信/`** ✓（★**没删** ✗ —— 发信人还能找回来 ✓）
+    //     ③ ★**留说明** ✓（写明"此人无法收到邮件"✓）④ ★**结果里明示** ✓（**不许静默** ✗）
+    //     ⑤ ★**不占配额** ✓ —— ★因为这里**在 `gate.record` 之前就返回** ✓（★与"被闸拦下的不占额度"同一条 ✓）
+    //   ⚠️ ★放在 `seal()` **之后** ✗ —— ★退信也要有个 `id` ✓（好让人按号找 ✓）；
+    //     而★放在**投递与记账之前** ✓ ⇒ 自然"不落它信箱 ＋ 不占配额" ✓。
+    if (targets.length === 0 && skippedDormant.length) {
+      const deadDir = paths().dead
+      mkdirSync(deadDir, { recursive: true })
+      atomicWrite(join(deadDir, `${id}.msg.json`), JSON.stringify(env, null, 2))
+      atomicWrite(join(deadDir, `${id}.why.txt`),
+        `退回原因：收件人${skippedDormant.join('、')}无法收到邮件（被明确标成休眠，配置 dormantFlag='${cfg.dormantFlag}'）。\n` +
+        `这封信**没有**投进任何人的信箱，也**没有**占配额；它留在这里等你看。\n` +
+        `★换个人发，或先让它醒（把名单里那个标记去掉再发）。\n` +
+        `发件人：${as}　主题：${subject || '（无）'}　时间：${new Date(env.sentAtMs).toISOString()}\n`)
+      return { id, seq, to, targets: [], mode: m, type, verdict: 'bounced', hop, env,
+        skippedDormant, bounced: skippedDormant }
+    }
     for (const t of targets) atomicWrite(join(paths().inbox(t), `${id}.msg.json`), JSON.stringify(env, null, 2))
     // ★投递策略：只问接口（核心不认识"会话"）
     let verdict = m === 'online' ? 'delivered' : 'kept'

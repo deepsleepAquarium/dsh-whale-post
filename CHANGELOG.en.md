@@ -98,6 +98,17 @@
   ⚠️ ★**The mode is a separate field** ✗ —— the first version packed it into `offlineOnlyFlag` (writing `'reject'` as if it were the mode),
   so the core went looking for "a member attribute named `reject`" ⇒ **it blocked nothing at all** ✓ (★a criterion caught it immediately ⇒ now two fields ✓).
   The disclosure field `wakePrediction.offlineOnly` sits next to `willWait` (★same names as in the original ✓).
+* ★★★ **S11: a dormant recipient ⇒ bounce** ✗✓ (ported from the original on 2026-10-10; ★its criteria 100-106 plus "**the keeper's order of 2026-10-06 02:5x**" ✓) ——
+  ★**five rules** ✗: ① ★**it never enters their mailbox** ✓ (nobody will come for it ⇒ putting it there means it piles up forever ✓)
+  ② ★**it goes into the household `退信/`** ✓ (**not deleted** ✗ —— the sender can still recover it ✓)
+  ③ ★**a `*.why.txt` note is left** ✓ (stating "this person cannot receive mail" ✓)
+  ④ ★**the result says so** ✓ (`verdict: 'bounced'` plus the `bounced` list —— **never silent** ✗)
+  ⑤ ★**it consumes no quota** ✓ (★it returns **before** `gate.record` ✓ —— the same rule as "letters the gate refused take no allowance" ✓).
+  ★★**This is the reverse of the previous version** ✗: ★it used to throw and refuse when every recipient was dormant ✓ ⇒ now it **bounces and says so** ✓
+  (★same reason as the other two: ★"refusing" is **backwards** —— the letter never left, whereas a bounce at least **leaves something you can inspect** ✓).
+  ★It sits **after `seal()`** (★a bounced letter still needs an `id` ✓) and **before delivery and accounting** (★so "not in their mailbox + no quota" follows naturally ✓).
+  ★Criteria 81 → 84: bounced / not in their mailbox / into `退信/` / **a note is left** / `bounced` disclosed / **quota really unchanged** (gate attached, ledger compared) / `--force` bounces too / a different attribute name still bounces.
+  ★Negative test: short-circuiting the bounce branch turns **5 criteria red immediately** ✓.
 * ★**`cli`: `--only-offline <attribute>` / `--dormant <attribute>`** —— ★both rules can finally be switched on from the command line ✓.
 * ★★★ **No handshake no longer means "refused"** ✗✓ (ported from the original on 2026-10-10; ★its criteria 1-3 plus "**the keeper's order of 2026-10-06 01:5x**" ✓)
   —— ★**another "opposite direction"** ✗: ★it used to throw and refuse when there was no handshake ✓; the new rule is
