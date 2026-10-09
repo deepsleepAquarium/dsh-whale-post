@@ -43,7 +43,11 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post
  - id: whale-gate
  name: dsh-whale-post-gate # 示例②：配额与计费闸
  config:
- dailyUnits: 120 # ★ 数值自定（示例值，别照抄）
+ quota: # ★注意：gate 读的是 config.quota.* —— 以前这里写的 dailyUnits 根本不生效 ✗
+ onOver: reject # reject 拒发（退出码非 0）／price 照发但计费
+ types:
+ direct: { label: 'direct', limit: 120 }
+ offline: { label: '离线', limit: 80, perSend: true } # ★离线件按发信次数计
 
  - id: whale-verify
  name: dsh-whale-post-verify # ★安全校验（验签 ＋ 白名单）
@@ -51,6 +55,7 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post
  enabled: false # ★默认禁用；要开就写 true（禁用期间会提示你开启，连提三天后不再提）
 ```
 ★**接线要点**：六个插件之间**只靠接口**（`ctx.whale.*`）⇒ **书写顺序无关**；★核心**不认识任何名字与类型** —— 你换掉名单实现、改掉类型表，核心一行都不用动。
+★**每条 quota 数值都是示例** ⇒ 按自己的量级改；`limit: 0` 之类的极端值会立刻把闸拉死 ✓。
 
 ### 名额从哪来（名单文件示例）
 ```json
@@ -62,7 +67,7 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post
 
 ## 三、装上了没有
 
-> ★**本仓尚未发 npm** ⇒ 下面一律用**仓内路径**跑（`node packages/cli/index.js …`）。装到 profile 之后，也可以用包名调用（`dsh-whale-post-cli`）。（★判据）
+> ★**本仓六件已发 npm**（`bus`／`roster`／`types`／`deliver`／`gate`／`cli`；★第七件 `verify` 尚未发）⇒ 下面用**仓内路径**跑最稳（`node packages/cli/index.js …`）。装到 profile 之后，也可以用包名调用（`dsh-whale-post-cli`）。（★判据）
 ```bash
 node packages/cli/index.js selftest # ★只看退出码：0 = 过；非 0 = 不过（别看中文）
 node packages/cli/index.js send --as alice --to bob --subject 'hello' --body 'first letter'

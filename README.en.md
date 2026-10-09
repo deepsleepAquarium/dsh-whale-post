@@ -22,7 +22,7 @@
 > ★**Published to npm** ⇒ use `npx dsh-whale-post-cli …` directly (or `npm i -D dsh-whale-post-cli`); inside the repo, `node packages/cli/index.js …` works the same.
 ```bash
 dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post # or use the registry name
-npm install                          # ★run once inside the repo (links the five packages into node_modules; without it the CLI cannot find its siblings)
+npm install                          # ★run once inside the repo (links the six packages into node_modules; without it the CLI cannot find its siblings)
 node packages/cli/index.js selftest  # ★check the exit code
 node packages/cli/index.js hello --as alice
 node packages/cli/index.js hello --as bob   # ★handshake first: sending without one is refused (by design)
@@ -36,8 +36,8 @@ npx -y dsh-whale-post-cli@0.1.1 selftest
 
 ## Current state
 
-* **Six pieces are already implemented** under `packages/`: `bus` (the core: envelope / signature / handshake / idempotency / persist to disk) / `roster` (roster interface) / `types` (type registry interface) / `deliver` (delivery strategy) / `gate` (quota and billing gate + loop gate) / `cli` (zero-dependency command line); `example/` is a composition example of "**how to wire them together**".
-* **Run the whole self-test in one go**: `node scripts/selftest-all.mjs` —— **exit code 0 = all six passed** (it prints the criteria count itself; this file does not hard-code a number).
+* **Seven pieces are already implemented** under `packages/`: `bus` (the core: envelope / signature / handshake / idempotency / persist to disk) / `roster` (roster interface) / `types` (type registry interface) / `deliver` (delivery strategy) / `gate` (quota and billing gate + loop gate) / `verify` (**security check: envelope signature + allow-list**, ★disabled by default) / `cli` (zero-dependency command line); `example/` is a composition example of "**how to wire them together**".
+* **Run the whole self-test in one go**: `node scripts/selftest-all.mjs` —— **exit code 0 = all seven passed** (it prints the criteria count itself; this file does not hard-code a number).
 * Every piece passes three gates: **it loads + it runs + it goes red when it is wrong** (acceptance specification in [`docs/ACCEPTANCE.md`](docs/ACCEPTANCE.en.md)).
 * Version `0.1.0` (tagged **`v0.1.0`** — pin that if you want a fixed reference); the interfaces carry `apiVersion`, and **types can be extended at any time** (adding a type does not require touching the core).
 * **The install path was exercised once on a real engine**: the five pieces were installed with `dsh plugin --profile <p> add link:<repo>/packages/<piece>` into a **throwaway profile** ⇒ they **showed up in the profile config tree** (`dsh --profile <p> --dump-config` lists the five `dsh-whale-post-*` layers) ⇒ **it booted, served, and the log held no load errors** ⇒ then the throwaway profile was deleted, and **the two engines in service were never restarted**.
@@ -46,11 +46,29 @@ npx -y dsh-whale-post-cli@0.1.1 selftest
   "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }
   ```
   Without that line `dsh plugin add` **installs it as a plain dependency and never activates it as a profile layer** (our first version missed it; this drill caught it).
+* ★**The piece added later went through the same drill too** ✓ (2026-10-10 00:03): all **six plugins** were installed into one throwaway profile (`dsh 0.1.5-rc.1` + `--from-default-profile headless`) ⇒ `--dump-config` showed **six layers** ⇒ **a real boot: exit code 0, zero errors** ✓.
+  ★★**And that drill caught a fatal bug (fixed)** ✗: all six **`failed to apply`** —— `cannot get property "whale" without inject` (`apply()` read the `ctx.whale` property; in real Cordis, reading it requires `inject`). ★**And `--dump-config` cannot show it at all** ✗ —— it only composes the config tree and never runs `apply()`. ⇒ They now only use `ctx.provide(...)` + runtime `ctx.get(...)`, and a static criterion pins it down (the source must not contain `ctx.whale =` or `ctx.whale?.` ⇒ 0 hits).
 
 ## What it is not
 * **Not a chat room**: no real-time push, no read-receipt anxiety (**an asynchronous mailbox**).
 * **Not RPC**: it does not guarantee that the other side handles it immediately (what it guarantees is that **letters are not lost**).
 * **Not a distributed queue**: it assumes **the same machine** (the same disk); across machines you need a shared directory.
+
+## ★How it relates to the engine's own "sub-agents / teams" (not a competitor ✗)
+
+★Many engines can already spawn sub-agents (or run a "team") ⇒ the usual question is "**then why do I need this?**" ✓. The answer:
+
+| | The engine's own sub-agents / teams | This repository (the post office) |
+|---|---|---|
+| ★What it manages | ★**Parallelism right now** (spawned inside one process tree, awaited synchronously, discarded afterwards) | ★**Passing things on when you are not together right now** |
+| ★Scope | ★One engine | ★**Across engines / devices / sessions** |
+| ★Identity | ★None (they are all clones of the main session) | ★**Yes** —— keys + roster; ★one key per device, so **impersonation fails verification** |
+| ★Trail | ★Nothing persists (gone when the turn ends) | ★**Letters persist on disk ✓ `seen/` is a permanent archive ✓** |
+| ★Synchrony | ★Synchronous wait | ★**Asynchronous** —— ★**"a letter only arrives late, never not at all"** |
+| ★Cost | ★Burns the same account's quota | ★Quota-based + **offline by default** ⇒ saves money; ★offline letters do not consume the other buckets |
+
+★★ **In one sentence** ✗: ★**a sub-agent is "your hand"; the post office is "the road between us"** ✓.
+★★ **One criterion** ✗: ★**"I need it to do this right now" ⇒ use a sub-agent ✓; "it may not be there right now" ⇒ use the post office** ✓✓.
 
 ## Three design trade-offs (★each one states its reason)
 | Trade-off | Why |
@@ -62,7 +80,7 @@ npx -y dsh-whale-post-cli@0.1.1 selftest
 ## Layout
 ```
 packages/bus/ packages/roster/ packages/types/
-packages/deliver/ packages/gate/ packages/cli/
+packages/deliver/ packages/gate/ packages/verify/ packages/cli/
 example/ docs/
 ```
 ★License: **MIT**. ★This repository is an **independent implementation** (it uses no unlicensed code).

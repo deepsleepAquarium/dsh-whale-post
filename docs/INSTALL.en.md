@@ -43,9 +43,19 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post
  - id: whale-gate
   name: dsh-whale-post-gate # example ②: quota and billing gate
   config:
-  dailyUnits: 120 # ★ your own value (an example value, do not copy it verbatim)
+  quota: # ★NOTE: the gate reads config.quota.* —— the old `dailyUnits` here did nothing ✗
+  onOver: reject # reject = refuse to send (non-zero exit) ／ price = send anyway, bill it
+  types:
+  direct: { label: 'direct', limit: 120 }
+  offline: { label: 'offline', limit: 80, perSend: true } # ★offline is counted per send
+
+ - id: whale-verify
+  name: dsh-whale-post-verify # ★security check (envelope signature + allow-list)
+  config:
+  enabled: false # ★disabled by default; set true to enable (while disabled it nags you, for three days)
 ```
-★**Wiring points**: the five plugins rely on each other **only through interfaces** (`ctx.whale.*`) ⇒ **the order in which they are written does not matter**; ★the core **does not know any names or types** —— you can replace the roster implementation or change the type table without touching a single line of the core.
+★**Wiring points**: the six plugins rely on each other **only through interfaces** (`ctx.whale.*`) ⇒ **the order in which they are written does not matter**; ★the core **does not know any names or types** —— you can replace the roster implementation or change the type table without touching a single line of the core.
+★**Every quota number above is an example** ⇒ scale it to your own volume; extreme values (like `limit: 0`) will slam the gate shut immediately ✓.
 
 ### Where members come from (example roster file)
 ```json
@@ -57,7 +67,7 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post
 
 ## 3. Is it installed or not
 
-> ★**This repository is not published to npm (yet)** ⇒ every command below runs **from inside the repo** (`node packages/cli/index.js …`). Once installed into a profile you can also call it by package name (`dsh-whale-post-cli`). (★criteria)
+> ★**Six of the packages are already on npm** (`bus` / `roster` / `types` / `deliver` / `gate` / `cli`; ★the seventh, `verify`, is not published yet) ⇒ running **from inside the repo** is still the most reliable way (`node packages/cli/index.js …`). Once installed into a profile you can also call it by package name (`dsh-whale-post-cli`). (★criteria)
 ```bash
 node packages/cli/index.js selftest # ★look only at the exit code: 0 = pass; non-zero = fail (do not read the Chinese)
 node packages/cli/index.js send --as alice --to bob --subject 'hello' --body 'first letter'
@@ -94,6 +104,7 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* deliver this text into th
 | `dsh-whale-post-types` | **What type a letter is** (the interface piece + a sample) | provides `ctx.whale.types` |
 | `dsh-whale-post-deliver` | **Delivery strategy** (= the hook point of example ①) | uses `bus` / `roster` |
 | `dsh-whale-post-gate` | **Gate** (= the hook point of example ②) | uses `bus` / `types` |
+| `dsh-whale-post-verify` | **Security check** (envelope signature + allow-list), ★disabled by default | uses `bus` (optional: borrows its `digest` / `sign`) |
 | `dsh-whale-post-cli` | Entry-point tool (★**not a plugin**) | uses `bus` |
 | `example/` | Composition example: a minimal `cordis.patch.yml` + the criteria for one run | everything |
 
@@ -106,6 +117,7 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* deliver this text into th
 | `ctx.whale.types` | `register(id, meta)` / `resolve(id)` / `list()` |
 | `ctx.whale.deliver` | `deliver(letter, ctx)` → `'delivered'` / `'kept'` / `'rejected'` |
 | `ctx.whale.gate` | `check(letter, ctx)` → `'pass'` / `{ reject, reason }` |
+| `ctx.whale.verify` | `verify(letter)` → `{ ok, why?, skipped? }` / `nag()` → `string \| null` / `status()` / `enable()` / `disable()` |
 
 ## 5. ★Rules for writing a plugin (follow them; do not step in the pits we fell into)
 1. ★**Know interfaces, not names**: the core code must not hard-code **any** member name / type identifier / internal path (rosters and types are always registered in).
@@ -127,6 +139,7 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* deliver this text into th
 | Symptom | Most likely cause | What to do |
 |---|---|---|
 | The plugin is installed but "does nothing" | You used `inject` / you fetched the service at the top level | Fetch the service at runtime + retry every tick |
+| ★**It is installed and `--dump-config` shows the layer, but a real boot says `failed to apply`** | ★`apply()` **reads the `ctx.whale` property** (in real Cordis, reading it requires `inject` ⇒ `cannot get property "whale" without inject`); ★`--dump-config` only composes the config tree and **never runs `apply()`**, so it cannot show this | ★Only write `ctx.provide('whale.xxx', x)` and fetch services at runtime with `ctx.get('whale.xxx')` —— **never touch the `ctx.whale` property**; ★when verifying you **must really boot it once**; `--dump-config` does not count (all six packages fell into this on 2026-10-10 ✗) |
 | You changed the code and nothing changed | ESM is cached by URL / `file:` installed a snapshot | Restart the engine + switch to a `link:` install |
 | The engine will not start; the log shows one `ReferenceError` | A constant is not defined (we really did this) | Run the load-level self-test + the negative test |
 | The recipient "did not receive it" | The other side **has no live session** | Normal: the letter **stays in the mailbox waiting for a person** and **is not lost** |
