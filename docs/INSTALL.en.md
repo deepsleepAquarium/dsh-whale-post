@@ -183,6 +183,8 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* deliver this text into th
 | | `quota.defaultLimit` | `120` | ★types **not in the table** fall into this bucket ✓ |
 | | ★★`quota.bucketRules` ✗ | unset | ★★**which field decides the bucket** ✗: `[{ field, equals, bucket }]`, ★**the first match wins**, top to bottom; ★**both the field name and the bucket name come from configuration** ✓. ★Unset ⇒ behaviour is unchanged ✓. ★Example, four tiers by authorisation level: `[{ field: 'auth', equals: 'self', bucket: 'self' }, …]` plus a `limit` for `self` / `relay` / … under `types` ✓ |
 | | ★★`quota.defaultBucket` ✗ | unset | ★which bucket to use when no rule matches (★only meaningful when `bucketRules` is set ✓) |
+| | ★★`quota.phoneFlag` ✗ | unset | ★★**who counts as a "phone"** ✗ (★attribute name from configuration ✓): ★such recipients are subject **only to the small daily online-letter cap** ✓ —— ★**every online letter = waking them for one full-context inference** (the most expensive step ✓). ★Unset ⇒ this gate is entirely off ✓ |
+| | ★★`quota.phoneOnlineCap` ✗ | `3` | ★★**the ceiling** ✗: ★the effective allowance is **`min(the recipient's self-declared `onlineCapPerDay`, this)`** ✓ —— ★**"a declaration can only be more conservative"** ✓ (they can lower it to 1, **never raise it above the ceiling** ✗). ★No declaration ⇒ **the ceiling applies** ✓ |
 | | `loop.ackMaxBytes` / `ackOnly` | `40` / English+Chinese receipt words | ★**pure receipts are refused** ✓ |
 | | `loop.pairWindowMs` / `pairMax` | `20 minutes` / `3` | ★**how many letters one pair may exchange inside that window** ✓ |
 | | `loop.hopMax` | `3` | ★chain-depth cap (★a politeness / cost gate, **not a security boundary** ✓) |

@@ -51,6 +51,14 @@ const DEFAULTS = {
     //   例：按"授权级别"分四档 ⇒
     //     bucketRules: [ { field: 'auth', equals: 'self',  bucket: 'self'  }, … ]
     bucketRules: undefined,
+    // ★★S8 手机在线件小日上限（2026-10-10 缸内口径移植）✗✓ —— **默认不配 ⇒ 行为一字不变** ✓
+    //   ★为什么要它：★**每封在线件 ＝ 叫醒一个成员做一次满上下文推理** ✗（**最贵的那一步** ✓）
+    //   ⇒ "可能一次醒来连发几封"的成员（手机）要给一个**小日上限** ✓（★离线件**不受这条限** ✓ —— 它躺着等人 ✓）。
+    //   ★★上限 ＝ `min(收件人**自报**的 onlineCapPerDay, phoneOnlineCap)` ✗✓
+    //      —— ★**"收件习惯由它自己声明，而声明只能更保守"** ✓（它能把上限调到 1 ✓，**调不到天花板之上** ✗）。
+    //   ★**谁算"手机"由配置给**（属性名 ↓）⇒ 本件里不出现任何具体名字 ✓。
+    phoneFlag: undefined,
+    phoneOnlineCap: 3,       // ★天花板（★自报**只能更保守** ⇒ 实际额度 = min(自报, 这个) ✓）
     // ★★一条规则都没命中时落哪个桶 ✗ —— **必须给**（配了 bucketRules 才有意义）：
     //   不给的话，"带新字段的信"会掉回 type 桶（可能是对的，也可能是你没想到的）✓
     defaultBucket: undefined,
@@ -147,9 +155,44 @@ export function createGate(config = {}) {
     return letter.mode === 'offline' ? 'offline' : (letter.type ?? 'direct')
   }
 
-  function check(letter = {}) {
+  /**
+   * ★★S8："手机"的**当天在线件额度** ✗（★不适用 ⇒ `null` ✓）
+   *   ★额度 ＝ **`min(收件人自报, phoneOnlineCap)`** ✗✓ —— ★**声明只能更保守** ✓。
+   *   ★★没自报 ⇒ 用天花板 ✓（★"没说"不等于"可以一直叫醒它" ✓ —— 这条是**保护收件人**的 ✓）。
+   *   ★离线件**不受这条限** ✓。
+   */
+  function phoneCapOf(id, ctx) {
+    const flagName = cfg.quota.phoneFlag
+    if (flagName === undefined || flagName === null || flagName === '') return null
+    const roster = ctx && ctx.roster
+    if (!roster || typeof roster.flag !== 'function') return null          // ★拿不到名单 ⇒ **不拦** ✓（宁可放过，不冤枉 ✓）
+    if (!roster.flag(String(id), String(flagName))) return null            // ★不是"手机" ⇒ 这条不适用 ✓
+    const declared = ctx && ctx.declaredCaps && Number(ctx.declaredCaps[String(id)])
+    const ceiling = Number(cfg.quota.phoneOnlineCap)
+    const cap = Number.isFinite(declared) && declared >= 0 ? Math.min(Math.floor(declared), ceiling) : ceiling
+    return Number.isFinite(cap) && cap >= 0 ? cap : null
+  }
+
+  function check(letter = {}, ctx = {}) {
     const loop = cfg.loop
     const flat = flattenAck(letter.body)
+    // ★★S8：手机**在线件**的小日上限 ✗ —— ★放在回环闸之前 ✓（★这道是"保护收件人"的，比"省米"更该先判 ✓）
+    //   ★只看**在线件** ✓（离线件躺着等人，不受这条限 ✓）；★`--force` **不豁免** ✓（它保护的是收件人的推理代价 ✓）。
+    if (letter.mode !== 'offline') {
+      const tg = Array.isArray(letter.targets) && letter.targets.length ? letter.targets : [letter.to]
+      for (const t of tg) {
+        const cap = phoneCapOf(t, ctx)
+        if (cap === null) continue
+        const day = load(letter.as).days?.[localDay()] ?? null
+        // ★按**收件人**数这个发信人今天已经给它发过几封在线件 —— ★"叫醒了几次"才是这条闸要数的东西 ✓
+        const woke = Number(day?.byPhone?.[String(t)] ?? 0)
+        if (woke >= cap) {
+          return { reject: true, reason: `在线件上限（S8）：今天你已给「${t}」发过 ${woke} 封**在线件**，额度是 ${cap} 封／天` +
+            `（★每封在线件 ＝ **叫醒对方做一次满上下文推理** ✗ —— 这是最贵的那一步）。` +
+            `★攒一攒、合并成一封；★离线件**不受这条限**（它躺着等人 ✓）；确需照发加 --force。` }
+        }
+      }
+    }
     if (!letter.force) {
       if (Buffer.byteLength(flat, 'utf8') > 0 && Buffer.byteLength(flat, 'utf8') <= loop.ackMaxBytes && loop.ackOnly.test(flat)) {
         return { reject: true, reason: `回环闸①（纯回执）：正文去掉空白标点后只剩「${flat}」这类字样 —— ` +
@@ -196,6 +239,12 @@ export function createGate(config = {}) {
     if (letter.force) d.forced = (d.forced ?? 0) + 1      // ★--force 绕过三道闸 ⇒ 留痕（独立复核建议）
     if (bucket === 'offline') d.offlineLetters = (d.offlineLetters ?? 0) + 1     // ★离线条**不并进** units（单位是计费口径）
     else d.units += units
+    // ★★S8：数"今天叫醒过某个收件人几次" ✗ —— ★只数**在线件** ✓（离线件躺着等人，不算叫醒 ✓）
+    //   ★记在**发件人**名下（`d` 就是 `as` 的当天台账 ✓）—— ★因为"叫醒几次"是**发出去的人**的动作 ✓
+    if (letter.mode !== 'offline') {
+      const byPhone = d.byPhone ?? (d.byPhone = {})
+      for (const t of tg) byPhone[String(t)] = Number(byPhone[String(t)] ?? 0) + 1
+    }
     d.bytes = (d.bytes ?? 0) + bytes
     b.letters += 1
     b.units += units

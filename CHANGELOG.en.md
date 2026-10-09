@@ -106,6 +106,21 @@
   ★Two hard rules: ★**no backlog ⇒ never call it dormant** ✗ ("nothing to read ≠ not reading" ✓) / ★**only on-disk mtime is used** ✓ (never a timestamp from the content ✓).
   ★Thresholds `dormantSoftDays: 3` / `dormantHardDays: 7` ✓; ★**a merely `quiet`/`inferred` recipient is never bounced** ✗ (we do not guess ✓).
 * ★**`cli`: `verify` / `nag` subcommands** —— the three-state design is finally visible from the command line.
+* ★★★ **S8: the small daily cap on online letters to a "phone" (`bus` + `gate`)** ✗✓ —— ★**the last item ported from the tank's original** ✓:
+  ★verbatim from the original: ★"**every online letter = waking a member for one full-context inference** ✗ (**the most expensive step** ✓)
+  ⇒ a member like a phone, which "may wake up once and fire off several letters", needs a **small daily cap** ✓
+  (★offline letters are **not subject to it** ✓ —— they just lie there waiting ✓)".
+  ⇒ ★**the allowance is `min(the recipient's self-declared `onlineCapPerDay`, the ceiling)`** ✓ ——
+  ★★**"receiving habits are declared by the member itself, and a declaration can only be more conservative"** ✗✓
+  (they can lower the cap to 1 ✓, **never raise it above the ceiling** ✗).
+  ★On the `bus` side: `hello({ as, onlineCapPerDay })` + `onlineCapPerDay` added to `FIELD_ORDER`
+  (★a self-declaration must also be detectable if altered ✓; ★old hellos are unaffected —— canonical only includes
+  fields that are **present** ✓) + `declaredOnlineCap(as)` to read it back ✓.
+  ★On the `gate` side: `quota.phoneFlag` (★who counts as a phone comes from configuration ✓) + `quota.phoneOnlineCap` (default 3 ✓);
+  ★the new gate sits **before the loop gates** ✓ (★it protects the **recipient's inference cost**, which outranks "saving rice" ✓);
+  ★`--force` does **not** exempt it ✓.
+  ★Measured: self-declared 2 with a ceiling of 3 ⇒ **the first two pass, the third is refused**; ★**self-declared 1 ⇒ refused after the first** (★the more conservative declaration wins ✓);
+  ★**offline letters are unrestricted** ✓; ★**non-"phone" recipients are unrestricted** ✓; ★**no roster available ⇒ nothing is blocked** ✓ (better to let one through than to accuse wrongly ✓).
 * ★★**`cli`: `pickup` (remote root)** ✗✓ —— ★**go to another mailbox root and fetch your own letters** ✓ (★**it works offline** ✓ ——
   this is the step to take once the bell in "3 offline : 1 online" has rung ✓). The remote root comes from `--remote <dir>` or `WHALE_POST_REMOTE_ROOT` ✓.
   ★Three hard rules: ★★**verify every letter first** (a failing one is **not moved**, and the remote copy is **left in place** ✗) ✓;

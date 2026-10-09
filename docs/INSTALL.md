@@ -181,6 +181,8 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* 把这段文字送进那�
 | | `quota.defaultLimit` | `120` | ★**没在表里的类型**落这个桶 ✓ |
 | | ★★`quota.bucketRules` ✗ | 不配 | ★★**按哪个字段分桶** ✗：`[{ field, equals, bucket }]`，★**从上往下第一个命中的赢**；★**字段名与桶名全由配置给** ✓。★不配 ⇒ 行为一字不变 ✓。★例：按"授权级别"分四档 ⇒ `[{ field: 'auth', equals: 'self', bucket: 'self' }, …]` ＋ 在 `types` 里给 `self`／`relay`／… 各自的 `limit` ✓ |
 | | ★★`quota.defaultBucket` ✗ | 不配 | ★一条规则都没命中时落哪个桶（★配了 `bucketRules` 才有意义 ✓） |
+| | ★★`quota.phoneFlag` ✗ | 不配 | ★★**谁是"手机"** ✗（属性名由配置给 ✓）：★带此属性的收件人**只受"在线件小日上限"管** ✓ —— ★**每封在线件 ＝ 叫醒它做一次满上下文推理**（最贵的一步 ✓）。★不配 ⇒ 这道闸完全不启用 ✓ |
+| | ★★`quota.phoneOnlineCap` ✗ | `3` | ★★**天花板** ✗：★实际额度 ＝ **`min(收件人自报的 `onlineCapPerDay`, 这个)`** ✓ —— ★**"声明只能更保守"** ✓（能把上限调到 1，**调不到天花板之上** ✗）。★没自报 ⇒ **用天花板** ✓ |
 | | `loop.ackMaxBytes`／`ackOnly` | `40`／中英回执词 | ★**纯回执拒发** ✓ |
 | | `loop.pairWindowMs`／`pairMax` | `20 分钟`／`3` | ★同一对**这个窗口内最多发几封** ✓ |
 | | `loop.hopMax` | `3` | ★链深上限（★礼貌闸／省米闸，**不是安全边界** ✓） |

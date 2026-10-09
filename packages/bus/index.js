@@ -393,9 +393,12 @@ export function createBus(config = {}) {
     const gate = services.gate
     if (gate && typeof gate.check === 'function') {
       // ★★S8：把"每个收件人**自报**的在线件上限"交给闸 ✗（★闸不认识 `hello/`，也读不了盘 ✓）
+      //   ★同时把 **`roster` 接口转发**过去 ✓ —— ★"谁算手机"要靠名单判，而**属性名在闸的配置里** ✓；
+      //   ★核心**只是转发接口** ✓，它自己仍然**不认识任何名字** ✓。
       const declaredCaps = {}
       for (const t of targets) { const c = declaredOnlineCap(t); if (c !== null) declaredCaps[t] = c }
-      const r = gate.check({ as, to, targets, subject, body, mode: m, type, re, force, hop: hop0, groupMembers }, { declaredCaps })
+      const r = gate.check({ as, to, targets, subject, body, mode: m, type, re, force, hop: hop0, groupMembers },
+        { declaredCaps, roster: services.roster })
       if (r && typeof r === 'object' && r.reject) throw new Error(`闸拒发：${r.reason}`)
     }
     // ★发号放在**闸之后**（独立审计 2026-10-05）：被拒的信不该烧掉一个序号 ⇒ 水位与真实发信量对得上

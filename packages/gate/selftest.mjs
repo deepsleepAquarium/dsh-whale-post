@@ -112,6 +112,49 @@ try {
   const rOld2 = g5.record({ as: 'iris', to: 'bob', targets: ['bob'], mode: 'offline', type: 'direct', body: '正文有货，别当回执', lvl: 'a' })
   check('★★分桶规则：不配 ⇒ 行为一字不变（在线按 type、离线走 offline 桶）',
     rOld1.bucket === 'direct' && rOld2.bucket === 'offline', JSON.stringify([rOld1.bucket, rOld2.bucket]))
+
+  // ★★S8 手机在线件小日上限（2026-10-10 从缸里正本移植）——
+  //   ★**每封在线件 ＝ 叫醒一个成员做一次满上下文推理**（最贵的那一步）
+  //   ⇒ ★额度 ＝ **min(收件人自报, phoneOnlineCap)**，★**声明只能更保守** ✓
+  //   ★"谁算手机"由配置给（phoneFlag）✓ —— 闸里不出现任何具体属性名 ✓
+  const rosterS8 = { flag: (id, name) => name === 'ph' && String(id) === 'phone' }
+  const gS8 = createGate({ root: tmp, quota: { phoneFlag: 'ph', phoneOnlineCap: 3 } })
+  const ctxS8 = (cap) => ({ roster: rosterS8, declaredCaps: cap === undefined ? {} : { phone: cap } })
+  const L8 = (over = {}) => ({ as: 's8user', to: 'phone', targets: ['phone'], mode: 'online', type: 'direct', body: '在线件（正文有货，别当回执）', ...over })
+  check('★S8：不配 phoneFlag ⇒ 这道闸完全不启用（向后兼容）',
+    createGate({ root: tmp }).check(L8(), { roster: rosterS8, declaredCaps: {} }) === 'pass')
+  check('★S8：非"手机"成员 ⇒ 不适用（★属性名由配置给）',
+    gS8.check(L8({ to: 'qq', targets: ['qq'] }), ctxS8(1)) === 'pass')
+  check('★S8：离线件**不受这条限**', gS8.check(L8({ mode: 'offline' }), ctxS8(0)) === 'pass')
+  check('★★S8：额度 ＝ min(自报 2, 天花板 3) ⇒ 头两封过、第三封拦',
+    (() => {
+      const lg = createGate({ root: tmp, quota: { phoneFlag: 'ph', phoneOnlineCap: 3 } })
+      lg.record(L8(), ['phone']); lg.record(L8(), ['phone'])
+      const r = lg.check(L8(), ctxS8(2))
+      return r !== 'pass' && r.reject === true && /在线件上限/.test(r.reason)
+    })())
+  check('★★S8：**自报更保守**（自报 1 < 天花板 3 ⇒ 发完 1 封就拦）',
+    (() => {
+      const lg = createGate({ root: tmp, quota: { phoneFlag: 'ph', phoneOnlineCap: 3 } })
+      lg.record(L8(), ['phone'])
+      const r = lg.check(L8(), ctxS8(1))
+      return r !== 'pass' && /额度是 1 封/.test(r.reason)
+    })())
+  check('★S8：**没自报** ⇒ 用天花板（★"没说"不等于"可以一直叫醒它"）',
+    (() => {
+      const lg = createGate({ root: tmp, quota: { phoneFlag: 'ph', phoneOnlineCap: 1 } })
+      lg.record(L8(), ['phone'])
+      return lg.check(L8(), ctxS8(undefined)) !== 'pass'
+    })())
+  check('★★S8：`--force` **不豁免**（★它保护的是收件人的推理代价，不是"省米"）',
+    (() => {
+      const lg = createGate({ root: tmp, quota: { phoneFlag: 'ph', phoneOnlineCap: 1 } })
+      lg.record(L8(), ['phone'])
+      return lg.check(L8({ force: true }), ctxS8(undefined)) !== 'pass'
+    })())
+  check('★S8：拿不到名单 ⇒ **不拦**（宁可放过，不冤枉 ✓）',
+    createGate({ root: tmp, quota: { phoneFlag: 'ph', phoneOnlineCap: 1 } })
+      .check(L8({ as: 's8noroster' }), { declaredCaps: {} }) === 'pass')
 } catch (err) {
   check('自测没有抛异常', false, err && err.stack ? err.stack.split('\n')[0] : err)
 }
