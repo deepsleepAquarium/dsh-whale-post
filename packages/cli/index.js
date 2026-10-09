@@ -16,6 +16,7 @@
  * 通用参数：`--root <目录>`（★默认 `./.whale-mail`，或环境变量 `WHALE_POST_ROOT`）
  *          `--only-offline <属性名>`：带此属性的成员**只收离线**（对它发在线 ⇒ 拒发）
  *          `--dormant <属性名>`：带此属性的成员被**明确**标成休眠（发信 ⇒ 当场拒发，不合信箱）
+ *          `--no-gate`：★整套闸都不要（★并发压测用 ✓ —— 压测要看的是"发号撞不撞"，不是"闸拦不拦" ✓）
  * 退出码：0 ＝ 成功；2 ＝ 拒发／输入不合法；1 ＝ 没料到的错。
  * ★判据看**退出码**，不要看输出里的中文。
  */
@@ -54,7 +55,9 @@ function wire({ root, live, allow: allowIn, verifyEnabled } = {}) {
   const services = {
     roster: createRoster({ file: opt('roster') ?? join(r, 'roster.json') }),
     types: createTypes(),
-    gate: createGate({ root: r }),
+    // ★`--no-gate` ⇒ **整套闸都不要** ✓（★并发压测要用 ✓ —— 12 路同对发信会被回环闸**正确地**拦住 ✓，
+    //   而压测要看的是"发号会不会撞"，不是"闸拦不拦" ✓；★缸里正本用的是环境变量 `WHALE_POST_NO_GATE` ✓）
+    ...(flag('no-gate') ? {} : { gate: createGate({ root: r }) }),
     verify: createVerify({ root: r, enabled: flag('enable-verify') || verifyEnabled === true, allow }),
     deliver: createDeliver({
       sessionOf: (id) => (liveSet.has(id) ? { live: true, inject: (text) => injected.push({ id, text }) } : undefined),
@@ -247,7 +250,7 @@ function main() {
       }
       console.log(`投递策略：${verdictTxt}`)
       const bucket = r.mode === 'offline' ? 'offline' : r.type
-      const b = services.gate.report({ as }).buckets.find((x) => x.bucket === bucket)
+      const b = services.gate?.report({ as }).buckets.find((x) => x.bucket === bucket)
       if (b) console.log(`配额（${bucket} 桶）：今日 ${b.used}/${Number.isFinite(b.limit) ? b.limit : '∞'}${r.mode === 'offline' ? ' 条' : ' 单位'}`)
       return 0
     }

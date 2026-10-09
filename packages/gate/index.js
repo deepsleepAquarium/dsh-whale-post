@@ -21,7 +21,9 @@
  *   · ③ **链深闸依赖回信人老实带 `re`** —— 不带就重置链深 ⇒ 它是**礼貌闸／省米闸**，**不是安全边界**；
  *   · `force: true` 会**整条绕过**这三道（这是有意留的），但**留痕**：台账当日记 `forced` 计数（`report()` 看得到）。
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'node:fs'
+/** ★同步睡一会儿（Atomics.wait 是本进程内唯一可靠的同步 sleep ✓）—— Windows `rename` 撞忙时退避用 ✓ */
+const sleepSync = (ms) => { try { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms) } catch { /* 环境不支持就算了 ✓ */ } }
 import { join, dirname } from 'node:path'
 import { randomUUID } from 'node:crypto'
 
@@ -80,7 +82,19 @@ export function createGate(config = {}) {
     mkdirSync(dirname(file), { recursive: true })
     const tmp = `${file}.tmp-${randomUUID().slice(0, 8)}`
     writeFileSync(tmp, text, 'utf8')
-    renameSync(tmp, file)
+    // ★★Windows 的 `rename` 在"目标正被读／被杀软扫"时会抛 EPERM／EBUSY ✗ ⇒ **退避重试，最后兜底直写** ✓
+    //   ★缸里正本的记录：★这是 **12 路压测抓出来的坑** ✓ —— ★而我们 2026-10-10 的 12 路压测**又撞了一次** ✓
+    //   （★当时账本 `quota-web.json` 的 rename 抛 EPERM、那个进程直接退出码 1 ✓）
+    for (let i = 0; i < 6; i += 1) {
+      try { renameSync(tmp, file); return file } catch (err) {
+        const busy = err && (err.code === 'EPERM' || err.code === 'EBUSY' || err.code === 'EACCES')
+        if (!busy) throw err
+        sleepSync(5 + i * 10)
+      }
+    }
+    writeFileSync(file, text, 'utf8')       // ★兜底：宁可少一次原子性，也不要记账失败 ✓
+    try { unlinkSync(tmp) } catch { /* 临时文件清不掉不是错 ✓ */ }
+    return file
   }
   const localDay = (ms = Date.now()) => {
     const d = new Date(ms - Number(cfg.quota.dayBoundaryHour) * 3600 * 1000)

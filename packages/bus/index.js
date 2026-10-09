@@ -16,7 +16,7 @@
  *       `hello/` 握手；`退信/` 校验不过的信。写盘一律 **先 .tmp 再 rename**（原子）。
  */
 import { createHmac, createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, readdirSync, statSync, unlinkSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, readdirSync, statSync, unlinkSync, openSync, closeSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 
 export const name = 'whale-bus'
@@ -38,6 +38,10 @@ const FIELD_ORDER = ['v', 'kind', 'id', 'from', 'to', 'seq', 'subject', 'body', 
  *   ⚠️ 别的实现看到这个：★**别照抄着往信封里加字段** ✗ —— 加字段必须同时进 `FIELD_ORDER` ✓。
  */
 const LEGACY_FIELDS = ['auth']
+/** ★认领文件留多少个（更老的自清 ✓）—— 与缸里正本同一个数 ✓ */
+const SEQ_KEEP_CLAIMS = 300
+/** ★同步睡一会儿（`Atomics.wait` 是本进程内唯一可靠的同步 sleep ✓）—— Windows `rename` 撞忙时要退避重试 ✓ */
+const sleepSync = (ms) => { try { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms) } catch { /* 环境不支持就算了 ✓ */ } }
 
 const DEFAULTS = {
   root: undefined,              // 信箱根（不传 ⇒ 环境变量 WHALE_POST_ROOT ⇒ 当前目录 .whale-mail）
@@ -94,7 +98,17 @@ export function createBus(config = {}) {
     mkdirSync(dirname(file), { recursive: true })
     const tmp = `${file}.tmp-${randomUUID().slice(0, 8)}`
     writeFileSync(tmp, text, 'utf8')
-    renameSync(tmp, file)
+    // ★★Windows 的 `rename` 会在"目标正被读／被杀软扫"时抛 EPERM／EBUSY ✗ ⇒ **退避重试，最后兜底直写** ✓
+    //   ★缸里正本的记录：★这是 **12 路压测抓出来的坑** ✓ —— 不是想出来的 ✓（2026-10-10 移植 ✓）
+    for (let i = 0; i < 6; i += 1) {
+      try { renameSync(tmp, file); return file } catch (err) {
+        const busy = err && (err.code === 'EPERM' || err.code === 'EBUSY' || err.code === 'EACCES')
+        if (!busy) throw err
+        sleepSync(5 + i * 10)
+      }
+    }
+    writeFileSync(file, text, 'utf8')       // ★兜底：宁可少一次原子性，也不要发信失败 ✓
+    try { unlinkSync(tmp) } catch { /* 临时文件清不掉不是错 ✓ */ }
     return file
   }
 
@@ -244,12 +258,56 @@ export function createBus(config = {}) {
   }
 
   // ── 发信 ──────────────────────────────────────────────────────────────
+  // ── 发号（★认领式 ＋ 水位线 ✓ —— 2026-10-10 从缸里正本移植 ✓）─────────────────
+  const stateDir = () => join(paths().root, 'state')
+  const claimPath = (as, n) => join(stateDir(), `${as}.seq.${String(n).padStart(6, '0')}`)
+  const watermarkPath = (as) => join(stateDir(), `${as}.seq`)
+  function readWatermark(as) {
+    try {
+      const n = Number(String(readFileSync(watermarkPath(as), 'utf8')).trim())
+      return Number.isInteger(n) && n > 0 ? n : 0
+    } catch { return 0 }
+  }
+  function writeWatermark(as, n) {
+    try { atomicWrite(watermarkPath(as), `${n}\n`) } catch { /* ★写不上也不该拦住发信 ✓ */ }
+  }
+  /** 清掉比 `n - SEQ_KEEP_CLAIMS` 更老的认领文件（best-effort ✓） */
+  function pruneClaims(as, n) {
+    const cut = n - SEQ_KEEP_CLAIMS
+    if (cut <= 0) return
+    try {
+      for (const f of readdirSync(stateDir())) {
+        const m = /^(.+)\.seq\.(\d{6})$/.exec(f)
+        if (!m || m[1] !== as) continue
+        if (Number(m[2]) < cut) { try { unlinkSync(join(stateDir(), f)) } catch { /* 别人正在用就算了 ✓ */ } }
+      }
+    } catch { /* 清不掉不是错 ✓ */ }
+  }
+  /**
+   * ★★认领式发号 ✗（根因①「同身份并发 ⇒ 同号」的根治 ✓）——
+   *   病：原来是"读 `nextSeq` → 加一 → 写回"，**两个进程都读到 N 就都发 N** ✗。
+   *   ★缸里**第一版用独占锁 —— 24 路压测过、48 路压测 9 组撞号** ✗ ⇒ 弃用锁，改认领式 ✓。
+   *   法：从 `max(state.nextSeq, 水位线+1)` 起逐个试，★**用 `openSync(...,'wx')` 原子创建认领文件**，
+   *       ★**谁建成功谁得号** ⇒ **不排队、不等待、不超时失败、不可能同号** ✓（这正是"锁"栽掉的地方 ✓）。
+   *   ⚠️ `EPERM／EBUSY／EACCES` 也当"被占" ✓ —— Windows 上"正被删"的认领文件会这么报 ✓。
+   */
   function claimSeq(as) {
     const s = loadState(as)
-    const seq = Number(s.nextSeq ?? 1)
-    s.nextSeq = seq + 1
-    saveState(as, s)
-    return seq
+    let n = Math.max(Number(s.nextSeq) || 1, readWatermark(as) + 1)
+    for (let i = 0; i < 100000; i += 1, n += 1) {
+      try {
+        closeSync(openSync(claimPath(as, n), 'wx'))
+        writeWatermark(as, n)
+        if (n % 25 === 0) pruneClaims(as, n)     // ★摊着清：每 25 个号清一次 ✓
+        s.nextSeq = n + 1
+        saveState(as, s)
+        return n
+      } catch (error) {
+        const taken = error && (error.code === 'EEXIST' || error.code === 'EPERM' || error.code === 'EBUSY' || error.code === 'EACCES')
+        if (!taken) throw error
+      }
+    }
+    throw new Error('seq 认领失败：连试 10 万个号都被占（state 目录里怕是堆了异常多的认领文件）')
   }
   function send(letter = {}) {
     ensure()

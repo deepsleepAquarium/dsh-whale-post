@@ -24,7 +24,9 @@
  *   签名域与 `whale-bus` 的 `FIELD_ORDER` 一致（★`mode` 也在里面 ✓）。
  */
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'node:fs'
+/** ★同步睡一会儿（Atomics.wait 是本进程内唯一可靠的同步 sleep ✓）—— Windows `rename` 撞忙时退避用 ✓ */
+const sleepSync = (ms) => { try { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms) } catch { /* 环境不支持就算了 ✓ */ } }
 import { join, dirname } from 'node:path'
 import { randomUUID } from 'node:crypto'
 
@@ -94,7 +96,16 @@ export function createVerify(config = {}) {
     mkdirSync(dirname(file), { recursive: true })
     const tmp = `${file}.tmp-${randomUUID().slice(0, 8)}`
     writeFileSync(tmp, text, 'utf8')
-    renameSync(tmp, file)
+    // ★★同上（★Windows `rename` 会撞 EPERM／EBUSY ✓）：退避重试 ＋ 兜底直写 ✓
+    for (let i = 0; i < 6; i += 1) {
+      try { renameSync(tmp, file); return file } catch (err) {
+        const busy = err && (err.code === 'EPERM' || err.code === 'EBUSY' || err.code === 'EACCES')
+        if (!busy) throw err
+        sleepSync(5 + i * 10)
+      }
+    }
+    writeFileSync(file, text, 'utf8')
+    try { unlinkSync(tmp) } catch { /* ✓ */ }
     return file
   }
   const saveState = (j) => { try { atomicWrite(stateFile(), JSON.stringify(j, null, 2)) } catch { /* 存不上不影响收信 ✗ */ } return j }
