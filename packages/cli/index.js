@@ -88,7 +88,12 @@ function wire({ root, live, allow: allowIn, verifyEnabled } = {}) {
     //   ★`() => services.busRef?.FIELD_ORDER`：★函数体**延迟求值** ⇒ ★天然躲过暂时性死区 ✓
     //   （★我第一版写成立即求值的属性 ⇒ `Cannot access 'services' before initialization` ✓；
     //    第二版改成建完 bus 回填 `vSvc.cfg.bus` ⇒ ★**没生效** ⇒ 还是被判"未登记字段" ✓ ⇒ 才改成这个 ✓）
-    bus: { sign: (env) => services.busRef?.sign(env), fields: () => services.busRef?.FIELD_ORDER } })
+    bus: { sign: (env) => services.busRef?.sign(env), fields: () => services.busRef?.FIELD_ORDER,
+      // ★★`digest` 也走**延迟函数** ✗✓（2026-10-10 加）——
+      //   ★`verify` 那边本来就有"优先用 `cfg.bus.digest`、否则用自己那份"的写法 ✓（★它比 `FIELD_ORDER` 那处做得好 ✓），
+      //     而★**我上一版没把 `digest` 传过去** ⇒ ★它一直走**兜底那份** ✓ ⇒ ★一旦 bus 改了摘要算法，**两边就漂** ✗
+      //     （★摘要漂了会怎样：★**信被判"摘要不符"、当场退信** ✓ —— ★同 HMAC 那类"两边都自洽、一接就炸" ✓）。
+      digest: (body) => services.busRef?.digest(body) } })
   const services = {
     roster: createRoster({ file: opt('roster') ?? join(r, 'roster.json') }),
     types: createTypes(),

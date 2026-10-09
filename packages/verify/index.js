@@ -33,8 +33,17 @@ import { randomUUID } from 'node:crypto'
 export const name = 'whale-verify'
 export const apiVersion = 1
 
-/** ★与 whale-bus 完全一致的签名域（★`mode` 必须在里面 ✓） */
-export const FIELD_ORDER = ['v', 'kind', 'id', 'from', 'to', 'seq', 'subject', 'body', 'sha256', 'sentAtMs', 'type', 'mode', 're', 'hop']
+/**
+ * ★★**兜底**签名域 ✗✓（2026-10-10 改名 —— ★**让名字说真话** ✓）
+ *   ★它**只在"没接 `bus`"时才生效** ✓；★接了 `bus` ⇒ 用**它那份**（★实例上 `FIELD_ORDER` 就是当前生效的那份 ✓）。
+ *   ★★为什么改名 ✗：★原来它就叫 `FIELD_ORDER` ✓ ⇒ ★**从外面看会以为它就是在用的那份** ✗ ——
+ *     而★实际在用的是 `fieldsOf()` 的结果 ✓（★可以是 `bus` 那份、也可以是这份 ✓）★★"看着像真的、其实不是" ✓。
+ *   ★（★这跟正本那句「**不许把推断说成声明**」是同一条精神 ✓ —— ★名字也是要负责任的 ✓）
+ *   ⓘ `FIELD_ORDER` 这个名字**仍导出**（★别名 ✓ —— 老引用不会断 ✓）。
+ */
+export const FALLBACK_FIELD_ORDER = ['v', 'kind', 'id', 'from', 'to', 'seq', 'subject', 'body', 'sha256', 'sentAtMs', 'type', 'mode', 're', 'hop']
+/** ★别名（向后兼容 ✓ —— 但**新代码请用 `FALLBACK_FIELD_ORDER`** 或**实例上的 `FIELD_ORDER`** ✓） */
+export const FIELD_ORDER = FALLBACK_FIELD_ORDER
 
 const DEFAULTS = {
   root: undefined,          // 信箱根（不传 ⇒ WHALE_POST_ROOT ⇒ 当前目录 .whale-mail）
@@ -256,7 +265,15 @@ export function createVerify(config = {}) {
     return saveState({ ...st, enabled: false, enabledAt: null })
   }
 
-  return { apiVersion, verify, nag, status, enable, disable, cfg, localDay, keyFor, digestOf, FIELD_ORDER }
+  return { apiVersion, verify, nag, status, enable, disable, cfg, localDay, keyFor, digestOf,
+    // ★★★"当前生效的签名域"用**函数**给，**不暴露数组** ✗✓（2026-10-10）——
+    //   ★★为什么 ✗：★`FIELD_ORDER: fieldsOf()` 这种写法是**立即求值** ✓ ⇒ ★**在 `createVerify` 那一刻就定死了** ✓，
+    //     而★`bus` 往往**之后**才建好 ✓ ⇒ ★拿到的其实是**兜底那份** ⇒ ★★**"看着像当前生效的，其实是快照"** ✗✓
+    //     （★这个坑我在**同一轮里栽了两次** ✓ —— ★`cli` 那边 `services.busRef?.FIELD_ORDER` 也是它 ✓）。
+    //   ⇒ ★给一个**函数**：★谁要就**当场问** ✓（★要的是"现在这份"，不是"我刚建出来时那份" ✓）。
+    fields: () => fieldsOf(),
+    /** ★兜底那份（★名字说真话 ✓ —— 它**不是**当前生效那份，除非没接 `bus` ✓） */
+    FALLBACK_FIELD_ORDER }
 }
 
 /** 插件入口：挂进 Cordis 风格的 ctx（拿不到容器也能被 CLI 直接 import 使用 ✓） */

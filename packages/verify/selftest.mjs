@@ -10,7 +10,7 @@
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs'
 import { createHash, createHmac } from 'node:crypto'
 import { join } from 'node:path'
-import { apply, createVerify, apiVersion, FIELD_ORDER } from './index.js'
+import { apply, createVerify, apiVersion, FIELD_ORDER, FALLBACK_FIELD_ORDER } from './index.js'
 import { createBus } from '../bus/index.js'
 
 const tmp = join(process.env.TEMP ?? '/tmp', `whale-verify-selftest-${Date.now()}`)
@@ -169,13 +169,21 @@ try {
       const r = vf.verify({ v: 1, kind: 'msg', id: 'x1', from: 'a', to: 'b', seq: 1, body: 'b', sentAtMs: Date.now(), brandNewFieldFromBus: 'ok' })
       return !(r.ok === false && /未登记字段/.test(String(r.why)))
     })())
+  // ★★"当前生效那份"用**函数**问 ✗✓（2026-10-10）——
+  //   ★为什么不是暴露数组：★那会是**实例化那一刻的快照** ✓，而 `bus` 往往**之后**才建好 ✓
+  //     ⇒ ★"看着像当前生效的，其实是旧的" ✗（★这个坑我在同一轮里栽了两次 ✓）。
+  check('★★一套真相：`fields()` 是**当场问**的结果（★接了 bus ⇒ 就是 bus 那份 ✓）',
+    JSON.stringify(vf.fields()) === JSON.stringify(ref.bus.FIELD_ORDER),
+    `fields=${vf.fields().length} bus=${ref.bus.FIELD_ORDER.length}`)
+  check('★一套真相：`FALLBACK_FIELD_ORDER` 名字说真话（★它是**兜底**那份，不是"当前生效" ✓）',
+    FALLBACK_FIELD_ORDER.length < ref.bus.FIELD_ORDER.length && !FALLBACK_FIELD_ORDER.includes('brandNewFieldFromBus'))
   check('★一套真相：**没接** bus ⇒ 用本包兜底那份（★不含 bus 的新字段 ⇒ 退回原行为 ✓）',
     (() => {
       const v2 = createVerify({ root: tmp, enabled: true, keysDir: join(tmp, 'keys') })
       //   ⓘ ★这里**直接判表**，不判 `verify()` 的返回值 ✗ ——
       //     ★我第一版判的是 `r.ok === false && /未登记字段/` ⇒ ★而它**先被"签名不符"拦住了**
       //     （★那封信本来就签不出正确 MAC ✓）⇒ `why` 里没有"未登记" ⇒ **假红** ✓（★又一次"判据写得比事实窄" ✓）。
-      return !v2.FIELD_ORDER.includes('brandNewFieldFromBus')
+      return !v2.fields().includes('brandNewFieldFromBus')
     })())
 } catch (err) {
   check('自测没有抛异常', false, err && err.stack ? err.stack.split('\n')[0] : err)
