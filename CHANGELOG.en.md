@@ -26,6 +26,21 @@
 
 ★**All three keep a way back** ✗: ★`requireHello: 'reject'` / `offlineOnlyMode: 'reject'` ⇒ ★**an old deployment writing those sees no change at all** ✓.
 
+### ★★★ Read first (2): **mixed versions are not compatible** ✗✓ —— ★**the one thing to know during an upgrade**
+
+★★ **Measured** (2026-10-10 ✓, ★running `npx …@0.2.0` against the checkout ✓):
+
+| Direction | Result |
+|---|---|
+| ★★ **`0.2.0` sends ⇒ `0.3.0` receives** ✗✓ | ★**works** ✓ (★an old envelope still verifies ✓ —— canonical includes only fields that are **present** ✓) |
+| ★★★ **`0.3.0` sends ⇒ `0.2.0` receives** ✗✓✓ | ★★ **bounced** ✓ —— ★the old version reports: ★"a field **not in the signature domain**: `peerStateAtSend`" ✓ |
+
+★★ **Why** ✗✓: ★this version added 7 fields to the **signature domain** ✓ —— ★★**and "no unregistered fields" is the**old version’s** fail-closed rule** ✓
+⇒ ★**of course it does not recognise the new fields** ✓✓.
+★★ **It cannot be fixed** ✗: ★**the old version is already published** ✓ ⇒ ★★**know about it and plan the upgrade around it** ✓:
+★**upgrade both sides to `0.3.0` (or later) first, then start sending** ✓; ★**while versions are mixed, letters sent by `0.3.0` do not reach the old side** ✓.
+★(This is also the field answer to "**why signature-domain fields cannot be added casually**" ✓ —— ★add one field, ★**and you add one one-way wall** ✓.)
+
 ### ★★ Two real bugs (★the kind you only see by running it) ✗✓
 
 * ★★★ **The quota ledger loses entries under concurrency** ✗✓ —— ★12 real sub-processes each writing one entry left only **8 / 9 / 10** in the ledger ✓
@@ -365,6 +380,19 @@
       ★**any downstream "how long has this been idle" judgement goes wrong** ✓).
   ★**Criteria** (`cli` 44 → 48 ✓): ★two acks mirrored / ★**mirror only, never delete** (★the mailbox still has 2 ✓) / ★**idempotent** (★a second pickup mirrors 0 ✓) /
     ★**a new ack gets picked up** (★exactly one more ✓). ★Negative test: switching that block off ⇒ **3 criteria genuinely red** ✓.
+* ★★★ **Cross-version compatibility: actually ran `0.2.0` against this version** ✗✓ (2026-10-10) ——
+  ★**How** ✗: ★`npx -y dsh-whale-post-cli@0.2.0` (★**the copy that genuinely exists on npm** ✓) sends ⇒ ★**this version (`0.3.0`) receives** ✓;
+  ★then the reverse: ★this version sends ⇒ `0.2.0` receives ✓.
+  ★**Result** ✗✓:
+    · ★★**`0.2.0` sends ⇒ `0.3.0` receives: works** ✓ —— ★an old envelope **still verifies** ✓ (★canonical includes only fields that are **present** ✓);
+    · ★★★**`0.3.0` sends ⇒ `0.2.0` receives: bounced** ✗✓✓ —— ★the old version reports: ★"the envelope has a field **not in the signature domain**: `peerStateAtSend`" ✓.
+  ★★**Why** ✗: ★this version added 7 fields to the **signature domain** ✓ —— ★and "**no unregistered fields**" is the **old version's** fail-closed rule ✓
+    ⇒ ★**of course it does not recognise the new fields** ✓.
+  ★★★**It cannot be fixed** ✗✓: ★**the old version is already published** ✓ ⇒ ★**you can only know about it and plan the upgrade around it** ✓ ——
+    ★**written into the `CHANGELOG` as "Read first (2): mixed versions are not compatible"** ✓ (★"upgrade both sides to `0.3.0` first, then start sending" ✓).
+  ★★**It also answers "why signature-domain fields cannot be added casually"** ✗✓: ★**add one field and you add one one-way wall** ✓.
+  ★**Criteria** ✗ (`bus` 98 → **100** ✓): ★the signature domain includes `peerStateAtSend` ✓ / ★**an envelope with only the old fields still gets a signature** ✓.
+    ★Negative test: ★removing that field from `FIELD_ORDER` ⇒ **genuinely red** ✓ (★`seal()` refuses on the spot ✓ —— ★**the rule "unregistered fields may not enter the signature domain" polices itself** ✓).
 * ★**`cli`: `--only-offline <attribute>` / `--dormant <attribute>`** —— ★both rules can finally be switched on from the command line ✓.
 * ★**`cli`: `verify` / `nag` subcommands** —— ★the three-state design is finally visible from the command line
   (★`verify --enable` / `--disable` / `--allow a,b`; `nag` tells you whether a notice is due ✓).

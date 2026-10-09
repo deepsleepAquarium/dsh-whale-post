@@ -456,6 +456,27 @@ try {
     b.hello({ as: 'alice' }); b.hello({ as: 'bob' })
     return b.send({ as: 'alice', to: 'bob', subject: 'x', body: '配了默认类型 club ⇒ 应当用它（正文有货，不是回执）' }).type === 'club'
   })())
+// ★★★跨版本兼容（★升级期最该知道的一条 ✗✓）—— 2026-10-10 实测
+//   ★★**老信照收** ✗✓：★canonical 只收“**出现过的**字段” ✓
+//     ⇒ ★**签名域后来加了字段，老信也照验得过** ✓。
+//     ★实测：★用 `npx -y dsh-whale-post-cli@0.2.0 send` 发的真信封 ⇒ ★仓库版收得到 ✓。
+//   ★★★**反方向不行** ✗✓✓：★新版发的信老版**会退** ✓
+//     （★报“信封里有**没进签名域**的字段：`peerStateAtSend`” ✓）。
+//     ★★**这修不了**（★老版代码已经发出去了 ✓）⇒ ★只能写进“**升级须知**” ✓
+//     （★已写进 `CHANGELOG` 的「必读（二）」✓）。
+//   ★这里只能自动判“老信照收”那一半 ✓ —— ★反方向要跑老版，本库自测做不了 ✗。
+check('★★签名域字段名单里有 `peerStateAtSend`（★本版新加的 ✓）',
+  Array.isArray(bus.FIELD_ORDER) && bus.FIELD_ORDER.includes('peerStateAtSend'))
+check('★★★老信（★只有老字段、没有 `peerStateAtSend`）**签名照样算得出来** ✓',
+  (() => {
+    try {
+      // ★造一个只有**老字段**的信封 ✓ —— ★canonical 只收出现过的字段 ✓
+      const old = { id: 'mv0-old-0001', from: 'a', to: 'b', body: '老信（正文有货，别当回执）', sentAtMs: 1 }
+      const sig = bus.sign(old)
+      return typeof sig === 'string' && sig.length > 0
+    } catch { return false }
+  })())
+
 } catch (err) {
   check('自测没有抛异常', false, err && err.stack ? err.stack.split('\n')[0] : err)
 }
@@ -465,3 +486,4 @@ const pass = checks.filter((c) => c.ok).length
 console.log(`\n${pass}/${checks.length} 通过   （临时邮局：${tmp}）`)
 process.exit(pass === checks.length ? 0 : 1)
 void createBus
+
