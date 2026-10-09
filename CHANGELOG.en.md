@@ -200,6 +200,19 @@
   ★to really bounce, **pin it first** (★promote the inference into a declaration; that version comes next round ✓).
   ★Criteria: `cli` 35 → 40 (scene set up correctly / **the bounce** / **the note** / **the note's contents** / ★**an inferred dormancy does not bounce, only warns** ✓).
   ★Negative test: switching off the bounce logic to see whether those criteria really go red ✓.
+* ★★★ **`dormant --pin`: promoting an inferred dormancy into a declared one** ✗✓ (ported 2026-10-10; ★original criterion 106 ✓) ——
+  ★Verbatim ✗: ★"an inferred dormancy **never bounces automatically** ✗ —— otherwise 'bounce ⇒ the evidence disappears ⇒ judged active again' **oscillates** ✗;
+  to really bounce, **pin it first** (`dormant --pin <member>` ✓) —— ★**only a pinned state is a declaration** ✓, and only that is stable ✓."
+  ★★★**What it actually solves** ✗✓: ★★**it separates "a guess" from "a decision"** ✓ ——
+  ★`dormancyOf`'s inference **is always an inference** (`source: 'inferred'` ✓); ★while **"pinning" is a person's decision** ✓
+  ⇒ ★it is persisted with a trace (**who / why / when** ✓) ⇒ ★that member now counts as `declared` ✓ ⇒ ★**only then will the bounce logic touch it** ✓✓.
+  ★★The root of the illness is "**one signal serving as both evidence and action**" ✓: ★"it is not reading its mail" is the **evidence**, and bouncing
+  the backlog is the **action** ⇒ ★**the action destroys the evidence** ⇒ ★the system **oscillates** ✓. ★"Pinning" **splits the two** ✓.
+  ★**The loop** ✗✓: ★**inferred (loudly reported only) → a person pins it (with a trace) → then it bounces** ✓.
+  ★Commands ✗: ★`dormant --pin <member> [--why …] [--by …]` ✓ (★with no arguments it **lists who is pinned** ✓) / `dormant --unpin <member>` ✓
+  (★unpinning also states **who** pinned it and why ✓). ★Stored at `<root>/state/pinned-dormant.json` ✓.
+  ★Criteria: `cli` 40 → 45 (★pin succeeds **with a trace** / listing / ★**only a pinned member is bounced** / unpin reports who pinned it ✓).
+  ★Negative test: disabling the "pinned" branch to see whether those criteria really go red ✓.
 * ★**`cli`: `--only-offline <attribute>` / `--dormant <attribute>`** —— ★both rules can finally be switched on from the command line ✓.
 * ★★★ **No handshake no longer means "refused"** ✗✓ (ported from the original on 2026-10-10; ★its criteria 1-3 plus "**the keeper's order of 2026-10-06 01:5x**" ✓)
   —— ★**another "opposite direction"** ✗: ★it used to throw and refuse when there was no handshake ✓; the new rule is

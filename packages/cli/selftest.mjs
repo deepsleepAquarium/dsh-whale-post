@@ -228,6 +228,24 @@ check('★S11：说明里写明「此人无法收到邮件」＋「没有进收�
   check('★★S11：**推断**休眠（放了 10 天的积压）⇒ **不自动退** ✗（★退了就会"来回摆" ✓）＋ 只**提示** ✓',
     lsDir(join(qRoot, 'inbox', 'quiet')).length === 1 && lsDir(join(qLocal, '退信')).length === 0,
     `邮筒还剩 ${lsDir(join(qRoot, 'inbox', 'quiet')).length} 封／退信 ${lsDir(join(qLocal, '退信')).length} 个`)
+
+  // ★★★`dormant --pin`：把**推断的休眠**升格成**明示的休眠** ✗✓（正本判据 106 ✓）
+  //   ★正本原话：★"要真退就**先钉** —— ★**钉了才是明示** ✓、才稳 ✓"
+  //   ★★它把"**猜测**"和"**决定**"分开 ✓：★推断永远是推断（`inferred` ✓）；
+  //     ★而"钉"是**一个人的决定** ✓ ⇒ ★落盘留痕（谁／为什么／什么时候 ✓）⇒ ★从此算 `declared` ✓。
+  //   ★★★**闭环** ✗✓：★**推断（只提示）→ 人来钉（留痕）→ 才退** ✓。
+  const pinRun = run(['dormant', '--pin', 'quiet', '--why', '十天没读信，主人决定先钉住', '--by', '自测', '--root', qLocal])
+  check('★★钉：`dormant --pin` 成功，且**留痕**（★谁／为什么／什么时候 ✓ —— ★那是一个决定 ✓）',
+    pinRun.status === 0 && /十天没读信/.test(pinRun.stdout) && /自测/.test(pinRun.stdout), String(pinRun.stdout).slice(0, 80))
+  check('★钉：`dormant` 不带参数 ⇒ **列出来**（★钉过谁看得见 ✓）',
+    run(['dormant', '--root', qLocal]).stdout.includes('quiet'))
+  run(['pickup', '--as', 'web', '--root', qLocal, '--remote', qRoot, '--only-offline', 'quiet'])
+  check('★★★钉：**钉了之后才肯退** ✗（★推断不动、钉了才动 ✓ —— 正本 106 的闭环 ✓）',
+    lsDir(join(qRoot, 'inbox', 'quiet')).length === 0 && lsAll(join(qLocal, '退信')).length >= 2,
+    `邮筒还剩 ${lsDir(join(qRoot, 'inbox', 'quiet')).length} 封／退信 ${lsAll(join(qLocal, '退信')).length} 个`)
+  const unpinRun = run(['dormant', '--unpin', 'quiet', '--root', qLocal])
+  check('★钉：`--unpin` 解开 ⇒ 名单里没了（★解钉也要说清原来是**谁**钉的 ✓）',
+    unpinRun.status === 0 && /自测/.test(unpinRun.stdout) && !run(['dormant', '--root', qLocal]).stdout.includes('· quiet'))
 }
 
 // ⑥ ★★S12 断线不卡死（2026-10-10 从缸里正本移植）：动"邮筒"之前先探活

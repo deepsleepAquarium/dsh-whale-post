@@ -70,14 +70,61 @@ function remoteAlive(rootPath, force = false) {
 }
 
 /** 把接口件拼起来（★核心只认接口，这里就是"接线"） */
+/**
+ * ★★★"钉"——把**推断的休眠**升格成**明示的休眠** ✗✓（2026-10-10 从正本移植；★正本判据 106 ✓）
+ *
+ * ★正本原话 ✗：★"推断休眠**不自动退** ✗ —— 否则'退了 ⇒ 证据没了 ⇒ 又判活跃'**来回摆** ✗；
+ *   ★要真退就**先钉** —— ★**钉了才是明示** ✓、才稳 ✓"
+ * ★★根子 ✗✓：★那是"用**同一个信号**既当**证据**、又当**动作**" ✓ —— ★信号既是"它不读信"的**证据**，
+ *   又是"把信退掉"的**动作** ⇒ ★**动作会毁掉证据** ⇒ ★系统**来回摆** ✓。
+ * ★★★"钉"就是把它们分开 ✗✓：★★ **推断永远是推断**（`source: 'inferred'` ✓），
+ *   ★而**"钉"是一个人的决定** ✓ ⇒ ★落盘留痕（**谁／为什么／什么时候** ✓）⇒ ★从此那条算 `declared` ✓。
+ * ★为什么必须留痕 ✗：★因为它**是一个决定** ✓ —— ★"谁做的决定，写谁" ✓（★跟署名那条一脉 ✓）。
+ */
+const pinnedFile = (r) => join(r, 'state', 'pinned-dormant.json')
+function readPinned(r) {
+  try {
+    const j = JSON.parse(readFileSync(pinnedFile(r), 'utf8'))
+    return (j && typeof j === 'object' && j.pinned && typeof j.pinned === 'object') ? j.pinned : {}
+  } catch { return {} }
+}
+function writePinned(r, pinned) {
+  mkdirSync(join(r, 'state'), { recursive: true })
+  writeFileSync(pinnedFile(r), JSON.stringify({ note: '★"钉"＝把推断的休眠升格成明示（★人的决定，留痕 ✓）', pinned }, null, 2), 'utf8')
+}
+
+/**
+ * ★★"根"只有**一处解析** ✗✓（2026-10-10 抽出来）——
+ *   ★原来只在 `wire()` 里那一行 ✓ ⇒ ★而 `dormant` 子命令也要知道根（★"钉"存在根下 ✓）
+ *     ⇒ ★抽成一个函数，两边共用 ✓（★"同一件事只写一份" —— 就是这几轮一直在清的那种病 ✓）。
+ */
+function wireRoot(root) {
+  return root ?? opt('root') ?? process.env.WHALE_POST_ROOT ?? join(process.cwd(), '.whale-mail')
+}
+
 function wire({ root, live, allow: allowIn, verifyEnabled } = {}) {
-  const r = root ?? opt('root') ?? process.env.WHALE_POST_ROOT ?? join(process.cwd(), '.whale-mail')
+  const r = wireRoot(root)
   const injected = []
   // ★`--live a,b` 声明"这些人此刻有活体会话"（独立审计 2026-10-05：原来它只在自测里被用到 ⇒ 死参数 ✗）
   const liveList = (Array.isArray(live) && live.length)
     ? live
     : String(opt('live', '')).split(',').map((s) => s.trim()).filter(Boolean)
   const liveSet = new Set(liveList)
+  // ★★★"谁是**明示休眠**" —— **只写一份** ✗✓（2026-10-10）
+  //   ★★两路都算 ✗：★① 名单里带那个**属性** ✓（`--dormant <属性名>` ✓）；
+  //     ★② ★**被人"钉"过的** ✓（★"钉"＝把推断升格成明示 ✓ —— 见 `readPinned` 那段 ✓）。
+  //   ★★★**为什么必须只写一份** ✗✓：★我第一版在 `pickup` 里**另写了一遍**（只认属性名 ✗）
+  //     ⇒ ★**"钉"了却不退** ✓（★实测：钉完再取件，那封**还躺在邮筒上** ✓）——
+  //     ★这已经是我们这几轮第四次踩"同一件事写两份" ✓（★`FIELD_ORDER`／日界／摘要／这一处 ✓）。
+  //   ★下游两处共用它：★`deliver`（★判休眠用 ✓）＋ ★`pickup`（★退积压用 ✓）。
+  //
+  // ★★"明示休眠"的属性名从命令行给 ✓ —— ★核心与 CLI 都不认识任何具体名字 ✓
+  const flagName = opt('dormant')
+  const declaredDormant = (id) => {
+    const w = String(id)
+    if (flagName && services.roster.flag(w, flagName)) return true
+    return Object.prototype.hasOwnProperty.call(readPinned(r), w)
+  }
   // ★安全校验：**默认禁用**（enabled 不写就是禁用）——
   //   `--enable-verify` 可以就地打开；`--allow a,b` 给白名单（不写 ⇒ 不限制）
   const allow = (Array.isArray(allowIn) && allowIn.length)
@@ -96,8 +143,7 @@ function wire({ root, live, allow: allowIn, verifyEnabled } = {}) {
       digest: (body) => services.busRef?.digest(body) } })
   const services = {
     roster: createRoster({ file: opt('roster') ?? join(r, 'roster.json') }),
-    types: createTypes(),
-    // ★`--no-gate` ⇒ **整套闸都不要** ✓（★并发压测要用 ✓ —— 12 路同对发信会被回环闸**正确地**拦住 ✓，
+    types: createTypes(),    // ★`--no-gate` ⇒ **整套闸都不要** ✓（★并发压测要用 ✓ —— 12 路同对发信会被回环闸**正确地**拦住 ✓，
     //   而压测要看的是"发号会不会撞"，不是"闸拦不拦" ✓；★缸里正本用的是环境变量 `WHALE_POST_NO_GATE` ✓）
     ...(flag('no-gate') ? {} : { gate: createGate({ root: r }) }),
     // ★★把**签名域那一份真相**交给 verify ✗✓（2026-10-10 修）——
@@ -110,6 +156,14 @@ function wire({ root, live, allow: allowIn, verifyEnabled } = {}) {
     verify: vSvc,
     deliver: createDeliver({
       sessionOf: (id) => (liveSet.has(id) ? { live: true, inject: (text) => injected.push({ id, text }) } : undefined),
+      // ★★"明示休眠"**两路** ✗✓（2026-10-10）：★① 名单里带那个**属性** ✓（`--dormant <属性名>` ✓）；
+      //   ★② ★**被人"钉"过的** ✓（★"钉"＝把推断升格成明示 ✓ —— 见 `readPinned` 那段 ✓）。
+      //   ★★两路都算 `declared` ✓ ⇒ ★**退回逻辑才肯动它** ✓（★而推断出来的**永远不动** ✓ ——
+      //     否则"退掉积压 ⇒ 证据消失 ⇒ 又判活跃"**来回摆** ✗）。
+      //   ⚠️ ★★这个判据**只写一份** ✗✓ —— ★就是上面那个局部 `declaredDormant` ✓，这里**只是传进去** ✓：
+      //     ★我第一版在这里**另写了一遍**（只认属性名 ✗）⇒ ★**"钉"了却不退** ✓
+      //     （★实测抓出来的：钉完再取件，那封**还在邮筒上** ✓）—— ★**又是"同一件事写两份"** ✓。
+      declaredDormant,
     }),
   }
   const bus = createBus({
@@ -122,6 +176,8 @@ function wire({ root, live, allow: allowIn, verifyEnabled } = {}) {
     ...(opt('dormant') ? { dormantFlag: opt('dormant') } : {}),
   })
   services.busRef = bus     // ★回填：★`verify` 那边通过**延迟函数**读它（★"一套真相" ✓ —— 见上面 `vSvc` 那段的注释 ✓）
+  // ★★把"谁是明示休眠"**挂出去** ✗✓（★只写一份 ✓ —— `deliver` 与 `pickup` 共用同一句 ✓）
+  services.declaredDormant = declaredDormant
   return { root: r, bus, services, injected, liveSet, allow }
 }
 
@@ -419,8 +475,13 @@ function main() {
         return true
       }
       // ★★"明示休眠"的属性名**从命令行给** ✓（`--dormant <属性名>` ✓ —— ★核心与 CLI 都不认识具体名字 ✓）
-      const dormantFlagName = opt('dormant')
-      if (dormantFlagName) {
+      //   ★★"谁是明示休眠"**只有一份判据** ✗✓（★`wire()` 里那个 `declaredDormant` ✓）——
+      //     ★我第一版在这里**另写了一遍**（只认 `--dormant` 的属性名 ✗）⇒ ★**"钉"了却不退** ✓
+      //     （★实测抓出来的：钉完再取件，那封**还躺在邮筒上** ✓）。
+      //   ★所以这里**不再看 `dormantFlagName`** ✗，只看 `services.declaredDormant` ✓；
+      //     ★而"要不要做这件事"＝★**有没有任何人是明示休眠** ✓（★不取决于命令行有没有配属性名 ✓）。
+      const anyDormant = services.roster.list().map((m) => String((m && m.id) || m)).filter(Boolean).some((w) => services.declaredDormant(w))
+      if (anyDormant) {
         //   ⚠️ ★★`services.roster.list()` 给的是**对象数组** ✗（`[{ id, label, …属性 }]` ✓），
         //     ★**不是**一串 id ✓ —— ★我第一版写成 `for (const w of list())` 然后 `flag(w, name)` ⇒
         //     ★`w` 是对象 ⇒ `flag` **永远 false** ⇒ **整个退回逻辑静静地不执行** ✗✓
@@ -430,7 +491,7 @@ function main() {
         const memberIds = services.roster.list().map((m) => String((m && m.id) || m)).filter(Boolean)
         const seenWho = new Set()
         for (const w of memberIds) {
-          if (!services.roster.flag(w, dormantFlagName)) continue
+          if (!services.declaredDormant(w)) continue
           if (seenWho.has(w)) continue
           seenWho.add(w)
           for (const dir of [bus.paths().inbox(w), join(remote, 'inbox', w)]) {
@@ -441,7 +502,7 @@ function main() {
         }
         // ★★推断出来的：**只提示，不退** ✗✓（★退了就会"来回摆" ✓）
         for (const w of memberIds) {
-          if (services.roster.flag(w, dormantFlagName)) continue
+          if (services.declaredDormant(w)) continue
           const d = typeof services.deliver?.dormancyOf === 'function' ? services.deliver.dormancyOf(w) : null
           if (d && d.state === 'dormant' && String(d.source) === 'inferred') {
             console.log(`ⓘ 看着像休眠（推断）：${w}（★已 ${d.days} 天没有积压变化 ✓）—— ★**不自动退** ✗：
@@ -549,6 +610,50 @@ function main() {
     if (cmd === 'nag') {
       const text = services.verify.nag()
       console.log(text === null ? '（无需提示）' : text)
+      return 0
+    }
+    // ★★★`dormant`：把"推断的休眠"**钉**成"明示的休眠" ✗✓（2026-10-10 从正本移植；★正本判据 106 ✓）
+    //   ★正本原话 ✗：★"推断休眠**不自动退** ✗ —— 否则'退了 ⇒ 证据没了 ⇒ 又判活跃'**来回摆** ✗；
+    //     ★要真退就**先钉**（`dormant --pin <成员>` ✓）—— ★**钉了才是明示** ✓、才稳 ✓"
+    //   ★★★**"钉"是什么** ✗✓：★★ **把"猜测"和"决定"分开** ✓ ——
+    //     ★`dormancyOf` 的推断**永远是推断**（`source: 'inferred'` ✓）；★而**"钉"是一个人的决定** ✓
+    //     ⇒ ★写进名单后就**从此算 `declared`** ✓ ⇒ ★**退回逻辑才肯动它** ✓✓。
+    //   ★★**它必须留痕** ✗（★谁钉的／为什么／什么时候 ✓）—— ★**因为那是一个决定，要能追溯** ✓
+    //     （★跟"署名"那条一脉：★谁做的决定，写谁 ✓）。
+    if (cmd === 'dormant') {
+      //   ⚠️ ★"钉"存在**这个根**的 `state/pinned-dormant.json` 里 ✓ ⇒ ★处处都要带上根 ✓
+      //     （★我第一版漏了根 ⇒ `readPinned()` 少一个参数 ⇒ 拿不到 ✓）。
+      const pinRoot = wireRoot()
+      const pinned = readPinned(pinRoot)
+      const pinWho = opt('pin')
+      const unpinWho = opt('unpin')
+      if (pinWho) {
+        const why = opt('why') ?? opt('reason') ?? '（未写理由）'
+        const by = opt('by') ?? process.env.USERNAME ?? process.env.USER ?? 'unknown'
+        pinned[pinWho] = { why: String(why), by: String(by), atMs: Date.now() }
+        writePinned(pinRoot, pinned)
+        //   ⚠️ ★模板字符串里**不能直接写反引号** ✗ —— ★我第一版写了 `` `declared` `` ⇒ `missing ) after argument list` ✓
+        console.log(`已钉：${pinWho} 被标成**明示休眠** ✓（★从今往后 ` + '`dormancyOf`' + ` 会判 'declared' ✓）`)
+        console.log(`  ★谁钉的：${by}／★为什么：${why}／★什么时候：${new Date(pinned[pinWho].atMs).toISOString()}`)
+        console.log('  ⓘ ★钉了之后，`pickup --dormant <属性名>` 才会**退回**它的积压 ✓（★这是"一个人的决定" ✓）。')
+        console.log(`  ⓘ 解钉：node packages/cli/index.js dormant --unpin ${pinWho} --root <根>`)
+        return 0
+      }
+      if (unpinWho) {
+        if (!pinned[unpinWho]) { console.log(`ⓘ ${unpinWho} 本来就没钉着 ✓`); return 0 }
+        const old = pinned[unpinWho]
+        delete pinned[unpinWho]
+        writePinned(pinRoot, pinned)
+        console.log(`已解钉：${unpinWho}（★原来是 ${old.by} 在 ${new Date(old.atMs).toISOString()} 因为「${old.why}」钉的 ✓）`)
+        return 0
+      }
+      const ids = Object.keys(pinned)
+      if (ids.length === 0) { console.log('（一个都没钉 ✓ —— ★"钉"是**人的决定**，别让它自己长出来 ✗）'); return 0 }
+      console.log(`钉着 ${ids.length} 个：`)
+      for (const id of ids) {
+        const p = pinned[id]
+        console.log(`  · ${id}　★${p.by} 于 ${new Date(p.atMs).toISOString()} 因为「${p.why}」`)
+      }
       return 0
     }
     if (cmd === 'selftest') return selftest() ? 0 : 1
