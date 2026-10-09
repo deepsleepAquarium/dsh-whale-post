@@ -99,6 +99,12 @@ node packages/cli/index.js selftest  # ★check the exit code
 * ★Every piece passes three gates: **it loads + it runs + it goes red when it is wrong** ✓ (★**running the self-test alone does not count; it must boot once for real** ✗ ⇒ see the acceptance specification in [`docs/ACCEPTANCE.en.md`](docs/ACCEPTANCE.en.md)).
 * ★★**Concurrent sequence claiming: tested** ✗✓ (2026-10-10) —— `node scripts/racetest.mjs`: **12 real sub-processes sending at once** ⇒
   **all exit codes 0 + every `seq` unique** ✓; ★it also replays "the `state` file written backwards" (write `nextSeq` back to 1 ⇒ a new letter still gets a new number ✓).
+  ★★★**It also covers concurrent accounting** ✗✓ (added 2026-10-10, and this one caught a **real bug**):
+  **12 real sub-processes each write one entry into the same quota ledger ⇒ exactly 12 entries, none lost** ✓ ——
+  ★the ledger used to be "read → modify → write back", so **8/9/10 out of 12 survived** ✗
+  (★and the quota ledger is **money**, with **no fallback at all** ✓); ★it now writes **one increment file per entry**
+  (★"each writes its own file" —— the same cure the original used for `ack` ✓) ⇒ ★**not a single entry may be lost** ✓.
+  ★11 criteria in all ✓.
   ★**Still untested** ✗: the truncation path once the `seen` state array grows very long (hand-crafted only).
 * ★Version `0.2.0` (★**`0.1.x` has all six plugins failing to load in a real engine** ✗ ⇒ do not pin the old tag; pin **`v0.2.0`**);
   the interfaces carry `apiVersion`, and **types can be extended at any time** (adding a type does not require touching the core ✓).
