@@ -1,33 +1,43 @@
 {
   "name": "dsh-whale-post-cli",
   "version": "0.2.0",
-  "description": "零依赖命令行：hello／send／pump／quota／roster／types／selftest",
+  "description": "零依赖命令行：hello／send／pump／quota／verify／nag／roster／types／selftest",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "mailbox",
+    "post-office",
+    "offline-first",
+    "cli"
+  ],
   "type": "module",
   "main": "index.js",
   "exports": {
     ".": "./index.js"
   },
+  "bin": {
+    "whale-post": "index.js"
+  },
+  "files": [
+    "index.js",
+    "README.md",
+    "LICENSE"
+  ],
   "license": "MIT",
   "engines": {
     "node": ">=20"
   },
-  "files": [
-    "index.js",
-    "cordis.patch.yml",
-    "README.md"
-  ],
   "scripts": {
     "selftest": "node selftest.mjs"
   },
-  "bin": {
-    "whale-post": "./index.js"
-  },
   "dependencies": {
-    "dsh-whale-post-bus": "^0.1.0",
-    "dsh-whale-post-roster": "^0.1.0",
-    "dsh-whale-post-types": "^0.1.0",
-    "dsh-whale-post-deliver": "^0.1.0",
-    "dsh-whale-post-gate": "^0.1.0"
+    "dsh-whale-post-bus": "^0.2.0",
+    "dsh-whale-post-roster": "^0.2.0",
+    "dsh-whale-post-types": "^0.2.0",
+    "dsh-whale-post-deliver": "^0.2.0",
+    "dsh-whale-post-gate": "^0.2.0",
+    "dsh-whale-post-verify": "^0.2.0"
   },
   "repository": {
     "type": "git",
@@ -42,4 +52,3 @@
     "registry": "https://registry.npmjs.org"
   }
 }
-

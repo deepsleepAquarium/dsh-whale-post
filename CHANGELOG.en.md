@@ -21,6 +21,28 @@
 * ★**`--force` does not exempt the "offline-only" rule** ✗ —— that rule is a **physical constraint**
   (that member simply cannot receive an online letter), not a "gate".
 
+### ★★ Compatibility (★the keeper asked for this to be written down on 2026-10-10 ✗ —— it is a requirement, not a selling point ✓)
+
+★★ **The post office must run on both engines** ✗: the **desktop engine** (`0.2.0-rc.2`) and the **web engine** (`0.1.5-alpha.2`).
+★We guarantee that with **three self-imposed rules** ✓ —— ★**not with "it happened to run on one machine"** ✗:
+
+1. ★★**Only three things are used** ✗: `ctx.provide(name, service)` + `ctx.get(name)` + the `apiVersion` convention on interfaces.
+   ★**No other member of `ctx` is touched** ✓ —— in particular **the `ctx.whale` property is never read**
+   (in real Cordis, reading it requires `inject` ⇒ it throws `cannot get property "whale" without inject` ✗;
+   ★and **no self-test, not even `--dump-config`, can see that** —— only **one real launch** does ✓).
+2. ★**`inject` is not used** ✓ —— services are fetched **at runtime** (`ctx.get`) and, when absent, **retried on the next tick** ✓
+   (an unsatisfied `inject` **hangs silently**; you do not even get a log line ✓).
+3. ★★**Two static criteria watch over it** ✗: the source must not contain `ctx.whale =` or `ctx?.whale?.` ⇒ **0 hits**;
+   ★and **every change must be booted once in a throwaway profile** ✓ (**exit code 0 + zero error lines** is the bar ✓).
+
+★**Measured record** ✗: on 2026-10-10, six plugins were installed into a **throwaway profile**
+(`dsh 0.1.5-rc.1` + the `headless` template) ⇒ `--dump-config` showed six layers ⇒ ★**one real launch: exit code 0, zero error lines** ✓;
+★the three in-service profiles (`desktop` / `qqbot` / `web`) **never changed mtime** ✓ and **no engine was restarted** ✓.
+
+★★**Boundary (do not mistake it for "verified" ✗)**: ★**the desktop engine `0.2.0-rc.2` has no CLI I can boot** ✓
+(its entry point is not on PATH ✓), so that side currently rests on **the three rules above** ——
+★**it has not been boot-verified the way `0.1.5-rc.1` has** ✓.
+
 ### ★ Fixes (the two that matter ✗)
 
 1. ★★ **All six plugins failed to load in a real engine** ✗✓ —— `apply()` read the **`ctx.whale` property**,
