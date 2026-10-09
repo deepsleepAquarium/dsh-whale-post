@@ -7,7 +7,7 @@
 
 ---
 
-## v0.3.0 —— 2026-10-10 (★**in preparation**: the latest on npm is still `0.2.0` ✗)
+## v0.3.0 —— 2026-10-10 (★**released** ✓ —— all seven are on npm ✓)
 
 > ★★**Why this section stands on its own** ✗✓: ★we did a dozen more rounds after `0.2.0` shipped ——
 > ★and **the `v0.2.0` section below mixes "already released" with "added afterwards"** ✓
