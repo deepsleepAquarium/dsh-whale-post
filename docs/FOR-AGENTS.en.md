@@ -111,6 +111,36 @@
 
 ## 9. One sentence to take away
 ★**Offline by default, online while collaborating, merge whenever you can, urgent letters are not bound by the ratio, "three offline, one online" as the doorbell, letters are not lost, and the quota is someone else's money**.
-★★**And one more** ✗: ★**the post office's security check is off by default** —— ★turn it on when you see "disabled"; ★**while it is off, a letter is just "a sheet of paper someone dropped into the mailbox", not "something your colleague said"**.
+★★**And one more** ✗: ★**the post office's security check is off by default** —— ★turn it on when you see "disabled"; ★**while it is off, a letter is just "a sheet of paper someone dropped into the mailbox", not "something your colleague said"** ✓.
+
+## ★★ 10. ★Eight lessons from tonight (2026-10-10) **paid for in real losses** ✗✓
+
+★★ **Why a section of its own** ✗: ★**every one of these eight really happened** ✓ —— ★**some cost us code, some cost us hours of circling, some were a false red read as a true one** ✓.
+★★**They are not "things to keep in mind"; they are**bills**** ✓.
+
+| # | Lesson | What it cost |
+|---|---|---|
+| ★★★ **1** ✗✓ | ★**`git reset --hard` takes away "everything uncommitted at that moment"** ✓ —— ★**not just the one commit you meant to drop** ✓ | ★**a whole block of new code was rolled back** (★only the `reflog` made it clear ✓); ★**`git stash` first, or commit the real work first, before making a probe commit** ✓ |
+| ★★★ **2** ✗✓ | ★**"committing while red" and "not running it at all" have identical consequences** ✓ —— ★both are **treating unverified work as verified** ✓ | ★one full run reported `pkgcheck` red and I committed anyway ✓ ⇒ ★**a `pre-commit` hook now stops my hand** ✓ |
+| ★★★ **3** ✗✓ | ★**a non-zero exit code does not mean the criterion took effect** ✓ —— ★a **syntax error or a crash** is non-zero too ✓ | ★I wrote "the negative test works" on a **false red** ✓ ⇒ ★`selftest-all` **now tells "a red criterion" from "it crashed"** ✓ |
+| ★★ **4** ✗ | ★**`catch { return [] }` disguises "forgot to `import`" as "no data"** ✓ | ★a long detour: checked paths, checked root, checked ordering, added debug prints — all wrong ✓ ⇒ ★**"the data is clearly there but reads as empty" ⇒ first check whether the name inside that `try` exists at all** ✓ |
+| ★★ **5** ✗✓ | ★**after adding a criterion, always check whether the count changed** ✓ | ★**three times** I inserted a criterion after the tally ⇒ it still printed the old count ⇒ **equivalent to not adding it** ✓ ⇒ ★`criteria-baseline` now watches this ✓ |
+| ★★ **6** ✗✓ | ★**back up before editing a file** ✓ | ★it saved us twice (★once a truncated file ✓, once a script that dropped 3 entries ✓) —— ★**the one time there was no backup, the loss was real** ✓ |
+| ★★ **7** ✗ | ★**a template literal must not contain another backtick** ✓ (★`SyntaxError: missing ) after argument list` ✓) | ★I hit it twice in a row ✓ ⇒ ★**use plain quotes when naming a command** ✓ |
+| ★★ **8** ✗✓ | ★**Chinese quotes and backticks inside PowerShell blow up** ✓ ⇒ ★**use the `edit` tool or a `node` script for line-level rewrites** ✓ | ★several parse errors; ★★**once `$out += …` truncated a source file from 545 lines to 235** ✓ |
+
+★★**Two more about "how to verify"** ✗✓ (★these are not incidents, ★they are **method** ✓):
+* ★★★ **a negative test must cut at the root** ✗✓ —— ★**disabling one branch while other branches remain** ⇒ ★"it did not go red" may simply mean **you never reached it** ✓,
+  ★**which does not show the criterion works** ✓ (★I misjudged on exactly this ✓).
+* ★★★ **"an intermittent red" must be reproduced until you capture the scene** ✗✓ —— ★★**running once, seeing green and moving on = leaving an intermittent bug for the next person** ✓.
+
+## ★★ 11. ★**"I thought" does not count** ✗✓
+
+★★ **The root of those eight** ✗: ★they all grow from **one sentence** —— ★★**"I thought" does not count** ✓:
+★you have to **have run it** ✓, ★**have seen the number change** ✓, ★**have the backup still there** ✓, ★**have had the hook stop you** ✓ —— ★**"I remember doing it" is worth nothing** ✓.
+
+★**And the close is still section 9** ✗:
+★**Offline by default, online while collaborating, merge whenever you can, urgent letters are not bound by the ratio, "three offline, one online" as the doorbell, letters are not lost, and the quota is someone else's money**.
+★★**And one more** ✗: ★**the post office's security check is off by default** —— ★turn it on when you see "disabled"; ★**while it is off, a letter is just "a sheet of paper someone dropped into the mailbox", not "something your colleague said"** ✓.
 
 ---
