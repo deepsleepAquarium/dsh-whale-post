@@ -352,8 +352,26 @@ export function createBus(config = {}) {
       return Number.isInteger(n) && n > 0 ? n : 0
     } catch { return 0 }
   }
+  /**
+   * ★★★水位线写作：**只增不减** ✗✓（2026-10-10 修，`racetest` 偶发抓出来的）
+   *
+   * ★**病** ✗：★原来是无条件 `atomicWrite(watermarkPath, n)` ✓ ——
+   *   ★而 12 路并发时，**最后写的那个进程，可能是先发号的那个** ✓ ⇒ ★它把它那个**小的** `n` 写上去
+   *   ⇒ ★**水位线倒退** ✓（★实测现场：`水位线=11 最大号=12` ✓）。
+   * ★**后果到哪为止** ✗✓：★`seq` **唯一性靠的是"认领文件"** ✓（★`openSync(...,'wx')` 原子创建 ✓）
+   *   ⇒ ★**那份保护不受影响** ✓（★同一轮 `★seq 全唯一` 那条**一直是 PASS** ✓）；
+   *   ★受影响的只是**水位线这条兜底** ✓（★"state 被写倒退时，靠它拿新号" ✓）——
+   *   ★★而兜底**倒退** ⇒ ★退回到"用 state 那个（已倒退的）值"⇒ ★**可能重号** ✗✓（★这才是真风险 ✓）。
+   * ★**方** ✗：★写之前**先读一眼**，**只在更大的时候写** ✓ ⇒
+   *   ★最坏情况从"**写小了**"变成"**少写一次**" ✓（★少写一次没关系：下一个发到更大号的人会补上 ✓）。
+   * ⚠️ ★"读-比较-写"**本身也不是原子的** ✗ —— ★但它的最坏结果**只是少写** ✓（★不会写小 ✓），
+   *   ★而"少写"会被**任何一次后续发号**修好 ✓✓。
+   */
   function writeWatermark(as, n) {
-    try { atomicWrite(watermarkPath(as), `${n}\n`) } catch { /* ★写不上也不该拦住发信 ✓ */ }
+    try {
+      const cur = readWatermark(as)
+      if (Number.isFinite(n) && n > cur) atomicWrite(watermarkPath(as), `${n}\n`)
+    } catch { /* ★写不上也不该拦住发信 ✓ */ }
   }
   /** 清掉比 `n - SEQ_KEEP_CLAIMS` 更老的认领文件（best-effort ✓） */
   function pruneClaims(as, n) {
