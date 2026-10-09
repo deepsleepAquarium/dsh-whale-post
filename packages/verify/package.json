@@ -1,0 +1,49 @@
+{
+  "name": "dsh-whale-post-verify",
+  "version": "0.1.0",
+  "description": "安全校验（信封验签 ＋ 名单白名单）；★默认禁用，禁用期间会提示开启，连提三天后不再提",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "mailbox",
+    "post-office",
+    "offline-first",
+    "hmac",
+    "verify"
+  ],
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "files": [
+    "index.js",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "selftest": "node selftest.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepsleepAquarium/dsh-whale-post.git"
+  },
+  "homepage": "https://github.com/deepsleepAquarium/dsh-whale-post#readme",
+  "bugs": {
+    "url": "https://github.com/deepsleepAquarium/dsh-whale-post/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  }
+}

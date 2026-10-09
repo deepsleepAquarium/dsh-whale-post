@@ -1,0 +1,8 @@
+# dsh-whale-post-verify —— 挂载声明：把本插件插入 profile 的配置树
+# 安装：dsh plugin --profile <profile> add dsh-whale-post-verify
+#
+# ★默认禁用（enabled 不写或写 false）—— 这是有意的：小部署不必上验签，
+#   但禁用期间每次启动会提示你开启，连提三天后不再提（见 README）。
+- insert:
+    - id: dsh-whale-post-verify
+      name: dsh-whale-post-verify
