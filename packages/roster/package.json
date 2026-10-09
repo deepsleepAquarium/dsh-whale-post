@@ -1,6 +1,6 @@
 {
   "name": "dsh-whale-post-roster",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "名单接口（谁在名单里）＋ 读 JSON 的样例实现",
   "keywords": [
     "dsh",
@@ -45,3 +45,4 @@
     "registry": "https://registry.npmjs.org"
   }
 }
+

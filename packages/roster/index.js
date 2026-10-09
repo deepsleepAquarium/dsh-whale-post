@@ -35,6 +35,8 @@ const SAMPLE = {
 
 export function createRoster(config = {}) {
   const file = config.file ?? join(process.env.WHALE_POST_ROOT ?? join(process.cwd(), '.whale-mail'), 'roster.json')
+  /** ★群发默认剔除的属性名（★由配置给 —— 本文件里不出现任何具体属性名 ✓） */
+  const cfgGroupWithout = typeof config.groupWithout === 'string' ? config.groupWithout : undefined
   const read = () => {
     if (!existsSync(file)) return config.sample === true ? SAMPLE : { apiVersion, members: [], groups: {} }
     const j = JSON.parse(readFileSync(file, 'utf8'))
@@ -80,13 +82,29 @@ export function createRoster(config = {}) {
   /** ★从一份名单里剔掉带该属性的成员（★不在名单里的成员原样留着 ✓ —— 不越权改名单 ✗） */
   const without = (ids, name) => (Array.isArray(ids) ? ids : []).map(String).filter((w) => !flag(w, name))
   const groups = () => safe(() => Object.keys(read().groups), [])
+  /**
+   * ★★**群发默认剔除**（2026-10-10，缸内口径移植）：`config.groupWithout` 给一个**属性名** ——
+   *   ★按组解析、以及"群发清单"都会默认把带该属性的成员剔掉 ✓；**点名不受影响** ✗
+   *   （★缸里口径："群发默认不到它，点名才进"✓ —— 那条线的五处群发名单每处都剔同一批人 ✓）
+   *   ⚠️ 显式 `opts.without` 优先；★写 `opts.without: null` ⇒ **这一次不剔** ✓（逃生门 ✓）
+   */
   const group = (name, opts = {}) => {
     const g = safe(() => read().groups[name], undefined)
     if (!Array.isArray(g)) return undefined
     const ids = g.map(String)
-    return (opts && typeof opts.without === 'string') ? without(ids, opts.without) : ids
+    const w = (opts && Object.prototype.hasOwnProperty.call(opts, 'without')) ? opts.without : cfgGroupWithout
+    return (typeof w === 'string' && w !== '') ? without(ids, w) : ids
   }
-  return { apiVersion, file, list, has, label, member, flag, without, groups, group }
+  /**
+   * ★**群发该发给谁**（通用）：★"完整名单"剔掉 `groupWithout` ⇒ 核心不必认识那个属性名 ✓
+   *   没有配 `groupWithout` ⇒ 就是完整名单（向后兼容 ✓）
+   */
+  const broadcast = (opts = {}) => {
+    const ids = list().map((m) => m.id)
+    const w = (opts && Object.prototype.hasOwnProperty.call(opts, 'without')) ? opts.without : cfgGroupWithout
+    return (typeof w === 'string' && w !== '') ? without(ids, w) : ids
+  }
+  return { apiVersion, file, list, has, label, member, flag, without, broadcast, groups, group }
 }
 
 export function apply(ctx, config = {}) {

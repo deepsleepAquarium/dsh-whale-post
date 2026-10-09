@@ -30,7 +30,7 @@ node packages/cli/index.js send --as alice --to bob --subject 'hi' --body 'first
 node packages/cli/index.js pump --as bob    # bob 读信（读走即消费）
 
 # 或者用 npm 上那一份（不用 clone、不用 npm install）：
-npx -y dsh-whale-post-cli@0.1.1 selftest
+npx -y dsh-whale-post-cli@0.2.0 selftest
 ```
 ★装法、接线、接口表、写插件规范 ⇒ 见 [`docs/INSTALL.md`](docs/INSTALL.md)；★**给 AI 体看的用法纪律** ⇒ 见 [`docs/FOR-AGENTS.md`](docs/FOR-AGENTS.md)。
 
@@ -39,7 +39,8 @@ npx -y dsh-whale-post-cli@0.1.1 selftest
 * `packages/` 里**七件已落地**：`bus`（核心：信封／签名／握手／幂等／落盘）／`roster`（名单接口）／`types`（类型注册表接口）／`deliver`（投递策略）／`gate`（配额与计费闸 ＋ 回环闸）／`verify`（**安全校验：验签 ＋ 白名单**，★默认禁用）／`cli`（零依赖命令行）；`example/` 是一份"**怎么把它们接起来**"的组合示例。
 * **一把跑完自测**：`node scripts/selftest-all.mjs` —— **退出码 0 ＝ 七件全过**（条数由它自己打出来，不在本文件里写死）。
 * 每件都过三关：**能加载 ＋ 能跑 ＋ 跑错会红**（验收规格见 [`docs/ACCEPTANCE.md`](docs/ACCEPTANCE.md)）。
-* 版本 `0.1.0`（打了 tag **`v0.1.0`**，要引用就钉它）；接口带 `apiVersion`，**类型可以随时扩充**（加类型不用动核心）。
+* 版本 `0.2.0`（★**`0.1.x` 装进真引擎会六个插件全部加载不上** ✗ ⇒ 别钉旧 tag，钉 **`v0.2.0`**）；
+  接口带 `apiVersion`，**类型可以随时扩充**（加类型不用动核心）。★逐版改了什么、为什么 ⇒ 见 [`CHANGELOG.md`](CHANGELOG.md)。
 * **装法已在真引擎上实测过一遍**：★**首批五件**按 `dsh plugin --profile <p> add link:<本仓>/packages/<件>` 装进一个**一次性 profile** ⇒ 它们**出现在 profile 配置树里**（`dsh --profile <p> --dump-config` 能看到 `dsh-whale-post-*` 五行）⇒ **真启一遍成功、对外服务正常、日志无加载错** ⇒ 用完把那个 profile 删掉，**在役的两台引擎全程没重启**。
   ★**本次新增的那件也走过同一条实测了** ✓（2026-10-10 00:03）：★把**六个插件**一次装进一次性 profile（`dsh 0.1.5-rc.1` ＋ `--from-default-profile headless`）⇒ `--dump-config` **六层齐** ⇒ **真启一遍：退出码 0、错误 0 行** ✓。
     ★★**而那一次实测抓到一个致命 bug（已修）** ✗：六件**全部 `failed to apply`** —— `cannot get property "whale" without inject`（`apply()` 里读了 `ctx.whale` 属性；真 Cordis 里读它要先 `inject`）。★**而 `--dump-config` 完全看不出来** ✗ —— 它只组配置树、不跑 `apply()`。⇒ 已改成只 `ctx.provide(...)` ＋ 运行时 `ctx.get(...)`，并钉了一条静态判据（源码里不许出现 `ctx.whale =` ／ `ctx?.whale?.` ⇒ 0 命中）。
@@ -81,7 +82,7 @@ npx -y dsh-whale-post-cli@0.1.1 selftest
 ```
 packages/bus/ packages/roster/ packages/types/
 packages/deliver/ packages/gate/ packages/verify/ packages/cli/
-example/ docs/
+example/ docs/ CHANGELOG.md
 ```
 ★许可：**MIT**。★本仓为**独立实现**（未使用任何无许可代码）。
 

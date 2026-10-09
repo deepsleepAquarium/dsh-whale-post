@@ -58,6 +58,16 @@ try {
   check('属性：group() 不带 opts ⇒ 原样（向后兼容）', JSON.stringify(roster.group('club')) === '["alice","carol"]')
   check('属性：flag 的名字由调用方给 ⇒ 换个名字照样工作（核心不认识任何具体属性名）', roster.flag('carol', 'flagB') === true && roster.flag('carol', 'flagC') === false)
 
+  // ★★群发默认剔除（groupWithout）：★属性名由**配置**给 ✓ —— 缸里口径"群发默认不到它，点名才进"
+  const rOff = createRoster({ file, groupWithout: 'flagA' })
+  check('群发：group() 默认剔掉 groupWithout 指定的属性', JSON.stringify(rOff.group('club')) === '["alice"]', JSON.stringify(rOff.group('club')))
+  check('群发：broadcast() 剔掉同一批人', JSON.stringify(rOff.broadcast()) === '["alice"]', JSON.stringify(rOff.broadcast()))
+  check('★群发：点名不受影响（member 仍取得到它）', rOff.member('carol')?.id === 'carol' && rOff.has('carol'))
+  check('群发：显式 opts.without 优先于配置', JSON.stringify(rOff.group('club', { without: 'flagA' })) === '["alice"]')
+  check('★群发：opts.without = null ⇒ **这一次不剔**（逃生门）',
+    JSON.stringify(rOff.group('club', { without: null })) === '["alice","carol"]' && JSON.stringify(rOff.broadcast({ without: null })) === '["alice","carol"]')
+  check('群发：没配 groupWithout ⇒ 原样（向后兼容）', JSON.stringify(roster.broadcast()) === '["alice","carol"]', JSON.stringify(roster.broadcast()))
+
   // ③ 坏输入不炸（宁可变空名单，也不许抛未捕获异常）
   writeFileSync(file, '{ 这不是 JSON', 'utf8')
   check('坏名单：不抛异常，退化成空名单', Array.isArray(roster.list()) && roster.list().length === 0)

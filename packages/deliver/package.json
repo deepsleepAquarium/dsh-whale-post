@@ -1,6 +1,6 @@
 {
   "name": "dsh-whale-post-deliver",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "投递策略：离线留在信箱等人／在线立刻投出（示例①的挂点）",
   "keywords": [
     "dsh",
@@ -45,3 +45,4 @@
     "registry": "https://registry.npmjs.org"
   }
 }
+

@@ -68,7 +68,7 @@ try {
   const offFile = join(tmpOff, 'roster-offline.json')
   writeFileSync(offFile, JSON.stringify({ apiVersion: 1,
     members: [{ id: 'alice' }, { id: 'bob' }, { id: 'carol' }],
-    groups: { all: ['alice', 'bob', 'carol'], pair: ['alice', 'carol'] },
+    groups: { all: ['alice', 'bob', 'carol'], pair: ['alice', 'bob', 'carol'], solo: ['carol'] },
     off: ['carol'] }, null, 2), 'utf8')
   const rosterOff = createRoster({ file: offFile })
   const busOff = createBus({ root: tmpOff, services: { roster: rosterOff, types }, offlineOnlyFlag: 'off' })
@@ -100,6 +100,22 @@ try {
       try { createBus({ root: tmpOff, services: { roster: r2, types }, offlineOnlyFlag: 'off2' }).send({ as: 'alice', to: 'carol', mode: 'online', subject: 's', body: 'x' }) } catch (e) { m = e.message }
       return /只收离线/.test(m)
     })())
+
+  // ★★群发默认不到"只收离线"的成员（缸里口径：★群发默认不到它，**点名才进** ✓）
+  //   ★配置给属性名 ⇒ 核心不认识它 ✓；★点名走 `has(to) ⇒ [to]`，根本不经过 group()／broadcast() ✓
+  const busGa = createBus({ root: tmpOff, services: { roster: createRoster({ file: offFile, groupWithout: 'off' }), types } })
+  const rAll = busGa.send({ as: 'alice', to: 'all', mode: 'offline', subject: 's', body: '群发：整份名单' })
+  check('★群发（all）：默认不到"只收离线"的成员', !rAll.targets.includes('carol') && rAll.targets.includes('bob'), JSON.stringify(rAll.targets))
+  check('★★群发：**点名**照样到（"点名才进"）', busGa.send({ as: 'alice', to: 'carol', mode: 'offline', subject: 's', body: '点名：应当到' }).targets.includes('carol'))
+  const rPair = busGa.send({ as: 'alice', to: 'pair', mode: 'offline', subject: 's', body: '群发：按组' })
+  check('★群发（按组）：默认也不到它', !rPair.targets.includes('carol') && rPair.targets.includes('bob'), JSON.stringify(rPair.targets))
+  // ★★剔完之后组空了 ⇒ 拒发（★上游已有的保护："不往名单外的信箱投信"✓ ——
+  //   它顺带覆盖了"群发剔完就没人"这种情形：宁可拒发，也不发一封没有收件人的信 ✗）
+  let eSolo = ''
+  try { busGa.send({ as: 'alice', to: 'solo', mode: 'offline', subject: 's', body: '群发：剔完就空' }) } catch (e) { eSolo = e.message }
+  check('★群发：剔完组里没人 ⇒ 拒发（不投空信）', /没有已知成员/.test(eSolo), eSolo.slice(0, 50))
+  check('群发：没配 groupWithout ⇒ 谁都到（向后兼容）',
+    createBus({ root: tmpOff, services: { roster: createRoster({ file: offFile }), types } }).send({ as: 'alice', to: 'all', mode: 'offline', subject: 's', body: '群发：没配' }).targets.includes('carol'))
 
   // ③ 收信：消费 ＋ ack ＋ 幂等（★要声明 reader：CLI 把信打到终端时才敢消费）
   const got = bus.pump({ as: 'bob', reader: true })

@@ -30,7 +30,7 @@ node packages/cli/index.js send --as alice --to bob --subject 'hi' --body 'first
 node packages/cli/index.js pump --as bob    # bob reads his mail (reading it consumes it)
 
 # Or use the published copy (no clone, no npm install):
-npx -y dsh-whale-post-cli@0.1.1 selftest
+npx -y dsh-whale-post-cli@0.2.0 selftest
 ```
 ★Installation, wiring, the interface table and the rules for writing a plugin ⇒ see [`docs/INSTALL.md`](docs/INSTALL.en.md); ★**the usage discipline written for AI agents** ⇒ see [`docs/FOR-AGENTS.md`](docs/FOR-AGENTS.en.md).
 
@@ -39,7 +39,9 @@ npx -y dsh-whale-post-cli@0.1.1 selftest
 * **Seven pieces are already implemented** under `packages/`: `bus` (the core: envelope / signature / handshake / idempotency / persist to disk) / `roster` (roster interface) / `types` (type registry interface) / `deliver` (delivery strategy) / `gate` (quota and billing gate + loop gate) / `verify` (**security check: envelope signature + allow-list**, ★disabled by default) / `cli` (zero-dependency command line); `example/` is a composition example of "**how to wire them together**".
 * **Run the whole self-test in one go**: `node scripts/selftest-all.mjs` —— **exit code 0 = all seven passed** (it prints the criteria count itself; this file does not hard-code a number).
 * Every piece passes three gates: **it loads + it runs + it goes red when it is wrong** (acceptance specification in [`docs/ACCEPTANCE.md`](docs/ACCEPTANCE.en.md)).
-* Version `0.1.0` (tagged **`v0.1.0`** — pin that if you want a fixed reference); the interfaces carry `apiVersion`, and **types can be extended at any time** (adding a type does not require touching the core).
+* Version `0.2.0` (★**`0.1.x` has all six plugins failing to load in a real engine** ✗ ⇒ do not pin the old tag; pin **`v0.2.0`**);
+  the interfaces carry `apiVersion`, and **types can be extended at any time** (adding a type does not require touching the core).
+  ★What changed in each version, and why ⇒ see [`CHANGELOG.en.md`](CHANGELOG.en.md).
 * **The install path was exercised once on a real engine**: the five pieces were installed with `dsh plugin --profile <p> add link:<repo>/packages/<piece>` into a **throwaway profile** ⇒ they **showed up in the profile config tree** (`dsh --profile <p> --dump-config` lists the five `dsh-whale-post-*` layers) ⇒ **it booted, served, and the log held no load errors** ⇒ then the throwaway profile was deleted, and **the two engines in service were never restarted**.
   ★One trap worth repeating: a plugin package **must** declare
   ```json
@@ -81,7 +83,7 @@ npx -y dsh-whale-post-cli@0.1.1 selftest
 ```
 packages/bus/ packages/roster/ packages/types/
 packages/deliver/ packages/gate/ packages/verify/ packages/cli/
-example/ docs/
+example/ docs/ CHANGELOG.en.md
 ```
 ★License: **MIT**. ★This repository is an **independent implementation** (it uses no unlicensed code).
 

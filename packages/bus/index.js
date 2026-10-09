@@ -204,7 +204,9 @@ export function createBus(config = {}) {
     const list = () => (R && typeof R.list === 'function' ? R.list().map((m) => String(m.id ?? m)) : [])
     // 组名：roster 可选扩展 group(name) ⇒ 没有就当"人名"处理
     const g = R && typeof R.group === 'function' ? R.group(to) : undefined
-    const all = list().filter((id) => id !== as)
+    // ★★群发清单（2026-10-10）：优先问 `roster.broadcast()` —— ★它按配置剔掉"不该群发的人" ✓，
+    //   而**核心不认识那个属性名** ✓；没有这个接口 ⇒ 退回完整名单（向后兼容：老部署行为一字不变 ✓）
+    const all = (R && typeof R.broadcast === 'function' ? R.broadcast().map(String) : list()).filter((id) => id !== as)
     if (to === 'all') return all
     if (g) {
       // ★组员必须**在名单里**才投（独立审计 2026-10-05：原来"幽灵组员"也能收到信 ⇒ 会往名单外的信箱写文件 ✗）

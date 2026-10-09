@@ -1,6 +1,6 @@
 {
   "name": "dsh-whale-post-cli",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "零依赖命令行：hello／send／pump／quota／roster／types／selftest",
   "type": "module",
   "main": "index.js",
@@ -42,3 +42,4 @@
     "registry": "https://registry.npmjs.org"
   }
 }
+
