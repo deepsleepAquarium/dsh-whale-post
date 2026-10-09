@@ -58,6 +58,49 @@ try {
   check('策略：禁用时**形状校验照旧**（禁用 ≠ 什么都不查 —— 缺字段仍要报）',
     mk({ verify: () => ({ ok: true, skipped: true }) }).verify({ ...raw, from: undefined }).some((x) => /from/.test(x)))
 
+  // ★★"只收离线"的成员（2026-10-10 缸内口径移植）：
+  //   属性名**由配置给**（offlineOnlyFlag）—— ★核心不认识任何具体属性名 ✓；
+  //   对它们发在线 ⇒ 拒发（非 0 ＋ 不落信箱 ＋ 不许静默降级 ＋ 文案带出路），★且 --force 不豁免（物理约束 ≠ 闸）
+  // ★★ 用**独立的临时根**做这批测试 —— 否则"发给别人在线"会往 `tmp` 的 bob 信箱里塞一封，
+  //    把后面"收信：拉到 1 封"那条判据弄红 ✗（这是"乙 零副作用"的自污染版 ✓）
+  const tmpOff = join(process.env.TEMP ?? '/tmp', `whale-bus-offline-${Date.now()}`)
+  mkdirSync(tmpOff, { recursive: true })
+  const offFile = join(tmpOff, 'roster-offline.json')
+  writeFileSync(offFile, JSON.stringify({ apiVersion: 1,
+    members: [{ id: 'alice' }, { id: 'bob' }, { id: 'carol' }],
+    groups: { all: ['alice', 'bob', 'carol'], pair: ['alice', 'carol'] },
+    off: ['carol'] }, null, 2), 'utf8')
+  const rosterOff = createRoster({ file: offFile })
+  const busOff = createBus({ root: tmpOff, services: { roster: rosterOff, types }, offlineOnlyFlag: 'off' })
+  const lsInbox = (w) => ls(join(tmpOff, 'inbox', w)).length
+  // ★握手（★离线也要握：协议不许"像 UDP 那样"直接发 ⇒ 否则会撞握手检查 ✗）
+  busOff.hello({ as: 'alice' }); busOff.hello({ as: 'bob' }); busOff.hello({ as: 'carol' })
+
+  const before = lsInbox('carol')
+  let eOff = ''
+  try { busOff.send({ as: 'alice', to: 'carol', mode: 'online', subject: 's', body: '在线件：应当被拒' }) } catch (e) { eOff = e.message }
+  check('★只收离线：对它发在线 ⇒ 拒发', /只收离线/.test(eOff), eOff.slice(0, 60))
+  check('★只收离线：文案带出路（--mode offline）且说明 --force 不豁免', /offline/.test(eOff) && /force/.test(eOff))
+  check('★只收离线：拒发**不落信箱**（对方 inbox 没多出东西）', lsInbox('carol') === before, `${before} ⇒ ${lsInbox('carol')}`)
+  check('只收离线：发**离线** ⇒ 照发', !!busOff.send({ as: 'alice', to: 'carol', mode: 'offline', subject: 's', body: '离线件：应当照发' }).id)
+  check('只收离线：发**别人**在线 ⇒ 不受影响', !!busOff.send({ as: 'alice', to: 'bob', mode: 'online', subject: 's', body: '在线件：发别人' }).id)
+  let eGroup = ''
+  try { busOff.send({ as: 'alice', to: 'pair', mode: 'online', subject: 's', body: '在线件：发给组' }) } catch (e) { eGroup = e.message }
+  check('★只收离线：发给**组**、组里有它 ⇒ 也拦（用展开后的 targets）', /只收离线/.test(eGroup), eGroup.slice(0, 60))
+  let eForce = ''
+  try { busOff.send({ as: 'alice', to: 'carol', mode: 'online', subject: 's', body: '在线件：force', force: true }) } catch (e) { eForce = e.message }
+  check('★★只收离线：**--force 也不豁免**（物理约束 ≠ 闸）', /只收离线/.test(eForce), eForce.slice(0, 60))
+  check('只收离线：**不配** offlineOnlyFlag ⇒ 在线照发（向后兼容）',
+    !!createBus({ root: tmpOff, services: { roster: rosterOff, types } }).send({ as: 'alice', to: 'carol', mode: 'online', subject: 's', body: '在线件：没配就照发' }).id)
+  check('只收离线：属性名换了照样工作（★属性名不进核心）',
+    (() => {
+      writeFileSync(join(tmpOff, 'roster-offline2.json'), JSON.stringify({ apiVersion: 1, members: [{ id: 'alice' }, { id: 'carol' }], off2: ['carol'] }), 'utf8')
+      const r2 = createRoster({ file: join(tmpOff, 'roster-offline2.json') })
+      let m = ''
+      try { createBus({ root: tmpOff, services: { roster: r2, types }, offlineOnlyFlag: 'off2' }).send({ as: 'alice', to: 'carol', mode: 'online', subject: 's', body: 'x' }) } catch (e) { m = e.message }
+      return /只收离线/.test(m)
+    })())
+
   // ③ 收信：消费 ＋ ack ＋ 幂等（★要声明 reader：CLI 把信打到终端时才敢消费）
   const got = bus.pump({ as: 'bob', reader: true })
   check('收信：拉到 1 封', got.length === 1 && got[0].ok)

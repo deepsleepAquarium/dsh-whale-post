@@ -34,6 +34,11 @@ const DEFAULTS = {
   //   "核心不认识任何类型标识"与这里硬编码 `'direct'` 矛盾 ⇒ 挪进 config ✓。
   //   配成 `null` ⇒ **不替调用方猜类型** ✗：没显式给 type 的信直接被拒（宁可拒，不替人决定 ✓）。
   defaultType: 'direct',
+    // ★★只收离线的成员（2026-10-10，缸内口径移植）：★属性名**由配置给** ——
+    //   核心不认识任何具体属性名（ACCEPTANCE 的 戊）。配了它 ⇒ 对带该属性的成员**发在线即拒发**：
+    //   非 0 退出 ＋ 不落信箱 ＋ 不许静默降级 ＋ 文案带出路（缸里 2026-10-06 定的口径）。
+    //   ★不配（默认）⇒ 这一条完全不启用（向后兼容：老部署行为一字不变）。
+    offlineOnlyFlag: undefined,
 }
 
 const sha256 = (s) => createHash('sha256').update(String(s), 'utf8').digest('hex')
@@ -245,6 +250,18 @@ export function createBus(config = {}) {
     }
     const targets = resolveTargets(to, { as, force })
     if (targets.length === 0) throw new Error(`收件人算出来是空的（to=${to}）—— 别发没有收件人的信`)
+    // ★★"只收离线"的成员：属性名**由配置给**（★核心不认识任何具体属性名 ✓）——
+    //   对它们发在线 ⇒ **拒发**：非 0 ＋ 不落信箱 ＋ 不许静默降级 ✗ ＋ 文案**必须带出路** ✓
+    //   （缸里口径：不然有人以为是故障，转而去 `--force` ✗）
+    //   ⚠️ 这是**物理约束**（那个成员根本收不到在线件），**不是"闸"** ⇒ ★它**先于闸**、且 `--force` 不豁免 ✗
+    //   ⚠️ 用**展开后的 targets** ✓ ⇒ 发给一个组、组里有人只收离线，一样拦得住 ✓
+    if (m === 'online' && cfg.offlineOnlyFlag && services.roster && typeof services.roster.flag === 'function') {
+      const stuck = targets.filter((t) => services.roster.flag(t, cfg.offlineOnlyFlag))
+      if (stuck.length) {
+        throw new Error(`拒发：${stuck.join('、')} 只收离线件（配置 offlineOnlyFlag='${cfg.offlineOnlyFlag}'）—— ` +
+          `请用 --mode offline 重发。★这不是故障，--force 也不豁免：它们收不到在线件。`)
+      }
+    }
     if (cfg.requireHello && !force) {
       const missing = targets.filter((t) => !helloFresh(t))
       if (missing.length) {
