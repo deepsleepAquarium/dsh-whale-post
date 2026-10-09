@@ -323,6 +323,20 @@
   ★while **this checkout is already `0.3.0`** (★**in preparation, not yet published** ✗) ✓ —— ★★**the two differing is expected** ✓.
   ★★★**Why not simply change `npx …@0.2.0` to `@0.3.0`** ✗✓: ★**`0.3.0` is not published yet** ⇒
   ★**the `npx` line would 404 ⇒ anyone following the README would "install it and nothing runs"** ✗✓ —— ★**exactly the shape of the pit from the previous version** ✓.
+* ★★★ **A real pre-release acceptance run: `npm pack` the tarballs, install them in a clean directory, run them** ✗✓ (2026-10-10) ——
+  ★**Why this step is unavoidable** ✗: ★"the self-tests are green" does **not** mean "someone else can install it and run it" ✓ ——
+  ★★**and the difference between those two things lives precisely in the**metadata** (★not in the code ✓).
+  ★**What was done** ✗: `npm pack` the seven tarballs (★with `--pack-destination` ⇒ **not a single `.tgz` left in the repository** ✓)
+  ⇒ ★`npm install` those seven tarballs in a **temporary empty directory** ✓ ⇒ ★run the CLI's `selftest` ✓.
+  ★**Result** ✗✓: ★install **9.5 s / exit code 0** (★`added 7 packages` ✓) ⇒ ★`selftest` **exit code 0 / 25 of 25 passed** ✓✓ ——
+  ★★**"the copy someone else installs after release really does run"** ✓.
+  ★★**It also verified the tarball contents** ✗✓ (★this is the truth behind the `files` field ✓): ★the six plugins ship **5 files**
+  (`LICENSE, README.md, cordis.patch.yml, index.js, package.json` ✓); ★`cli` ships **4**
+  (★**without `cordis.patch.yml`** ✓ —— ★it should not have one ✓).
+  ★★★**So `pkgcheck` gained item ③b** ✗✓: ★**the file `dsh.bundle.patch` points at must be inside `files`** ✓ ——
+  ★it is the **layer below** item ③ ✓: ★item ③ only checks "**is the field there**" ✓; ★but **the field is there and `files` omits the file** ⇒
+  ★**the tarball carries no patch ⇒ a real engine still says "it installed but does nothing"** ✗✓ (★**same symptom, two layers** ✓).
+  ★Negative test: ★deleting that entry from `bus`'s `files` ⇒ **2 criteria genuinely red** ✓ (★⑥ shape + ③b naming `bus` ✓).
 * ★**`cli`: `--only-offline <attribute>` / `--dormant <attribute>`** —— ★both rules can finally be switched on from the command line ✓.
 * ★**`cli`: `verify` / `nag` subcommands** —— ★the three-state design is finally visible from the command line
   (★`verify --enable` / `--disable` / `--allow a,b`; `nag` tells you whether a notice is due ✓).

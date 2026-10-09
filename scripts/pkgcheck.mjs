@@ -100,6 +100,21 @@ check('⑥b ★★`cli` 的 `files` **必须少 `cordis.patch.yml`** ✗（★�
   Array.isArray(pkgs[CLI]?.files) && !pkgs[CLI].files.includes('cordis.patch.yml'),
   Array.isArray(pkgs[CLI]?.files) ? pkgs[CLI].files.join(',') : '（没有 files）')
 
+// ★★③b **`dsh.bundle.patch` 指向的那个文件，必须在 `files` 里** ✗✓（2026-10-10 加）
+//   ★这是第③条的**下一层** ✓：★第③条只查"**字段在不在**" ✓；★而★**字段在、`files` 却漏了那个文件** ⇒
+//     ★★★**发出去的 tarball 里就没有补丁 ⇒ 真引擎里照样"装上了但什么都不做"** ✗✓ ——
+//     ★**同一个症状、两层原因** ✓。
+//   ★实测（`npm pack --dry-run` 七个包 ✓）：★六件都带上 `LICENSE, README.md, cordis.patch.yml, index.js, package.json` ✓；
+//     ★`cli` 带上 **4 个**（★没有 `cordis.patch.yml` ✓ —— ★它本来就不该有 ✓）。
+const missingPatch = PLUGINS.filter((p) => {
+  const files = pkgs[p]?.files
+  const patch = String(pkgs[p]?.dsh?.bundle?.patch ?? '').replace(/^\.\//, '')
+  if (!Array.isArray(files)) return true
+  return patch !== '' && !files.includes(patch)
+})
+check('③b ★★`dsh.bundle.patch` 指的文件**在 `files` 里** ✗（★否则 tarball 里没补丁 ⇒ 真引擎里"什么都不做" ✓）',
+  missingPatch.length === 0, missingPatch.length ? `缺：${missingPatch.join('、')}` : '六件都带上')
+
 // ★⑦ `private`：★**七个包都不许 private** ✗（★private 的包发不出去 ✓）；★而根**该** private ✓
 const priv = ALL.filter((p) => pkgs[p]?.private === true)
 check('⑦ ★七个包都**不是** `private` ✗（★private 的包发不出去 ✓）', priv.length === 0, priv.join('、'))
