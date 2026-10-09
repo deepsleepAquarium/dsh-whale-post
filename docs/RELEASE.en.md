@@ -15,6 +15,7 @@ npm run selftest     # 10 items: load-level + static criteria + cross-package + 
 npm run racetest     # 11 criteria: concurrent sequence claiming + concurrent accounting
 npm run doccheck     # Chinese/English doc parity
 npm run pkgcheck     # package metadata (★every publishing pit lives here)
+npm run compat       # ★★cross-version: really runs the version published on npm (★needs network, ~40 s)
 ```
 
 ★★ **One more step you cannot skip** ✗: **boot it for real once** (★a green `npm run selftest` does **not** mean the engine can load ✓ ——

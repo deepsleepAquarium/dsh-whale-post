@@ -14,7 +14,8 @@
     "racetest": "node scripts/racetest.mjs",
     "xcheck": "node scripts/xcheck.mjs",
     "doccheck": "node scripts/doccheck.mjs",
-    "pkgcheck": "node scripts/pkgcheck.mjs"
+    "pkgcheck": "node scripts/pkgcheck.mjs",
+    "compat": "node scripts/compat.mjs"
   },
   "workspaces": [
     "packages/*"

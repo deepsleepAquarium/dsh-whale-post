@@ -393,6 +393,30 @@
   ★★**It also answers "why signature-domain fields cannot be added casually"** ✗✓: ★**add one field and you add one one-way wall** ✓.
   ★**Criteria** ✗ (`bus` 98 → **100** ✓): ★the signature domain includes `peerStateAtSend` ✓ / ★**an envelope with only the old fields still gets a signature** ✓.
     ★Negative test: ★removing that field from `FIELD_ORDER` ⇒ **genuinely red** ✓ (★`seal()` refuses on the spot ✓ —— ★**the rule "unregistered fields may not enter the signature domain" polices itself** ✓).
+* ★★★ **New `scripts/compat.mjs`: cross-version acceptance** ✗✓ (2026-10-10; ★`npm run compat` ✓) ——
+  ★★**Why it exists** ✗✓: ★last round I **manually** ran `npx -y dsh-whale-post-cli@0.2.0` against this version ✓
+  ★and caught a one-way incompatibility ✓; ★and **that class of problem is visible only by really running the old version** ✗ ——
+  ★★★★ **not one "this version only" self-test can see it** ✓ (★every tool we have exercises only this version ✓)
+  ⇒ ★**without pinning it down, the next signature-domain field adds another one-way wall and nobody knows** ✓.
+  ★**What it does** ✗: ★**really pulls** the published version from npm (★`0.2.0` by default, ★`COMPAT_OLD` to change it ✓) ⇒
+    ① ★the old version's handshake is understood by this one ✓; ★② ★old sends ⇒ **this version receives it** ✓; ★③ ★**reports** whether this version's letters reach the old one ✓
+    (★**not judged red** ✗ —— ★"the old version bounces" is **known** ✓ and written into the `CHANGELOG` "Read first (2)" ✓;
+    ★★**and if it ever starts working, that should be seen too** ✓ ⇒ so it is printed ✓).
+  ★**Criteria** (4 ✓): ★**needs network + about 42 s** ⇒ ★**not part of `npm run selftest`** ✓,
+  ★**run it on its own** ✓ (★the same standing as `racetest` ✓), ★and it is wired into step 0 of `docs/RELEASE` ✓.
+  ★ⓘ ★I renamed its criterion from "**this version receives it**" to "**this version can take it in**" ✓ ——
+    ★because ★**it verifies "it parses and is taken in", not signature verification** ✓; ★verifying the HMAC is the **`verify` package's** job ✓ (★names must tell the truth ✓).
+* ★★ **The `bus` "old envelope signature" criterion: I aimed it at the wrong thing, and I stated its limits honestly** ✗✓ (2026-10-10)
+  · ★**Wrong aim** ✗: ★my first version was `bus.verify({...old, sig}).length === 0` ✓ ——
+    ★but **`bus.verify()` checks envelope structure** (★`v=1` / `kind` / `mac` / any unregistered fields ✓),
+    ★★**it does not verify the HMAC** ✗; ★verifying the HMAC is the **`verify` package's** (★that plugin's ✓) job ✓;
+  · ★**changed to** "field count changes the signature value" ✓ (★same letter → equal; ★one extra field → different ✓);
+  · ★★★**and its negative test did not succeed** ✗✓ —— recorded honestly in the code comments ✓:
+    ★changing canonical to "take the full field list" ⇒ **the criterion stays green** (★that is still consistent behaviour for two identically-shaped letters ✓);
+    ★freezing canonical to a fixed value ⇒ ★**the script fails to parse** ⇒ ★**exit code 1 with not a single FAIL line** ✓ ——
+    ★★**that is a false red** (★"the script never ran" being read as "the criterion went red" ✗ —— ★**a non-zero exit code does not mean the criterion took effect** ✓).
+  ⇒ ★**what actually guards the selection rule is `compat`** ✓ (★it really runs the old version ✓). ★The criterion stays because it at least pins "the signature value varies with the fields" ✓.
+* ★★ **`npm run compat` is wired into the docs** ✗✓: one row each in `FOR-AGENTS` CN/EN ✓ plus step 0 of `RELEASE` ✓ (★"needs network, about 40 s" ✓).
 * ★**`cli`: `--only-offline <attribute>` / `--dormant <attribute>`** —— ★both rules can finally be switched on from the command line ✓.
 * ★**`cli`: `verify` / `nag` subcommands** —— ★the three-state design is finally visible from the command line
   (★`verify --enable` / `--disable` / `--allow a,b`; `nag` tells you whether a notice is due ✓).

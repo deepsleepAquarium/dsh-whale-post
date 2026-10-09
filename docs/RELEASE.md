@@ -15,6 +15,7 @@ npm run selftest     # 10 项：加载级 ＋ 静态判据 ＋ 跨包一致 ＋ 
 npm run racetest     # 11 条：并发发号 ＋ 并发记账
 npm run doccheck     # 中英文档对等
 npm run pkgcheck     # 包元数据（★发布这件事的坑全在这里）
+npm run compat       # ★★跨版本：真跑 npm 上已发布的那一版（★要联网，约 40 秒）
 ```
 
 ★★ **再加一步不能省** ✗：**真启一遍**（★`npm run selftest` 全绿 **不等于**引擎能加载 ✓ ——

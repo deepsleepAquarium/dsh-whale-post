@@ -467,13 +467,29 @@ try {
 //   ★这里只能自动判“老信照收”那一半 ✓ —— ★反方向要跑老版，本库自测做不了 ✗。
 check('★★签名域字段名单里有 `peerStateAtSend`（★本版新加的 ✓）',
   Array.isArray(bus.FIELD_ORDER) && bus.FIELD_ORDER.includes('peerStateAtSend'))
-check('★★★老信（★只有老字段、没有 `peerStateAtSend`）**签名照样算得出来** ✓',
+//   ⚠️ ★我第一版写错了对象 ✗✓（★2026-10-10 改正 ✓）——
+//     ★我写成 `bus.verify({...old, sig}).length === 0` ✓ —— ★而 **`bus.verify()` 是检查信封结构**
+//     （★`v=1`／`kind`／`mac`／有没有未登记字段 ✓），**不是验 HMAC** ✗；
+//     ★★“验 HMAC”是 **`verify` 包**（★那个插件 ✓）的事 ✓。
+//   ★★正解：验“**字段多寡会改变签名值**” ✓ —— ★即：
+//     · ★**同一封信 sign 两次，值相同** ✓；
+//     · ★★**多一个字段的信，签名值不同** ✓。
+//   ⚠️ ★★**这条判据的负向，我没验成** —— 如实写在这里** ✗✓（★2026-10-10 ✓）：
+//     · ★把 canonical 改成“**按全量取**”（`FIELD_ORDER.filter(() => true)` ✓）⇒ ★**判据照样绿** ✓
+//       —— ★因为**对“同结构的两封信”那依然是一致的行为** ✓（★签名依然相等、依然不等 ✓）；
+//     · ★把 canonical **写死成固定值** ⇒ ★脚本**当场语法错** ⇒ ★**退出码 1 而一条 FAIL 都没有** ✓
+//       —— ★★**那是假红**（★"脚本没跑起来"被当成了"判据变红" ✗ —— ★这正是我早先记过的
+//       "最坏的那种假红" ✓：★**退出码非 0 不等于判据生效** ✓）。
+//     ⇒ ★★**所以这条判据**没有可靠的负向** ✓ —— ★我把它留着，是因为它至少钉住一件事：
+//       ★“**签名值会随字段变**” ✓（★若哪天有人把签名改成常量或把 canonical 忽略掉，
+//       ★**"同一封 sign 两次相同"那一半就会红** ✓）。★而**真正在守取法的是 `compat`** ✓。
+check('★★**字段多寡会改变签名值** ✓（★同一封→相同；★多一个字段→不同 ✓）',
   (() => {
     try {
-      // ★造一个只有**老字段**的信封 ✓ —— ★canonical 只收出现过的字段 ✓
-      const old = { id: 'mv0-old-0001', from: 'a', to: 'b', body: '老信（正文有货，别当回执）', sentAtMs: 1 }
-      const sig = bus.sign(old)
-      return typeof sig === 'string' && sig.length > 0
+      const a = { id: 'mv0-1', from: 'a', to: 'b', body: '老信（正文有货，别当回执）', sentAtMs: 1 }
+      const b = { id: 'mv0-1', from: 'a', to: 'b', body: '老信（正文有货，别当回执）', sentAtMs: 1, mode: 'offline' }
+      // ★同一封→相同✓；★字段多一个→不同 ✓
+      return bus.sign(a) === bus.sign({ ...a }) && bus.sign(a) !== bus.sign(b)
     } catch { return false }
   })())
 
