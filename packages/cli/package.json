@@ -32,12 +32,12 @@
     "selftest": "node selftest.mjs"
   },
   "dependencies": {
-    "dsh-whale-post-bus": "^0.2.0",
-    "dsh-whale-post-roster": "^0.2.0",
-    "dsh-whale-post-types": "^0.2.0",
-    "dsh-whale-post-deliver": "^0.2.0",
-    "dsh-whale-post-gate": "^0.2.0",
-    "dsh-whale-post-verify": "^0.2.0"
+    "dsh-whale-post-bus": "^0.3.0",
+    "dsh-whale-post-roster": "^0.3.0",
+    "dsh-whale-post-types": "^0.3.0",
+    "dsh-whale-post-deliver": "^0.3.0",
+    "dsh-whale-post-gate": "^0.3.0",
+    "dsh-whale-post-verify": "^0.3.0"
   },
   "repository": {
     "type": "git",

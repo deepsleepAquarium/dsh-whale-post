@@ -108,6 +108,8 @@ node packages/cli/index.js selftest  # ★check the exit code
   ★**Still untested** ✗: the truncation path once the `seen` state array grows very long (hand-crafted only).
 * ★★**Cross-package consistency** ✗✓ (added 2026-10-10): `node scripts/xcheck.mjs` —— ★**six items** (★digest / signature domain / **MAC** / legacy fields / day boundary / "the name says what it is" ✓);
   ★it watches ★**"is one thing computed in two places still equal"** ✓ (★we hit that shape twice ✓).
+* ★★**Which version to pin** ✗✓: ★**the latest on npm is `0.2.0`** ✓ (★that is what the `npx` lines above install ✓); ★while **this checkout is already `0.3.0`** (★**in preparation, not yet published** ✗) ✓.
+  ★The two **differing is expected** ✓ —— ★scroll to the `v0.3.0` section of the `CHANGELOG` to see what it adds ✓.
 * ★Version `0.2.0` (★**`0.1.x` has all six plugins failing to load in a real engine** ✗ ⇒ do not pin the old tag; pin **`v0.2.0`**);
   the interfaces carry `apiVersion`, and **types can be extended at any time** (adding a type does not require touching the core ✓).
   ★What changed in each version, and why ⇒ see [`CHANGELOG.en.md`](CHANGELOG.en.md).

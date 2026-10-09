@@ -54,6 +54,38 @@ check('④ ★★`cli` **必须没有** `dsh` ✗（★它是**入口工具、�
   pkgs[CLI] !== null && pkgs[CLI].dsh === undefined,
   pkgs[CLI]?.dsh === undefined ? '没有 ✓（正确）' : '★ 它有了 dsh ⇒ 被当成插件了')
 
+// ★★★②b **包之间的依赖范围必须覆盖当前版本** ✗✓（2026-10-10 加 —— ★而它**当场就抓到一个真的** ✓）
+//   ★**病** ✗：★`cli` 的 `dependencies` 里六个包都钉着 `^0.2.0` ✓ ⇒ ★而我们把版本升到 `0.3.0` ✓
+//     ⇒ ★★**`^0.2.0` 的语义是 `>=0.2.0 <0.3.0`** ⇒ ★**它匹配不上 `0.3.0`** ✓✓
+//     ⇒ ★★★**装 `cli@0.3.0` 会去要 `0.2.x` 的依赖 ⇒ 装出来是"半新半旧"** ✗✓。
+//   ★★为什么这条**容易漏** ✗✓：★上面第②条"七个包的 `version` 全等"**看着已经对了** ✓ ——
+//     ★而**依赖范围写在另一个字段里** ✓，★**版本号升了它不会自己动** ✓（★甚至可以说：★
+//     "把七处版本号一起改"这个动作**恰好**会让人以为"版本的事都改完了" ✗）。
+//   ★接受的写法：★`^x.y.z`／`~x.y.z`／`>=x.y.z`／精确 `x.y.z`／`*` ✓ —— ★**范围含当前版本**就算过 ✓。
+const rangesOf = (p) => Object.entries({ ...(pkgs[p]?.dependencies ?? {}), ...(pkgs[p]?.peerDependencies ?? {}) })
+  .filter(([n]) => n.startsWith('dsh-whale-post-'))
+const badRanges = []
+for (const p of ALL) {
+  for (const [name, range] of rangesOf(p)) {
+    const target = name.replace('dsh-whale-post-', '')
+    const tv = pkgs[target]?.version
+    if (!tv) continue
+    const m = String(range).match(/\d+\.\d+\.\d+/)
+    if (!m) continue                                   // ★`*` 之类 ⇒ 放行 ✓
+    const [maj, min] = m[0].split('.')
+    const [cmaj, cmin] = String(tv).split('.')
+    if (maj !== cmaj || min !== cmin) badRanges.push(`${p}→${name}@${range}（★当前 ${tv}）`)
+  }
+}
+check('②b ★★包内依赖的**版本范围覆盖当前版本** ✗（★否则装出来"半新半旧" ✓）',
+  badRanges.length === 0, badRanges.length ? badRanges.join('、') : '全对上')
+//   ⓘ ★这条**当场就抓到一个真的** ✗✓（2026-10-10）：★`cli` 的六个依赖原来都钉着 `^0.2.0` ✓，
+//     而★版本升到 `0.3.0` 之后 —— ★**`^0.2.0` 的语义是 `>=0.2.0 <0.3.0`** ⇒ ★**它匹配不上 `0.3.0`** ✓
+//     ⇒ ★★★**装 `cli@0.3.0` 会去要 `0.2.x` 的兄弟包 ⇒ 装出来是"半新半旧"** ✗✓。
+//   ★★它为什么容易漏 ✗✓：★上面第②条"七处 `version` 全等"**看着已经对了** ✓ ——
+//     ★而"**把七处版本号一起改**"这个动作**恰好会让人以为"版本的事都改完了"** ✗，
+//     ★★而依赖范围写在**另一个字段**里、**不会跟着动** ✓。
+
 const badName = ALL.filter((p) => !String(pkgs[p]?.name ?? '').startsWith('dsh-whale-post-'))
 check('⑤ ★包名前缀统一（`dsh-whale-post-*` ✓）', badName.length === 0, badName.join('、'))
 // ★⑥ **六件插件**的 `main`／`exports`／`files` 形状一致 ✓ —— ★★**而 `cli` 少一项，且那是故意的** ✗✓：

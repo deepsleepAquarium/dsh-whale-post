@@ -309,6 +309,20 @@
   ★Its criterion is the **exit code** ✓; ★**it is now part of `npm run selftest`** (★**10 items** ✓).
   ★Negative test: ★① change one package's version ⇒ reports "0.2.1 and 0.2.0 both present" ✓; ★② **give `cli` a `dsh` field** (★simulating "helpfully adding it" ✓)
   ⇒ reports "★it has dsh ⇒ it is being treated as a plugin" ✓ —— ★**both genuinely go red** ✓.
+* ★★★ **A real problem found while preparing the release: `cli`'s dependency ranges do not match the new version** ✗✓ (2026-10-10) ——
+  ★**The illness** ✗: ★`cli`'s `dependencies` had all six sibling packages pinned at `^0.2.0` ✓, and after the version moved to `0.3.0` ——
+  ★★**`^0.2.0` means `>=0.2.0 <0.3.0`** ⇒ ★**it does not match `0.3.0`** ✓
+  ⇒ ★★★**installing `cli@0.3.0` would pull `0.2.x` siblings ⇒ you get a half-new, half-old install** ✗✓.
+  ★★**Why it is easy to miss** ✗✓: ★the criterion "all seven `version` fields are equal" **already looks satisfied** ✓ ——
+    ★and ★"**bump all seven version numbers together**" **is exactly the action that makes you think version work is done** ✗;
+    ★★while **dependency ranges live in another field and do not move with it** ✓.
+  ★**New criterion** ✗ (`pkgcheck` item ②b ✓): ★**ranges of intra-repo dependencies must cover the current version** ✓
+    (★`^x.y.z` / `~x.y.z` / `>=x.y.z` / exact / `*` all accepted ✓). ★Negative test: setting one dependency back to `^0.2.0` ⇒ **turns red immediately** ✓.
+* ★★ **The version story is now stated plainly** ✗✓ (`README` / `INSTALL` / `cli/README`, CN and EN ✓):
+  ★**the latest on npm is `0.2.0`** (★that is what the `npx` lines above install, ★**and it does work** ✓);
+  ★while **this checkout is already `0.3.0`** (★**in preparation, not yet published** ✗) ✓ —— ★★**the two differing is expected** ✓.
+  ★★★**Why not simply change `npx …@0.2.0` to `@0.3.0`** ✗✓: ★**`0.3.0` is not published yet** ⇒
+  ★**the `npx` line would 404 ⇒ anyone following the README would "install it and nothing runs"** ✗✓ —— ★**exactly the shape of the pit from the previous version** ✓.
 * ★**`cli`: `--only-offline <attribute>` / `--dormant <attribute>`** —— ★both rules can finally be switched on from the command line ✓.
 * ★**`cli`: `verify` / `nag` subcommands** —— ★the three-state design is finally visible from the command line
   (★`verify --enable` / `--disable` / `--allow a,b`; `nag` tells you whether a notice is due ✓).
