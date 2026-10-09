@@ -41,8 +41,9 @@ npx -y dsh-whale-post-cli@0.1.1 selftest
 * 每件都过三关：**能加载 ＋ 能跑 ＋ 跑错会红**（验收规格见 [`docs/ACCEPTANCE.md`](docs/ACCEPTANCE.md)）。
 * 版本 `0.1.0`（打了 tag **`v0.1.0`**，要引用就钉它）；接口带 `apiVersion`，**类型可以随时扩充**（加类型不用动核心）。
 * **装法已在真引擎上实测过一遍**：★**首批五件**按 `dsh plugin --profile <p> add link:<本仓>/packages/<件>` 装进一个**一次性 profile** ⇒ 它们**出现在 profile 配置树里**（`dsh --profile <p> --dump-config` 能看到 `dsh-whale-post-*` 五行）⇒ **真启一遍成功、对外服务正常、日志无加载错** ⇒ 用完把那个 profile 删掉，**在役的两台引擎全程没重启**。
-  ★**边界（别当成已实测）**：★**第六件 `verify`（本次新增）尚未走同一遍真引擎实测** ⇒ 它目前只过了"加载级自测 ＋ 负向测试"，**接真引擎那一关待补**。
-  ★踩到的坑写在这儿免得别人再踩：插件包**必须**声明
+  ★**第七件（本次新增）也走过同一条实测了** ✓（2026-10-10 00:03）：用一次性 profile（`dsh 0.1.5-rc.1` ＋ `--from-default-profile headless`）装六件 ⇒ `--dump-config` **六层齐** ⇒ **真启一遍：退出码 0、错误 0 行** ✓。
+    ★★**而那一次实测抓到一个致命 bug（已修）** ✗：六件**全部 `failed to apply`** —— `cannot get property "whale" without inject`（`apply()` 里读了 `ctx.whale` 属性；真 Cordis 里读它要先 `inject`）。★**而 `--dump-config` 完全看不出来** ✗ —— 它只组配置树、不跑 `apply()`。⇒ 已改成只 `ctx.provide(...)` ＋ 运行时 `ctx.get(...)`，并钉了一条静态判据（源码里不许出现 `ctx.whale =` ／ `ctx?.whale?.` ⇒ 0 命中）。
+  ★**踩到的坑写在这儿免得别人再踩**：插件包**必须**声明
   ```json
   "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }
   ```

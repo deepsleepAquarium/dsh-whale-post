@@ -134,6 +134,7 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* 把这段文字送进那�
 | 症状 | 多半是 | 处置 |
 |---|---|---|
 | 插件装了但"没反应" | 用了 `inject` ／ 顶层就取服务 | 改运行时取服务 ＋ 每 tick 重试 |
+| ★**装了、`--dump-config` 也看得到层，但一真启就 `failed to apply`** | ★`apply()` 里**读了 `ctx.whale` 属性**（真 Cordis 里读它要先 `inject` ⇒ 抛 `cannot get property "whale" without inject`）；★`--dump-config` 只组配置树、**不跑 `apply()`**，所以看不出来 | ★只写 `ctx.provide('whale.xxx', x)` ＋ 运行时 `ctx.get('whale.xxx')`，**别碰 `ctx.whale` 属性**；★验的时候**必须真启一遍**，`--dump-config` 不算（2026-10-10 六件全栽在这 ✗） |
 | 改了代码没变化 | ESM 按 URL 缓存 ／ `file:` 装的是快照 | 重启引擎 ＋ 改 `link:` 装 |
 | 引擎起不来、日志一行 `ReferenceError` | 常量没定义（我们真干过） | 跑加载级自测＋负向测试 |
 | 收件人"没收到" | 对方**没有活体会话** | 正常：信**留在信箱里等人**，**不会丢** |
