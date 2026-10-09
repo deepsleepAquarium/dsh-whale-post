@@ -1,6 +1,6 @@
 # 组合示例（example）
 
-★这一份回答的问题只有一个：**六个件怎么接起来**。
+★这一份回答的问题只有一个：**七个件怎么接起来**。
 （只给包、不给接法 ⇒ 别人拿到手装不起来。这一份就是那份"接法"。）
 
 ## 一、最小接线（`cordis.patch.yml`）
@@ -36,6 +36,11 @@
             broadcast: { label: 'broadcast', limit: 45 }
             club:      { label: 'club',      limit: 40 }
             offline:   { label: '离线',      limit: 80, perSend: true }   # ★离线件按发信次数计
+
+    - id: whale-verify
+      name: dsh-whale-post-verify                # ★安全校验：**默认禁用**（enabled 不写就是禁用）
+      config:
+        enabled: false                           # 开就写 true；禁用期间会提示你开启（连提三天后不再提）
 ```
 
 ★**顺序无关**：五个插件之间只靠接口（`ctx.whale.*`）—— 核心不认识任何名字与类型标识。
@@ -78,7 +83,7 @@ node packages/cli/index.js send --as alice --to bob --mode online --live bob \
 ## 四、各件自测
 
 ```bash
-node scripts/selftest-all.mjs        # 六件一把跑完（退出码 0 ＝ 全过）
+node scripts/selftest-all.mjs        # 七件一把跑完（退出码 0 ＝ 全过）
 node packages/bus/selftest.mjs       # 单件跑（看细节）
 ```
 

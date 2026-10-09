@@ -1,4 +1,4 @@
-# 最小组合示例：五个插件 ＋ 一个 CLI（顺序无关 —— 核心只认接口）
+# 最小组合示例：六个插件 ＋ 一个 CLI（顺序无关 —— 核心只认接口）
 # 用法：dsh plugin --profile <profile> add link:<本仓目录>/packages/<件名>
 - insert:
     - id: whale-roster-json
@@ -30,3 +30,11 @@
             broadcast: { label: 'broadcast', limit: 45 }
             club: { label: 'club', limit: 60 }
             offline: { label: '离线', limit: 80, perSend: true }
+
+    # ★安全校验（验签 ＋ 白名单）：**默认禁用** —— enabled 不写、或写 false，就是禁用。
+    #   禁用期间每次启动会提示你开启（连提三天后不再提）；
+    #   要开就写 enabled: true，并配好 keys/ 或 signing.key。见 packages/verify/README.md
+    - id: whale-verify
+      name: dsh-whale-post-verify
+      config:
+        enabled: false

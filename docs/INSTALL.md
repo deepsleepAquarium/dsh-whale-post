@@ -44,8 +44,13 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post
  name: dsh-whale-post-gate # 示例②：配额与计费闸
  config:
  dailyUnits: 120 # ★ 数值自定（示例值，别照抄）
+
+ - id: whale-verify
+ name: dsh-whale-post-verify # ★安全校验（验签 ＋ 白名单）
+ config:
+ enabled: false # ★默认禁用；要开就写 true（禁用期间会提示你开启，连提三天后不再提）
 ```
-★**接线要点**：五个插件之间**只靠接口**（`ctx.whale.*`）⇒ **书写顺序无关**；★核心**不认识任何名字与类型** —— 你换掉名单实现、改掉类型表，核心一行都不用动。
+★**接线要点**：六个插件之间**只靠接口**（`ctx.whale.*`）⇒ **书写顺序无关**；★核心**不认识任何名字与类型** —— 你换掉名单实现、改掉类型表，核心一行都不用动。
 
 ### 名额从哪来（名单文件示例）
 ```json
@@ -94,6 +99,7 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* 把这段文字送进那�
 | `dsh-whale-post-types` | **信是什么类型**（接口件 ＋ 样例） | 提供 `ctx.whale.types` |
 | `dsh-whale-post-deliver` | **投递策略**（＝示例①的挂点） | 用 `bus`／`roster` |
 | `dsh-whale-post-gate` | **闸**（＝示例②的挂点） | 用 `bus`／`types` |
+| `dsh-whale-post-verify` | **安全校验**（信封验签 ＋ 名单白名单），★默认禁用 | 用 `bus`（可选：借它的 `digest`／`sign`） |
 | `dsh-whale-post-cli` | 入口工具（★**不是插件**） | 用 `bus` |
 | `example/` | 组合示例：最小 `cordis.patch.yml` ＋ 跑一次的判据 | 全部 |
 
@@ -106,6 +112,7 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* 把这段文字送进那�
 | `ctx.whale.types` | `register(id, meta)` ／ `resolve(id)` ／ `list()` |
 | `ctx.whale.deliver` | `deliver(letter, ctx)` → `'delivered'` ／ `'kept'` ／ `'rejected'` |
 | `ctx.whale.gate` | `check(letter, ctx)` → `'pass'` ／ `{ reject, reason }` |
+| `ctx.whale.verify` | `verify(letter)` → `{ ok, why?, skipped? }` ／ `nag()` → `string \| null` ／ `status()` ／ `enable()` ／ `disable()` |
 
 ## 五、★写插件的规范（照着写，别踩我们的坑）
 1. ★**只认接口，不认名字**：不许在核心代码里硬编码**任何**成员名／类型标识／内部路径（名单与类型一律注册进来）。
