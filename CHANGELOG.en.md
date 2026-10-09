@@ -187,6 +187,19 @@
       —— ★changing only the digest triggers both ① and ④ ✓, and ④'s wording is the **verbatim scene** of that illness ✓✓.
   ★Also wrote "which three things to run after changing code" into `docs/FOR-AGENTS` (CN/EN ✓): ★`selftest` / `racetest` / `xcheck` plus
     ★**"booting it for real cannot be skipped"** ✓ (★a green `selftest` ≠ the engine can load ✓) and ★**"cut the negative test off at the root"** ✓.
+* ★★★ **The fetching half of S11: letters piled up in a declared-dormant member's mailbox are bounced** ✗✓ (ported 2026-10-10;
+  ★original criteria 105-106 plus "**the keeper's order of 2026-10-06 02:5x**" ✓) —— ★verbatim:
+  "when the post office marks a recipient as dormant, the processing centre should return all their mail (**this person cannot receive mail**)".
+  ★**It sweeps two places** ✗✓: ★the local `inbox/<who>/` plus ★**the remote mailbox's `inbox/<who>/`** ✓ ——
+  ★★**sweeping only the local side is not enough**: ★a "phone" member's letters **lie in the mailbox waiting to be collected** ⇒ ★not sweeping it means **nothing was bounced** ✓.
+  ★**Three parts to a bounce** ✗: ★① move it into `退信/` (★**move only, never delete** ✗) ② **leave `<id>.因休眠退回.说明.txt`** ✓
+  (★the name says what it is ✓) ③ ★two hard sentences in the note: ★"**this letter is not lost** —— it lies here in the bounce folder waiting to be dealt with" ✓ /
+  ★"**it never entered** the recipient's mailbox, so it **consumes none of the sender's quota**" ✓.
+  ★★★**⚠️ An inferred dormancy never bounces automatically** ✗✓ (verbatim): ★otherwise "**bounce the backlog ⇒ the evidence disappears ⇒ judged active again ⇒ backlog again**" **oscillates** ✗ ——
+  ★the root of it is "using **one signal** as both **evidence** and **action**" ✓; ★an inferred state only **says so loudly** in `pickup` ✓;
+  ★to really bounce, **pin it first** (★promote the inference into a declaration; that version comes next round ✓).
+  ★Criteria: `cli` 35 → 40 (scene set up correctly / **the bounce** / **the note** / **the note's contents** / ★**an inferred dormancy does not bounce, only warns** ✓).
+  ★Negative test: switching off the bounce logic to see whether those criteria really go red ✓.
 * ★**`cli`: `--only-offline <attribute>` / `--dormant <attribute>`** —— ★both rules can finally be switched on from the command line ✓.
 * ★★★ **No handshake no longer means "refused"** ✗✓ (ported from the original on 2026-10-10; ★its criteria 1-3 plus "**the keeper's order of 2026-10-06 01:5x**" ✓)
   —— ★**another "opposite direction"** ✗: ★it used to throw and refuse when there was no handshake ✓; the new rule is

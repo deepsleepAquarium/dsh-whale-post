@@ -379,10 +379,76 @@ function main() {
       }
 
       // ②③④ 搬信
-      let took = 0, skipped = 0, bad = 0, swept = 0, converged = 0
+      let took = 0, skipped = 0, bad = 0, swept = 0, converged = 0, bounced = 0
       const files = existsSync(rInbox) ? readdirSync(rInbox).filter((x) => x.endsWith('.msg.json')) : []
       if (!existsSync(rInbox)) console.log(`ⓘ 远端没有这个收件箱：${rInbox}（★只做了 hello 镜像 ✓）`)
       mkdirSync(rSeenDir, { recursive: true })          // ★准备"消费凭证"那一格 ✓
+
+      // ★★★S11 取件那半边：把**明示休眠**者信箱里积压的信**退回** ✗✓
+      //   （2026-10-10 从正本移植；★正本判据 105-106 ＋「主人 2026-10-06 02:5x 令」✓）
+      //   ★正本原话 ✗：★"当邮局把收件人标记为休眠时，处理中心应退回所有邮件（**此人无法收到邮件**）"✓
+      //   ★★它扫**两个地方** ✗✓ —— ★**只扫本机是不够的**：
+      //     ① ★本机 `inbox/<谁>/` ✓（★缸内的信 ✓）
+      //     ② ★**远端邮筒的 `inbox/<谁>/`** ✓✓（★对 `offlineOnly` 那些"手机" ✓ ——
+      //        ★★**它们的信本来就躺在邮筒上等人来取** ⇒ ★不扫邮筒就等于**没退** ✓）。
+      //   ★★⚠️ **推断休眠不自动退** ✗✓（正本原话）：
+      //     ★否则"**退掉积压 ⇒ 证据消失 ⇒ 又判活跃 ⇒ 再积压**"**来回摆** ✗ ——
+      //     ★根子是"用**同一个信号**既当**证据**、又当**动作**" ✓；
+      //     ★推断出来的**只大声提示** ✓；★要真退就**先钉**（★把推断升格成明示，才稳 ✓ —— 那一版下一轮做 ✓）。
+      const bounceOne = (dir, w, f, why) => {
+        let env
+        try { env = JSON.parse(readFileSync(join(dir, f), 'utf8')) } catch { env = undefined }
+        const dead = join(bus.paths().root, '退信')
+        mkdirSync(dead, { recursive: true })
+        try { renameSync(join(dir, f), join(dead, f)) } catch { try { writeFileSync(join(dead, f), readFileSync(join(dir, f), 'utf8'), 'utf8') } catch { return false } }
+        const id = (env && env.id) || f
+        writeFileSync(join(dead, `${id}.因休眠退回.说明.txt`), [
+          `退回原因：${why}`,
+          `原收件人：${w}　★此人无法收到邮件 ✓`,
+          `原发件人：${(env && env.from) || '(读不出)'}`,
+          `信件 id：${id}`,
+          `主题：${(env && env.subject) || '(无)'}`,
+          `退回时刻：${new Date().toISOString()}`,
+          '',
+          '★这封信**没有丢** ✗ —— 它躺在退信这儿等着被处理 ✓（重投／找收件人，由发件人或主人定 ✓）。',
+          '★它**没有进**收件人的信箱 ✓，所以也**不占发件人的配额** ✓。',
+          '★为什么退它：★收件人被**明示**标成休眠 ✓ —— ★"信不会有人来取，落进去就是永远堆着" ✓。',
+        ].join('\n'), 'utf8')
+        bounced++
+        console.log(`退回   ${f} ⇒ 退信/（收件人「${w}」被明示标成休眠 ✓ —— ★信没丢 ✗）`)
+        return true
+      }
+      // ★★"明示休眠"的属性名**从命令行给** ✓（`--dormant <属性名>` ✓ —— ★核心与 CLI 都不认识具体名字 ✓）
+      const dormantFlagName = opt('dormant')
+      if (dormantFlagName) {
+        //   ⚠️ ★★`services.roster.list()` 给的是**对象数组** ✗（`[{ id, label, …属性 }]` ✓），
+        //     ★**不是**一串 id ✓ —— ★我第一版写成 `for (const w of list())` 然后 `flag(w, name)` ⇒
+        //     ★`w` 是对象 ⇒ `flag` **永远 false** ⇒ **整个退回逻辑静静地不执行** ✗✓
+        //     （★实测抓出来的：探针打出 `list=[{"id":"web",…},{"id":"phone","zzz":true,…}]` ✓）。
+        //   ★★这又是一次"名字没说真话" ✓ —— ★`list()` 听起来像"给 id 列表"，★给的却是对象 ✓
+        //     （★跟上一轮 `FALLBACK_FIELD_ORDER` 同一条精神：★**名字也是要负责任的** ✓）。
+        const memberIds = services.roster.list().map((m) => String((m && m.id) || m)).filter(Boolean)
+        const seenWho = new Set()
+        for (const w of memberIds) {
+          if (!services.roster.flag(w, dormantFlagName)) continue
+          if (seenWho.has(w)) continue
+          seenWho.add(w)
+          for (const dir of [bus.paths().inbox(w), join(remote, 'inbox', w)]) {
+            let fs2 = []
+            try { fs2 = readdirSync(dir).filter((x) => x.endsWith('.msg.json')) } catch { continue }
+            for (const f of fs2) bounceOne(dir, w, f, '收件人被标为**休眠**（★此人无法收到邮件 ✓；主人 2026-10-06 令 ✓）')
+          }
+        }
+        // ★★推断出来的：**只提示，不退** ✗✓（★退了就会"来回摆" ✓）
+        for (const w of memberIds) {
+          if (services.roster.flag(w, dormantFlagName)) continue
+          const d = typeof services.deliver?.dormancyOf === 'function' ? services.deliver.dormancyOf(w) : null
+          if (d && d.state === 'dormant' && String(d.source) === 'inferred') {
+            console.log(`ⓘ 看着像休眠（推断）：${w}（★已 ${d.days} 天没有积压变化 ✓）—— ★**不自动退** ✗：
+  退了积压就没了证据 ⇒ 下回又判活跃 ⇒ **来回摆** ✓。★确要退请先**钉**（把推断升格成明示 ✓）。`)
+          }
+        }
+      }
       // ★★★S6h-①②（2026-10-10 从正本移植；正本判据 73-76 ✓）——★"搬一半崩了"这个现场怎么收拾 ✗✓：
       //   ① ★**半截 `.tmp` ⇒ 不理它** ✓（★既不导入 ✓ 也不删 ✓ —— ★我们自己的 `.tmp` 就是半截的意思 ✓）；
       //      ★**陈旧**的 `.tmp`（★躺过 `tmpStaleMs`）⇒ ★**MOVE 进邮筒的 `垃圾/`** ✓✓ —— ★★**绝不删** ✗
@@ -447,7 +513,7 @@ function main() {
         console.log(`取回   ${f} :: ${env.from} → ${as}《${env.subject ?? ''}》[${env.mode ?? 'online'}]${quota}`)
       }
       console.log(`\n取回 ${took} 封，跳过 ${skipped} 封（已有），没搬 ${bad} 封，镜像 hello ${mirrored} 份` +
-        (swept || converged ? `，清理陈旧半截 ${swept} 个，收敛补 MOVE ${converged} 封` : ''))
+        (swept || converged || bounced ? `，清理陈旧半截 ${swept} 个，收敛补 MOVE ${converged} 封，休眠退回 ${bounced} 封` : ''))
       console.log('★远端没搬走的都还在那儿 ✓；搬走的留在它的 seen/ 里当消费凭证 ✓；★记账记在**发件人**名下 ✓')
       return bad > 0 && took === 0 ? 2 : 0
     }

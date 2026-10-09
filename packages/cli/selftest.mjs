@@ -178,6 +178,58 @@ check('★★S6h-②：**收敛式 MOVE** —— 邮筒那份补进 `seen/`（�
   !existsSync(join(hRoot, 'inbox', 'web', hFile)) && existsSync(join(hRoot, 'seen', 'web', hFile)))
 check('★S6h-②：本机**没重复导入** ✓（★幂等仍在管事 ✓）', lsDir(join(hLocal, 'inbox', 'web')).length === 1)
 
+// ★★★S11 取件那半边：把**明示休眠**者信箱里积压的信**退回** ✗✓
+//   （2026-10-10 从正本移植；★正本判据 105-106 ＋「主人 2026-10-06 02:5x 令」✓）
+//   ★它扫**两个地方**：★本机 `inbox/<谁>/` ＋ ★**远端邮筒的** `inbox/<谁>/` ✓（★只扫本机是不够的 ✓）
+//   ★★⚠️ **推断休眠不自动退** ✗✓（正本原话）：★否则"退掉积压 ⇒ 证据消失 ⇒ 又判活跃"**来回摆** ✗
+const s11Root = join(process.env.TEMP ?? '/tmp', `whale-cli-s11-rem-${Date.now()}`)
+const s11Local = join(process.env.TEMP ?? '/tmp', `whale-cli-s11-loc-${Date.now()}`)
+for (const d of [s11Root, s11Local, join(s11Local, 'inbox', 'web')]) mkdirSync(d, { recursive: true })
+//   ★roster：`phone` 带 `zzz`（**明示**休眠 ✓）／`quiet` 不带（★用来验"推断不退" ✓）
+const s11Roster = JSON.stringify({ apiVersion: 1, members: [{ id: 'web' }, { id: 'phone', zzz: true }, { id: 'quiet' }], groups: {} })
+for (const d of [s11Root, s11Local]) writeFileSync(join(d, 'roster.json'), s11Roster, 'utf8')
+run(['hello', '--as', 'phone', '--root', s11Root]); run(['hello', '--as', 'web', '--root', s11Root])
+run(['send', '--as', 'web', '--to', 'phone', '--mode', 'offline', '--force', '--body', 'S11 退回测试（正文有货，别当回执）', '--root', s11Root])
+check('★S11：现场造好了（★明示休眠者 `phone` 的邮筒里有一封 ✓）', lsDir(join(s11Root, 'inbox', 'phone')).length === 1)
+run(['pickup', '--as', 'web', '--root', s11Local, '--remote', s11Root, '--only-offline', 'phone', '--dormant', 'zzz'])
+check('★★S11：**明示休眠**者邮筒里积压的信 ⇒ 退回本机 `退信/`（★信没丢 ✗）',
+  lsDir(join(s11Local, '退信')).some((f) => f.endsWith('.msg.json')) && lsDir(join(s11Root, 'inbox', 'phone')).length === 0,
+  JSON.stringify(lsDir(join(s11Local, '退信'))))
+//   ⚠️ ★`lsDir` **只列 `.msg.json`** ✗ ⇒ ★要看得用 `readdirSync` 原样列 ✓
+//     （★我第一版用 `lsDir(...).some(f => f.endsWith('.因休眠退回.说明.txt'))` ⇒ ★**永远 false** ⇒ 假红 ✓
+//      —— ★而文件其实好好躺在那里（639 B ✓）✓。★"探针写得比事实窄"这个坑我这两轮踩了三次 ✓）
+const lsAll = (d) => { try { return readdirSync(d) } catch { return [] } }
+check('★★S11：退回时**留一份说明**（★名字自己说清是什么 ✓：`.因休眠退回.说明.txt`）',
+  lsAll(join(s11Local, '退信')).some((f) => f.endsWith('.因休眠退回.说明.txt')),
+  JSON.stringify(lsAll(join(s11Local, '退信'))))
+check('★S11：说明里写明「此人无法收到邮件」＋「没有进收件人的信箱 ⇒ 不占配额」',
+  (() => {
+    const f = lsAll(join(s11Local, '退信')).find((x) => x.endsWith('.因休眠退回.说明.txt'))
+    if (!f) return false
+    const t = readFileSync(join(s11Local, '退信', f), 'utf8')
+    return /无法收到邮件/.test(t) && /没有进/.test(t) && /不占/.test(t)
+  })())
+// ★★"推断休眠 ⇒ **不自动退**" ✗✓ —— ★正本判据 106（★这条最难造：要把积压做**旧** ✓）
+{
+  const qRoot = join(process.env.TEMP ?? '/tmp', `whale-cli-s11q-rem-${Date.now()}`)
+  const qLocal = join(process.env.TEMP ?? '/tmp', `whale-cli-s11q-loc-${Date.now()}`)
+  for (const d of [qRoot, qLocal, join(qLocal, 'inbox', 'web')]) mkdirSync(d, { recursive: true })
+  for (const d of [qRoot, qLocal]) writeFileSync(join(d, 'roster.json'), s11Roster, 'utf8')
+  run(['hello', '--as', 'quiet', '--root', qRoot]); run(['hello', '--as', 'web', '--root', qRoot])
+  run(['send', '--as', 'web', '--to', 'quiet', '--mode', 'offline', '--force', '--body', '放了很久的信（正文有货，别当回执）', '--root', qRoot])
+  //   ★把它的 mtime 推到 **10 天前** ⇒ ★`dormancyOf` 会**推断**成 dormant ✓（★阈值 7 天 ✓）
+  const oldMs = Date.now() - 10 * 24 * 3600 * 1000
+  for (const f of lsDir(join(qRoot, 'inbox', 'quiet'))) {
+    const p = join(qRoot, 'inbox', 'quiet', f)
+    const st = statSync(p)
+    utimesSync(p, st.atime, new Date(oldMs))
+  }
+  run(['pickup', '--as', 'web', '--root', qLocal, '--remote', qRoot, '--only-offline', 'quiet', '--dormant', 'zzz'])
+  check('★★S11：**推断**休眠（放了 10 天的积压）⇒ **不自动退** ✗（★退了就会"来回摆" ✓）＋ 只**提示** ✓',
+    lsDir(join(qRoot, 'inbox', 'quiet')).length === 1 && lsDir(join(qLocal, '退信')).length === 0,
+    `邮筒还剩 ${lsDir(join(qRoot, 'inbox', 'quiet')).length} 封／退信 ${lsDir(join(qLocal, '退信')).length} 个`)
+}
+
 // ⑥ ★★S12 断线不卡死（2026-10-10 从缸里正本移植）：动"邮筒"之前先探活
 //    ★病：SMB 掉线时**同步 fs 会挂住几十秒** ✗（本地盘不会 ✓）⇒ pickup 会卡住 ✓
 //    ★方：只看 **TCP 445** 通不通；★本机路径不探；★"Node 的同步 fs 没有超时" ⇒ 靠子进程 ＋ timeout 拿上限 ✓
