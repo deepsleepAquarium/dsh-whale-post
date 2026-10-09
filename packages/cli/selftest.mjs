@@ -128,6 +128,17 @@ run(['send', '--as', 'phone', '--to', 'web', '--body', '第二封离线件（正
 const pk6b = run(['pickup', '--as', 'web', '--root', s6Local, '--remote', s6Remote, '--only-offline', 'phone', '--account'])
 check('★S6：`--account` 开了才记，且**记在发件人名下**', pk6b.status === 0 && existsSync(join(s6Local, 'state', 'quota-phone.json')), String(pk6b.stdout).slice(0, 60))
 
+// ⑥ ★★S12 断线不卡死（2026-10-10 从缸里正本移植）：动"邮筒"之前先探活
+//    ★病：SMB 掉线时**同步 fs 会挂住几十秒** ✗（本地盘不会 ✓）⇒ pickup 会卡住 ✓
+//    ★方：只看 **TCP 445** 通不通；★本机路径不探；★"Node 的同步 fs 没有超时" ⇒ 靠子进程 ＋ timeout 拿上限 ✓
+const deadStart = Date.now()
+const deadRes = run(['pickup', '--as', 'web', '--root', s6Local, '--remote', '\\\\10.255.255.1\\nope'])
+const deadMs = Date.now() - deadStart
+check('★★S12：够不着的 UNC ⇒ **快速判死**（不是挂几十秒）＋ 退出码 2',
+  deadRes.status === 2 && deadMs < 15000, `exit=${deadRes.status} ms=${deadMs}`)
+check('★S12：判死时说清"一个文件都没动"',
+  /一个文件都没动/.test(deadRes.stdout + deadRes.stderr), String(deadRes.stdout + deadRes.stderr).slice(0, 60))
+
 for (const c of checks) console.log(`${c.ok ? 'PASS' : 'FAIL'}  ${c.name}${c.ok ? '' : '  :: ' + c.extra}`)
 const pass = checks.filter((c) => c.ok).length
 console.log(`\n${pass}/${checks.length} 通过`)

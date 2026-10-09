@@ -24,6 +24,7 @@
  */
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync, renameSync, unlinkSync } from 'node:fs'
 import { join } from 'node:path'
+import { spawnSync } from 'node:child_process'
 import { createBus } from 'dsh-whale-post-bus'
 import { createRoster } from 'dsh-whale-post-roster'
 import { createTypes } from 'dsh-whale-post-types'
@@ -39,6 +40,34 @@ const opt = (name, dflt = undefined) => {
 }
 const flag = (name) => argv.includes(`--${name}`)
 const die = (code, msg) => { if (msg) console.error(msg); process.exit(code) }
+
+/**
+ * ★★探活：动"邮筒"之前先看它活着没 ✗（S12 断线不卡死 · 2026-10-10 从缸里正本移植 ✓）
+ *
+ * ★病（正本原话）✗：★「**SMB 掉线时同步 fs 调用会挂住几十秒** ✗（本地盘不会 ✓）
+ *   ⇒ `pickup` 会卡住、发信也会卡住 ✓」
+ * ★方（三条口径 ✓）：
+ *   ① ★**本机路径不用探** ✓（人造邮筒／盘上的目录 ⇒ 直接算通 ✓）；
+ *   ② ★**只看 TCP 445 通不通** ✓ —— 不碰盘、不做 IO ✓；
+ *   ③ ★★**Node 的同步 fs 自己没有超时** ✗ ⇒ 只能靠「**子进程 ＋ timeout**」拿到上限 ✓
+ *      （★最后一招是兜底、不是主力：真正快的是那个 1.2 秒的 `net.connect` 超时 ✓）。
+ * ⚠️ 缓存**按根字符串**存 ✓ —— ★换根就重探 ✓（"免得缓存说了谎" ✓）。
+ */
+const _remoteAlive = new Map()
+function remoteAlive(rootPath, force = false) {
+  if (!/^\\\\/.test(String(rootPath ?? ''))) return true     // ★本机路径 ⇒ 不用探 ✓
+  const r = String(rootPath)
+  if (!force && _remoteAlive.has(r)) return _remoteAlive.get(r)
+  const host = (r.match(/^\\+([^\\]+)/) ?? [, ''])[1]
+  if (!host) return true
+  const probe = "const net=require('node:net');const s=net.connect({host:process.argv[1],port:445});"
+    + "s.setTimeout(1200);s.on('connect',()=>{s.destroy();process.exit(0)});"
+    + "s.on('timeout',()=>process.exit(2));s.on('error',()=>process.exit(3));"
+  const res = spawnSync(process.execPath, ['-e', probe, host], { timeout: 2500, stdio: 'ignore' })
+  const ok = res.status === 0
+  _remoteAlive.set(r, ok)
+  return ok
+}
 
 /** 把接口件拼起来（★核心只认接口，这里就是"接线"） */
 function wire({ root, live, allow: allowIn, verifyEnabled } = {}) {
@@ -283,6 +312,12 @@ function main() {
       const as = opt('as') || die(2, 'pickup 需要 --as')
       const remote = opt('remote') ?? process.env.WHALE_POST_REMOTE_ROOT
       if (!remote) die(2, 'pickup 需要 --remote <远端信箱根>（或环境变量 WHALE_POST_REMOTE_ROOT）')
+      // ★★动邮筒之前先探活 ✗（S12 ✓）—— ★不通就**当场判死**，别让同步 fs 在 SMB 掉线时挂几十秒 ✓
+      //   ⚠️★**必须在任何一次碰远端盘的调用之前** ✗ —— 连 `existsSync` 本身都会挂 ✓
+      if (!remoteAlive(remote)) {
+        die(2, `远端根现在够不着（${remote}）—— ★**SMB 掉线时同步 fs 会挂住几十秒** ✗，所以这里先探活再动盘。`
+          + '等网络回来再跑；★这一次**一个文件都没动** ✓')
+      }
       if (!existsSync(remote)) die(2, `远端根不存在：${remote}（★要指到"信箱根"那一层 ✓）`)
       const onlyOffline = opt('only-offline')          // ★不配 ⇒ 一个 hello 都不镜像 ✓
       const rInbox = join(remote, 'inbox', as)

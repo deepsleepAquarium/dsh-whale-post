@@ -89,7 +89,15 @@
   (the CLI prints **"not delivered to: …"** ✓ —— **no silence** ✓).
   ★The attribute name comes from **configuration** ✓; unset ⇒ the rule is entirely off (backward compatible ✓).
 * ★**`cli`: `--only-offline <attribute>` / `--dormant <attribute>`** —— ★both rules can finally be switched on from the command line ✓.
-* ★★★ **`deliver`: dormancy detection v2 (`dormancyOf`)** ✗✓ —— ★**the second "half" ported from the tank's original** ✓:
+* ★**`cli`: the "do not hang when the link drops" probe in `pickup` (S12)** ✗✓ —— ★**the fourth item ported from the tank's original** ✓:
+  ★verbatim from the original: ★"**when SMB drops, synchronous fs calls hang for tens of seconds** ✗ (a local disk does not ✓)
+  ⇒ `pickup` hangs, and so does sending ✓". ⇒ ★**probe before touching the postbox**: TCP **445** only;
+  ★a local path is **not probed**; ★**"Node's synchronous fs has no timeout of its own"** ⇒ the ceiling comes from
+  "**a child process + timeout**" ✓ (★not rewritten as async —— that would drag the whole file along ✓).
+  The cache is keyed **by the root string** ✓ (a different root is probed again ✓).
+  ★★**Measured numbers** ✗✓: an unreachable UNC ⇒ **judged dead in 2.8 s** (message: "★this time **not a single file was touched**" ✓);
+  ★with the probe short-circuited ⇒ it takes **22.7 s** to fail ✓ —— ★**that is how the original's "tens of seconds" was confirmed** ✓✓.
+* ★★★ **`deliver`: dormancy detection v2 (`dormancyOf`)** ✗✓ —— ★**the third "half" ported from the tank's original** ✓:
   ★**the v1 lesson** (verbatim from the original): ★"**do not take 'the postman is alive' for 'they are reading their mail'** ✗ ——
   a real deployment exposes it at once: **小毛咪's postman renews her `hello` every 10 minutes, but she herself does not read letters** (★what you measure is the postman, not her ✗)" ✓.
   ⇒ Two paths, ★**both carrying `source` (an inference must never be reported as a declaration ✗)**: ① **declared** ⇒ `'declared'` ✓;
