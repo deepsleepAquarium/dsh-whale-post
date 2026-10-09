@@ -2,7 +2,7 @@
  * dsh-whale-post-gate 的加载级自测：回环闸三道 ＋ 配额分桶 ＋ 两种越额档位。
  * 判据看退出码：0 过／非 0 不过。临时根，真数据零接触。
  */
-import { mkdirSync, existsSync, readFileSync } from 'node:fs'
+import { mkdirSync, existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { apply, createGate, apiVersion } from './index.js'
 
@@ -80,7 +80,11 @@ try {
   check('回执闸：真内容（含事实）放行', gate.check(L({ as: 'irene', body: 'got it — 我已经把第 3 项改完了，另外发现第 7 项也有问题' })) === 'pass')
 
   // ⑧ 台账落盘
-  check('台账：state/quota-<谁>.json 落盘了', existsSync(join(tmp, 'state', 'quota-erin.json')))
+  //   ★★2026-10-10：台账改成**基线 ＋ 增量** ✗✓（★"各写各的"—— 并发必丢的修法 ✓）——
+//     ★所以"落盘了"要看**增量目录** ✓（★基线那个文件在"从没迁移过"时**本来就不该有** ✓）。
+check('台账：**增量目录**落盘了（★基线 ＋ 增量，各写各的 ✓）',
+  existsSync(join(tmp, 'state', 'quota-erin.d')) || existsSync(join(tmp, 'state', 'quota-erin.json')),
+  JSON.stringify((() => { try { return readdirSync(join(tmp, 'state')) } catch { return [] } })()))
 
   // ★★分桶规则（2026-10-10 缸内口径移植：就是"按授权级别分四档"那种）——
   //   ★字段名与桶名**全由配置给**，本件里不出现任何具体名字 ✓
@@ -156,12 +160,51 @@ try {
     createGate({ root: tmp, quota: { phoneFlag: 'ph', phoneOnlineCap: 1 } })
       .check(L8({ as: 's8noroster' }), { declaredCaps: {} }) === 'pass')
 
+  // ★★★并发记账**不许丢** ✗✓（2026-10-10 修，实测抓出来的）——
+  //   ★**病** ✗：★原来是"读一个 `quota-<as>.json` → 改 → 写回" ✓ ⇒ ★**并发必丢** ✓
+  //     （★实测：12 路并发，台账只记到 **8／9／10** 条 ✓；★而串行 12 次正好 12 ✓）。
+  //   ★★**它没有任何兜底** ✗✓（★不像 `seq` 有水位线兜 ✓）⇒ ★**配额台账是钱，丢了就是真丢了** ✓。
+  //   ★**方** ✗：★正本给 `ack` 用的那个手法 —— ★"**每份各写各的文件**" ✓ ⇒ ★每次记账写一个**独立增量文件** ✓
+  //     （★文件名带时间戳 ＋ 随机 ⇒ ★两个进程只会写两个**不同**的文件 ✓）。
+  //   ⓘ ★试过"乐观重试（写完复读、不对就重来）"✗ —— **不成立** ✓：
+  //     ★`A 读(writers=5) → B 读(5) → B 写(6) → A 写(6)` ⇒ ★两个复读都读到 6 ⇒ **都以为成功** ✓
+  //     （★`+1` 这种计数**不唯一** ⇒ 判不出"我被盖了" ✓）。★实测重试之后**反而更差**（★丢 8 条 ✓）。
+  check('★★并发记账：串行 12 次 ⇒ 台账记到 12 条（★基准 ✓）',
+    (() => {
+      const r = join(tmp, `acct-serial-${Date.now()}`)
+      const g = createGate({ root: r })
+      for (let i = 0; i < 12; i += 1) g.record({ as: 'a', to: 'b', targets: ['b'], mode: 'offline', type: 'direct', body: '并发记账测试（正文有货，别当回执）' }, ['b'])
+      return g.report({ as: 'a' }).letters === 12
+    })())
+  check('★★并发记账：**换个 gate 实例**再读 ⇒ 仍 12 条（★"各写各的"⇒ 一条不丢 ✓）',
+    (() => {
+      const r = join(tmp, `acct-cross-${Date.now()}`)
+      const g = createGate({ root: r })
+      for (let i = 0; i < 12; i += 1) g.record({ as: 'a', to: 'b', targets: ['b'], mode: 'offline', type: 'direct', body: '并发记账测试（正文有货，别当回执）' }, ['b'])
+      //   ★★关键：★换一个**全新实例**去读 ✓ —— ★这才能验"增量真的落盘了" ✓
+      //     （★同一个实例读自己的内存缓存会**假过** ✓ —— 而 `load` 每次都读盘 ✓，所以这条其实很实 ✓）
+      return createGate({ root: r }).report({ as: 'a' }).letters === 12
+    })())
+  check('★并发记账：增量文件**各写各的**（★文件名不重复 ⇒ 物理上不可能撞车 ✓）',
+    (() => {
+      const r = join(tmp, `acct-name-${Date.now()}`)
+      const g = createGate({ root: r })
+      g.record({ as: 'a', to: 'b', targets: ['b'], mode: 'offline', type: 'direct', body: '并发记账测试（正文有货，别当回执）' }, ['b']); g.record({ as: 'a', to: 'b', targets: ['b'], mode: 'offline', type: 'direct', body: '并发记账测试（正文有货，别当回执）' }, ['b']); g.record({ as: 'a', to: 'b', targets: ['b'], mode: 'offline', type: 'direct', body: '并发记账测试（正文有货，别当回执）' }, ['b'])
+      const files = (() => { try { return readdirSync(join(r, 'state', 'quota-a.d')) } catch { return [] } })()
+      return files.length === 3 && new Set(files).size === 3
+    })())
   // ★★★时钟**可注入** ✗✓（2026-10-10 加，照 `verify` 包那份写）——
   //   ★病：★原来处处裸 `Date.now()` ⇒ ★**没法用"假时间"测** ✓；而"生效时刻"
   //     （★正本判据 134-136：09:00 **前**按旧口径、**到点后**才分桶 ✓）**正是要假时钟**的 ✓。
   //   ★★更根本：★"日界" `gate` 与 `verify` 各算一份 ⇒ ★漂了就是"一边已过期、一边还在记账"，★谁都不报错 ✓。
   const clockRoot = (s) => join(tmp, `clock-${s}-${Date.now()}`)
-  const readDay = (r, as = 'a') => Object.keys(JSON.parse(readFileSync(join(r, 'state', `quota-${as}.json`), 'utf8')).days)
+  //   ★★2026-10-10：台账改成**基线 ＋ 增量** ✗✓（★"各写各的" —— 修"并发必丢账" ✓）——
+  //     ★所以"某天的日"要**问 `report()`** ✓（★不能再直接读那个基线文件：★它现在**不写了** ✓）。
+  const readDay = (r, as = 'a') => {
+    const rep = createGate({ root: r }).report({ as, days: 3650 })
+    const keys = Object.keys(rep.days ?? {}).sort()
+    return keys.length ? [keys[keys.length - 1]] : []
+  }
   const Lc = () => ({ as: 'a', to: 'b', targets: ['b'], mode: 'offline', type: 'direct', body: '正文有货，别当回执' })
   check('★★假时钟：配了 `now` ⇒ 台账按**它**算（★不是按真时间 ✓）',
     (() => {

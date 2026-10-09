@@ -213,6 +213,24 @@
   (★unpinning also states **who** pinned it and why ✓). ★Stored at `<root>/state/pinned-dormant.json` ✓.
   ★Criteria: `cli` 40 → 45 (★pin succeeds **with a trace** / listing / ★**only a pinned member is bounced** / unpin reports who pinned it ✓).
   ★Negative test: disabling the "pinned" branch to see whether those criteria really go red ✓.
+* ★★★ **A real bug fixed: the quota ledger's "read-modify-write" loses entries under concurrency** ✗✓ (2026-10-10; ★found as fallout of the `racetest` work) ——
+  ★**How it was found** ✗: ★after fixing the watermark last round I **swept for other places with lost updates** ✓ ⇒
+  ★targeted `gate`'s quota ledger ✓ (★it is "read → modify → write back" ✓) ⇒ ★**spawned 12 real child processes, one entry each** ✓:
+  · ★**serial 12 ⇒ letters=12** ✓ (★the baseline is correct ✓)
+  · ★★**12-way concurrent ⇒ letters=8 / 9 / 10** ✗✓✓ —— ★**2~4 entries lost** ✓.
+  ★★**Why this one matters especially** ✗✓: ★the quota ledger is **money** ✓ (★"the quota is someone else's money" ✓) ——
+    ★and ★**it has no fallback at all** ✗ (★unlike `seq`, which the watermark covers ✓) ⇒ ★**what is lost is really lost** ✓✓.
+  ★★★**I tried "optimistic retry" (write, read back, retry if different) ✗ —— it does not work** ✓:
+    ★`A reads (writers=5) → B reads (5) → B writes (6) → A writes (6)` ⇒ ★**both read back 6 ⇒ both believe they succeeded** ✓
+    (★a `+1` counter is **not unique** ⇒ it cannot detect "I was overwritten" ✓). ★Measured: retrying was **actually worse** (★8 lost ✓).
+  ★★**The cure came from the original's solution for `ack`** ✗✓: ★"**during a broadcast several receivers write the same `<id>.ack.json` ⇒
+    rename collides on Windows ⇒ structural elimination: each writes its own file**" ✓✓ —— ★**"each writes its own" makes collisions physically impossible** ✓.
+  ★**The change** ✗: ★each entry becomes its own **incremental file** (`state/quota-<as>.d/<timestamp>-<random>.json` ✓) ——
+    ★timestamp plus random ⇒ **two processes write two different files** ✓; ★reading is "**baseline + sum of all increments**" ✓;
+    ★the baseline (the old-format file) **is still read** ✓ ⇒ ★**old ledgers are untouched** ✓.
+  ★`report()` now also returns `days` ✓ (★with the ledger split in two places, callers **could not tell which days exist** ✗ ⇒ the per-day books are handed out too ✓).
+  ★Criteria: `gate` 50 → 53 (★serial baseline of 12 / ★a fresh instance still reads 12 / ★increment filenames **each its own** ✓).
+  ★Negative test: ★replacing the random filename with a **fixed** one (★simulating the mechanism being broken ✓) ⇒ **4 out of 4 runs lost entries** ✓ (★the negative is effective ✓).
 * ★**`cli`: `--only-offline <attribute>` / `--dormant <attribute>`** —— ★both rules can finally be switched on from the command line ✓.
 * ★★★ **No handshake no longer means "refused"** ✗✓ (ported from the original on 2026-10-10; ★its criteria 1-3 plus "**the keeper's order of 2026-10-06 01:5x**" ✓)
   —— ★**another "opposite direction"** ✗: ★it used to throw and refuse when there was no handshake ✓; the new rule is

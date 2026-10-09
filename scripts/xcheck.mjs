@@ -73,7 +73,9 @@ try {
   const vDay = createVerify({ root: gRoot, enabled: false, now: T, dayBoundaryHour: 9 }).localDay()
   const gate = createGate({ root: gRoot, now: T, quota: { dayBoundaryHour: 9 } })
   gate.record({ as: 'a', to: 'b', targets: ['b'], mode: 'offline', type: 'direct', body: '日界对照（正文有货）' }, ['b'])
-  const gDay = Object.keys(JSON.parse(readFileSync(join(gRoot, 'state', 'quota-a.json'), 'utf8')).days)[0]
+  //   ★★2026-10-10：台账分"**基线 ＋ 增量**"两处存 ⇒ ★问 `report()` ✓
+  //     （★别直接读那个基线文件：★它现在**不写了** ✓）
+  const gDay = Object.keys(createGate({ root: gRoot, now: T, quota: { dayBoundaryHour: 9 } }).report({ as: 'a', days: 3650 }).days ?? {})[0]
   check('③ 日界：同一时刻 ＋ 同日界 ⇒ `verify.localDay()` ≡ `gate` 台账的日', vDay === gDay,
     `verify=${vDay} gate=${gDay}`)
 } catch (err) {

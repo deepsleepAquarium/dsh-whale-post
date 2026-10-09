@@ -123,10 +123,15 @@ check('★★S6：只镜像"只收离线"成员的 hello（★缸内成员 web �
 check('★★S6：远端那份 **MOVE 进 seen/**（★消费凭证 —— 不是删掉）',
   existsSync(join(s6Remote, 'seen', 'web', `${lsDir(join(s6Remote, 'seen', 'web'))[0] ?? 'x'}`)) && lsDir(join(s6Remote, 'inbox', 'web')).length === 0,
   JSON.stringify(lsDir(join(s6Remote, 'seen', 'web'))))
-check('★★S6：**默认不记账**（★远端自己可能记过 ⇒ 再记就是双记 ✗）', !existsSync(join(s6Local, 'state', 'quota-phone.json')))
+//   ★★2026-10-10：台账分"**基线 ＋ 增量**"两处存（★"各写各的" —— 修并发必丢账 ✓）⇒
+//     ★判"记没记"要看**两处都没有** ✓（★基线那个文件在"从没迁移过"时本来就不该有 ✓）。
+check('★★S6：**默认不记账**（★远端自己可能记过 ⇒ 再记就是双记 ✗）',
+  !existsSync(join(s6Local, 'state', 'quota-phone.json')) && !existsSync(join(s6Local, 'state', 'quota-phone.d')))
 run(['send', '--as', 'phone', '--to', 'web', '--body', '第二封离线件（正文有货，别当回执）', '--root', s6Remote])
 const pk6b = run(['pickup', '--as', 'web', '--root', s6Local, '--remote', s6Remote, '--only-offline', 'phone', '--account'])
-check('★S6：`--account` 开了才记，且**记在发件人名下**', pk6b.status === 0 && existsSync(join(s6Local, 'state', 'quota-phone.json')), String(pk6b.stdout).slice(0, 60))
+check('★S6：`--account` 开了才记，且**记在发件人名下**',
+  pk6b.status === 0 && (existsSync(join(s6Local, 'state', 'quota-phone.json')) || existsSync(join(s6Local, 'state', 'quota-phone.d'))),
+  String(pk6b.stdout).slice(0, 60))
 
 // ★★★S6h-③：搬信要**保住原始 mtime** ✗✓（2026-10-10 从正本移植）
 //   ★否则"刚取回来的信"看起来像"刚到" ⇒ ★**等于用假在线骗自己的闸** ✗（休眠推断／新鲜度判定都看 mtime ✓）

@@ -21,7 +21,7 @@
  *   · ③ **链深闸依赖回信人老实带 `re`** —— 不带就重置链深 ⇒ 它是**礼貌闸／省米闸**，**不是安全边界**；
  *   · `force: true` 会**整条绕过**这三道（这是有意留的），但**留痕**：台账当日记 `forced` 计数（`report()` 看得到）。
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, renameSync, unlinkSync } from 'node:fs'
 /** ★同步睡一会儿（Atomics.wait 是本进程内唯一可靠的同步 sleep ✓）—— Windows `rename` 撞忙时退避用 ✓ */
 const sleepSync = (ms) => { try { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms) } catch { /* 环境不支持就算了 ✓ */ } }
 import { join, dirname } from 'node:path'
@@ -124,12 +124,60 @@ export function createGate(config = {}) {
     const p = (n) => String(n).padStart(2, '0')
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
   }
+  /**
+   * ★★★台账读法：**基线 ＋ 增量** ✗✓（2026-10-10 改成"各写各的"）
+   *
+   * ★**病** ✗：★原来是"读一个 `quota-<as>.json` → 改 → 写回" ✓ ⇒ ★**两个并发进程后写的整个盖掉先写的** ✓
+   *   ★实测：12 路并发 ⇒ 台账只记到 **8／9／10** 条 ✓（★而串行 12 次正好 12 ✓）。
+   * ★试过"乐观重试"（★写完复读、不对就重来）✗ —— **不成立** ✓：
+   *   ★`A 读(writers=5) → B 读(5) → B 写(6) → A 写(6)` ⇒ ★**两个复读都读到 6 ⇒ 都以为成功** ✓
+   *   （★`+1` 这种计数**不唯一** ⇒ 判不出"我被盖了" ✓）。★实测重试之后**反而更差**（★丢 8 条 ✓）。
+   * ★★**正解＝正本给 `ack` 用的那个手法** ✗✓：★"群发时多个收端会写同一个 `<id>.ack.json` ⇒ Windows rename 撞车 ⇒
+   *   ★**结构性消除：每份各写各的文件**" ✓✓ —— ★★**"各写各的"在物理上就不可能撞车** ✓。
+   * ⇒ ★每笔记一个**增量小文件**（`state/quota-<as>.d/<时间戳>-<随机>.json` ✓），
+   *   ★读的时候**基线 ＋ 把增量全加起来** ✓。★基线（老格式那个文件）**仍然读** ✓ ⇒ 老台账一字不动 ✓。
+   */
+  const incrDir = (as) => join(root(), 'state', `quota-${as}.d`)
   function load(as) {
-    try {
-      const j = JSON.parse(readFileSync(stateOf(as), 'utf8'))
-      if (j && typeof j === 'object' && j.days) return j
-    } catch { /* 没台账 ⇒ 从零起 */ }
-    return { as, note: '配额台账（由 dsh-whale-post-gate 自动写）', days: {} }
+    const base = (() => {
+      try {
+        const j = JSON.parse(readFileSync(stateOf(as), 'utf8'))
+        if (j && typeof j === 'object' && j.days) return j
+      } catch { /* 没台账 ⇒ 从零起 ✓ */ }
+      return { as, note: '配额台账（由 dsh-whale-post-gate 自动写）', days: {} }
+    })()
+    const out = { ...base, days: { ...(base.days ?? {}) } }
+    for (const day of Object.keys(out.days)) out.days[day] = { ...out.days[day], byBucket: { ...(out.days[day].byBucket ?? {}) } }
+    // ★把增量**全加进去** ✓（★加的顺序不影响结果 —— 全是累加 ✓）
+    let files = []
+    try { files = readdirSync(incrDir(as)).filter((f) => f.endsWith('.json')).sort() } catch { files = [] }
+    for (const f of files) {
+      let x
+      try { x = JSON.parse(readFileSync(join(incrDir(as), f), 'utf8')) } catch { continue }   // ★读不出来的那一笔**跳过** ✓（下次还在 ✓）
+      const day = x.day
+      if (!day) continue
+      const d = out.days[day] ?? (out.days[day] = { letters: 0, units: 0, byBucket: {}, recent: [] })
+      d.byBucket = d.byBucket ?? {}
+      d.letters = Number(d.letters ?? 0) + Number(x.letters ?? 0)
+      d.units = Number(d.units ?? 0) + Number(x.units ?? 0)
+      d.bytes = Number(d.bytes ?? 0) + Number(x.bytes ?? 0)
+      if (x.forced) d.forced = Number(d.forced ?? 0) + Number(x.forced)
+      if (x.offlineLetters) d.offlineLetters = Number(d.offlineLetters ?? 0) + Number(x.offlineLetters)
+      for (const [k, v] of Object.entries(x.byBucket ?? {})) {
+        const t = d.byBucket[k] ?? (d.byBucket[k] = { letters: 0, units: 0, over: 0, feeCent: 0 })
+        t.letters = Number(t.letters ?? 0) + Number(v.letters ?? 0)
+        t.units = Number(t.units ?? 0) + Number(v.units ?? 0)
+        t.over = Number(t.over ?? 0) + Number(v.over ?? 0)
+        t.feeCent = Number((Number(t.feeCent ?? 0) + Number(v.feeCent ?? 0)).toFixed(4))
+      }
+      for (const [k, v] of Object.entries(x.byPhone ?? {})) {
+        d.byPhone = d.byPhone ?? {}
+        d.byPhone[k] = Number(d.byPhone[k] ?? 0) + Number(v)
+      }
+      if (x.recent) d.recent = [...(d.recent ?? []), ...x.recent].slice(-200)
+      if (x.recentTop) out.recent = [...(out.recent ?? []), ...x.recentTop].slice(-200)
+    }
+    return out
   }
   const save = (as, j) => { atomic(stateOf(as), JSON.stringify(j, null, 2)); return j }
 
@@ -241,45 +289,66 @@ export function createGate(config = {}) {
     return 'pass'
   }
 
-  /** 投递成功后才记账 ⇒ 被拦下的信不占额度 */
+  /**
+   * ★★★投递成功后才记账 ✗ —— ★**而它必须能扛并发**（2026-10-10 修，实测抓出来的）
+   *
+   * ★**病** ✗：★原来是**一次** `load → 改 → save` ✓ —— ★两个进程同时进来 ⇒
+   *   ★**后写的把先写的整个盖掉** ✓ ⇒ ★**丢账** ✓✓（★实测现场：12 路并发，台账只记到 **8／9／10** 条 ✓，
+   *   ★而串行 12 次正好 12 条 ✓）。
+   * ★★为什么这条**特别要紧** ✗✓：★配额台账是**钱** ✓（★"配额是别人的钱"✓）——
+   *   ★而★**它没有任何兜底** ✗（★不像 `seq` 有水位线兜 ✓）⇒ ★丢了就是**真丢了** ✓。
+   * ★**方** ✗：★**写完之后复读一眼** ✓ —— ★每次写都带一个**单调的 `writers` 计数** ✓
+   *   ⇒ ★"我这次写进去了没"**可以判** ✓：★复读到 `writers` ≠ 我写的那个值 ⇒
+   *   ★**说明我被别人盖掉了** ⇒ ★**重来** ✓（有限次 ✓）。
+   * ⚠️ ★不用锁 ✗ —— ★本仓在这上面栽过（★"第一版用独占锁 ⇒ 48 路压测 9 组撞号"✓，
+   *   ★那是**发号**的场景，要求"不排队" ✓）；★而**记账**可以重试 ✓ ⇒ ★用"乐观重试"更合适 ✓。
+   */
+  /**
+   * ★★★记**一笔**：读（只用来算越额基准）＋ **写一个独立增量文件** ✗✓（2026-10-10）
+   *
+   * ★为什么不再"改基线再写回" ✗：★那是"读-改-写"，**并发必丢** ✓（★实测 12 路丢 2~4 条 ✓）。
+   * ★★为什么用"各写各的" ✗✓：★正本给 `ack` 就是这么解的 —— ★"**每份各写各的文件** ⇒ 物理上不可能撞车" ✓。
+   *   ★这里同理：★每次记账写 `state/quota-<as>.d/<时间戳>-<随机>.json` ✓ —— **两个进程写的是两个文件** ✓✓。
+   * ⚠️ ★`over`／`charge` 仍基于"**读到的**用量"算 ✗ ⇒ ★并发下可能算得稍旧 ✓ ——
+   *   ★这是**可接受的** ✓：★配额是"软"的（★"配额是别人的钱"✓），★而**账一条都不会丢** ✓（★那才是硬要求 ✓）。
+   */
   function record(letter, targets) {
     const as = letter.as ?? letter.from                       // ★信封里字段叫 from，check 里叫 as —— 两处都认
     const tg = Array.isArray(targets) && targets.length ? targets : (letter.targets ?? [letter.to])
-    const j = load(as)
+    const j = load(as)                                        // ★只读 ✓（算越额基准用 ✓）
     const day = localDay(letter.sentAtMs ?? clockMs())
-    const d = j.days[day] ?? (j.days[day] = { letters: 0, units: 0, byBucket: {}, recent: [] })
+    const d = j.days[day] ?? { letters: 0, units: 0, byBucket: {}, recent: [] }
     const bucket = bucketOf(letter)
     const cap = cfg.quota.types[bucket] ?? { label: bucket, limit: cfg.quota.defaultLimit }
-    const b = d.byBucket[bucket] ?? (d.byBucket[bucket] = { letters: 0, units: 0, over: 0, feeCent: 0 })
+    const b = (d.byBucket ?? {})[bucket] ?? { letters: 0, units: 0, over: 0, feeCent: 0 }
     const units = quotaUnits({ ...letter, targets: tg }, { resolve: (id) => cfg.quota.types[id] }, bucket)
     const over = Number.isFinite(cap.limit) ? Math.max(0, b.units + units - cap.limit) : 0
     const charge = Math.min(units, over)
     const bytes = Buffer.byteLength(letter.body ?? '', 'utf8')
     const feeCent = Number.isFinite(cap.limit) ? charge * cfg.quota.feePerUnitCent + (bytes * charge / Math.max(1, units) / 200) * cfg.quota.feePer200BCent : 0
-    d.letters += 1
-    if (letter.force) d.forced = (d.forced ?? 0) + 1      // ★--force 绕过三道闸 ⇒ 留痕（独立复核建议）
-    if (bucket === 'offline') d.offlineLetters = (d.offlineLetters ?? 0) + 1     // ★离线条**不并进** units（单位是计费口径）
-    else d.units += units
-    // ★★S8：数"今天叫醒过某个收件人几次" ✗ —— ★只数**在线件** ✓（离线件躺着等人，不算叫醒 ✓）
-    //   ★记在**发件人**名下（`d` 就是 `as` 的当天台账 ✓）—— ★因为"叫醒几次"是**发出去的人**的动作 ✓
-    if (letter.mode !== 'offline') {
-      const byPhone = d.byPhone ?? (d.byPhone = {})
-      for (const t of tg) byPhone[String(t)] = Number(byPhone[String(t)] ?? 0) + 1
+    const inc = {
+      day,
+      letters: 1,
+      units: bucket === 'offline' ? 0 : units,               // ★离线条**不并进** units（单位是计费口径 ✓）
+      bytes,
+      ...(letter.force ? { forced: 1 } : {}),
+      ...(bucket === 'offline' ? { offlineLetters: 1 } : {}),
+      byBucket: { [bucket]: { letters: 1, units, over: charge, feeCent: Number(feeCent.toFixed(4)) } },
+      // ★★S8：数"今天叫醒过某个收件人几次" ✗ —— ★只数**在线件** ✓（离线件躺着等人，不算叫醒 ✓）
+      ...(letter.mode !== 'offline' ? { byPhone: Object.fromEntries(tg.map((t) => [String(t), 1])) } : {}),
+      // ★★`recent` 是"**叫醒记录**" ✗ —— 只记**在线件** ✓（2026-10-10 改）——
+      //   ★离线件**豁免整套回环闸** ⇒ ★让它占满 `recent` 会把后面的**在线件**误拦 ✓
+      ...(letter.mode !== 'offline'
+        ? { recent: [{ to: letter.to, atMs: letter.sentAtMs ?? clockMs() }], recentTop: [{ to: letter.to, atMs: letter.sentAtMs ?? clockMs() }] }
+        : {}),
+      atMs: clockMs(),
     }
-    d.bytes = (d.bytes ?? 0) + bytes
-    b.letters += 1
-    b.units += units
-    b.over += charge
-    b.feeCent = Number((b.feeCent + feeCent).toFixed(4))
-    // ★★`recent` 是"**叫醒记录**" ✗ —— 只记**在线件** ✓（2026-10-10 改）
-    //   ★为什么：★离线件**豁免整套回环闸** ✓（它不叫醒任何人 ✓）⇒ ★**让它占满 `recent`
-    //   会把后面的**在线件**误拦** ✗✓ —— 那是"用不会叫醒的信，挤掉真的该发的那封" ✓。
-    if (letter.mode !== 'offline') {
-      d.recent = [...(d.recent ?? []), { to: letter.to, atMs: letter.sentAtMs ?? clockMs() }].slice(-200)
-      j.recent = [...(j.recent ?? []), { to: letter.to, atMs: letter.sentAtMs ?? clockMs() }].slice(-200)
-    }
-    save(as, j)
-    return { bucket, units, used: b.units, limit: cap.limit, over: charge, feeCent }
+    //   ★★★**各写各的** ✗✓ —— ★文件名带时间戳 ＋ 随机 ⇒ ★两个进程只会写两个**不同**的文件 ✓✓
+    const dir = incrDir(as)
+    mkdirSync(dir, { recursive: true })
+    const name = `${String(Date.now()).padStart(13, '0')}-${randomUUID().slice(0, 8)}.json`
+    atomic(join(dir, name), JSON.stringify(inc, null, 2))
+    return { bucket, units, used: b.units + units, limit: cap.limit, over: charge, feeCent }
   }
 
   /** 查账（只读）：某人的今日与近 n 天 */
@@ -290,7 +359,10 @@ export function createGate(config = {}) {
       const d = j.days[k]
       return { units: a.units + Number(d.units ?? 0), offline: a.offline + Number(d.offlineLetters ?? 0), letters: a.letters + Number(d.letters ?? 0) }
     }, { units: 0, offline: 0, letters: 0 })
-    return { as, today: j.days[localDay()] ?? null, spanDays: keys.length, ...sum, buckets: Object.keys(cfg.quota.types).map((t) => ({ bucket: t, limit: cfg.quota.types[t].limit, used: Number(j.days[localDay()]?.byBucket?.[t]?.units ?? 0) })) }
+    //   ★★2026-10-10 加 `days` ✗✓：★台账现在分"基线 ＋ 增量"两处存 ✓ ⇒
+    //     ★调用方**看不出来"到底有哪几天"** ✗（★只报聚合值的话 ✓）⇒ ★把逐日的账一起给出去 ✓。
+    return { as, today: j.days[localDay()] ?? null, spanDays: keys.length, ...sum, days: j.days ?? {},
+      buckets: Object.keys(cfg.quota.types).map((t) => ({ bucket: t, limit: cfg.quota.types[t].limit, used: Number(j.days[localDay()]?.byBucket?.[t]?.units ?? 0) })) }
   }
   return { apiVersion, check, record, report, cfg, localDay, quotaUnits }
 }
