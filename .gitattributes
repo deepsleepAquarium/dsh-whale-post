@@ -1,0 +1,18 @@
+# 行尾规范化 —— ★本仓跨平台，且 Windows 上 `npm i` 会把 bin 脚本改成 CRLF ⇒ 会带出"假改动" ✗
+# 一律 LF；Windows 批处理例外。
+* text=auto eol=lf
+
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# 二进制（别做行尾/编码转换）
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.mp3 binary
+*.wav binary
+*.zip binary
+*.tgz binary
