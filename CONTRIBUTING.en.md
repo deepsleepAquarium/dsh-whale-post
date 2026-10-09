@@ -12,9 +12,14 @@
 
 1. **Run the self-test**: `npx dsh-whale-post-cli selftest` —— **look only at the exit code**, not at the Chinese in the output.
 2. **Negative test**: break any one line and the self-test must turn red; if it does not turn red, the criteria are not doing their job.
-3. **Load-level verification**: do one real launch, and the log must contain no load errors.
+3. **Load-level verification**: do **one real launch**, and the log must contain no load errors.
+   ★**`--dump-config` does not count as verification** ✗ —— it only composes the config tree and **never runs `apply()`**. We really did fall into this (2026-10-10):
+   all six packages showed **six neat layers** in `--dump-config`, and one real launch had **all six `failed to apply`**
+   (`apply()` read the `ctx.whale` property, and in real Cordis reading it requires `inject`).
+   ⇒ Install into a **throwaway profile**, boot it once, read the log; ★and the core code **must not read or write the `ctx.whale` property** (a static criterion watches this).
 4. **Zero credentials**: keys, credentials, passphrases and private paths **must not enter the repository at all** (including examples and comments).
 5. **Anonymization**: personal names in examples are always `alice` / `bob`; quota numbers are always **example values**; do not write real machine names, internal network addresses or absolute paths.
+6. ★**Touched the core? Re-run everything**: `node scripts/selftest-all.mjs` —— ★all seven packages must pass (exit code 0), ★not just the one you changed.
 
 ## 3. How a single change gets merged
 
