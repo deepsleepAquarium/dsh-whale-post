@@ -18,7 +18,10 @@ for (const p of items) {
   process.stdout.write(`— ${p.padEnd(9)} `)
   const r = spawnSync(process.execPath, [file], { stdio: only ? 'inherit' : 'pipe', encoding: 'utf8' })
   const out = only ? '' : String(r.stdout ?? '')
-  const summary = (out.match(/(\d+)\/(\d+) 通过/) ?? [])[0] ?? ''
+  // ★取**最后一个** `N/M 通过`：cli 是两层自测（外层含"内层退出码 0"这一条），
+  //   取第一个会显示成内层的 23/23 ⇒ 看起来像只跑了 23 条 ✗（实际 35 条）
+  const all = out.match(/(\d+)\/(\d+) 通过/g) ?? []
+  const summary = all.length ? all[all.length - 1] : ''
   const fails = (out.match(/^FAIL.*$/gm) ?? [])
   results.push({ p, code: r.status, summary })
   console.log(`${r.status === 0 ? 'PASS' : 'FAIL'}  ${summary}${fails.length ? '   ← ' + fails.length + ' 条不过' : ''}`)

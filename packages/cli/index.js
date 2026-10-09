@@ -21,6 +21,7 @@ import { createRoster } from 'dsh-whale-post-roster'
 import { createTypes } from 'dsh-whale-post-types'
 import { createDeliver } from 'dsh-whale-post-deliver'
 import { createGate } from 'dsh-whale-post-gate'
+import { createVerify } from 'dsh-whale-post-verify'
 
 const argv = process.argv.slice(2)
 const cmd = argv[0]
@@ -31,8 +32,8 @@ const opt = (name, dflt = undefined) => {
 const flag = (name) => argv.includes(`--${name}`)
 const die = (code, msg) => { if (msg) console.error(msg); process.exit(code) }
 
-/** 把四个接口件拼起来（★核心只认接口，这里就是"接线"） */
-function wire({ root, live } = {}) {
+/** 把接口件拼起来（★核心只认接口，这里就是"接线"） */
+function wire({ root, live, allow: allowIn } = {}) {
   const r = root ?? opt('root') ?? process.env.WHALE_POST_ROOT ?? join(process.cwd(), '.whale-mail')
   const injected = []
   // ★`--live a,b` 声明"这些人此刻有活体会话"（独立审计 2026-10-05：原来它只在自测里被用到 ⇒ 死参数 ✗）
@@ -40,16 +41,22 @@ function wire({ root, live } = {}) {
     ? live
     : String(opt('live', '')).split(',').map((s) => s.trim()).filter(Boolean)
   const liveSet = new Set(liveList)
+  // ★安全校验：**默认禁用**（enabled 不写就是禁用）——
+  //   `--enable-verify` 可以就地打开；`--allow a,b` 给白名单（不写 ⇒ 不限制）
+  const allow = (Array.isArray(allowIn) && allowIn.length)
+    ? allowIn
+    : String(opt('allow', '')).split(',').map((s) => s.trim()).filter(Boolean)
   const services = {
     roster: createRoster({ file: opt('roster') ?? join(r, 'roster.json') }),
     types: createTypes(),
     gate: createGate({ root: r }),
+    verify: createVerify({ root: r, enabled: flag('enable-verify'), allow }),
     deliver: createDeliver({
       sessionOf: (id) => (liveSet.has(id) ? { live: true, inject: (text) => injected.push({ id, text }) } : undefined),
     }),
   }
   const bus = createBus({ root: r, services })
-  return { root: r, bus, services, injected, liveSet }
+  return { root: r, bus, services, injected, liveSet, allow }
 }
 
 // ── 端到端自测（临时根，真数据零接触；只看退出码）────────────────────────
@@ -161,6 +168,9 @@ function main() {
       '  send    --as <谁> --to <谁|组> --subject <题> --body <正文> [--mode online|offline] [--type <类型>] [--re <父信 id>] [--force] [--live a,b]',
       '  pump    --as <谁> [--keep]         收信（默认消费；没有读者时一封都不消费）',
       '  quota   --as <谁> [--days N]       查配额（离线件按"条"、不计单位）',
+      '  verify  [--as <谁>] [--enable|--disable] [--allow a,b]',
+      '                                     看安全校验状态（★默认禁用；禁用中会提示开启，连提三天后不再提）',
+      '  nag                                看该不该提示（★未开启时每天至多一次；提满三天后不再提）',
       '  roster  / types / key              看名单 / 看类型 / 看密钥指纹',
       '  selftest                           自测（★只看退出码：0 过 / 非 0 不过）',
       '',
@@ -245,6 +255,28 @@ function main() {
         console.log(`${w.padEnd(12)} 今日 ${t ? `${t.units} 单位 ＋ 离线 ${t.offlineLetters ?? 0} 条／${t.letters} 封` : '无'}　［${buckets}］`)
       }
       if (services.gate.cfg.quota.onOver === 'price') console.log('（闸在 price 档：越额照发，只记账）')
+      return 0
+    }
+    if (cmd === 'verify') {
+      const v = services.verify
+      if (flag('enable')) { v.enable(); console.log('安全校验：已开启（信封验签 ＋ 白名单）'); return 0 }
+      if (flag('disable')) { v.disable(); console.log('安全校验：已关闭（★不是"安全"，是"已知不安全 ＋ 会提醒你"）'); return 0 }
+      const st = v.status()
+      console.log(st.enabled
+        ? `安全校验：✓ 已开启${st.enabledAt ? '（' + st.enabledAt + '）' : ''}`
+        : '安全校验：★禁用中')
+      if (!st.enabled) {
+        console.log(`  提醒进度：第 ${st.dayIndex} / ${st.nagLimit} 天${st.willNag ? '（还会提醒）' : '（★已提满 ⇒ 不再提醒；但状态仍是禁用）'}`)
+        console.log('  建议开启，以免未知 agent 对其他 agent 发起欺骗或攻击。')
+        console.log('  开启：给 dsh-whale-post-verify 传 enabled: true，或本命令加 --enable')
+      }
+      console.log(`  白名单：${st.allowCount} 个${st.allowCount === 0 ? '（空 ⇒ 不限制收件人）' : ''}`)
+      console.log(`  状态文件：${st.stateFile}`)
+      return 0
+    }
+    if (cmd === 'nag') {
+      const text = services.verify.nag()
+      console.log(text === null ? '（无需提示）' : text)
       return 0
     }
     if (cmd === 'selftest') return selftest() ? 0 : 1

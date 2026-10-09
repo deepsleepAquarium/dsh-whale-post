@@ -43,6 +43,32 @@ const kept = run(['send', '--as', 'alice', '--to', 'bob', '--mode', 'online',
   '--subject', '没会话', '--body', '没声明 live ⇒ 应当 kept（信留在信箱，正文有货）', '--root', tmp])
 check('没声明 live ⇒ 在线件 kept（不假投）', kept.status === 0 && /kept/.test(kept.stdout), `exit=${kept.status}`)
 
+// ③ 第七件：安全校验的三态（★只有真跑 CLI 才测得出 —— 光看模块自测测不到子命令接线）
+const vtmp = join(process.env.TEMP ?? '/tmp', `whale-cli-verify-${Date.now()}`)
+mkdirSync(vtmp, { recursive: true })
+writeFileSync(join(vtmp, 'roster.json'), JSON.stringify({
+  apiVersion: 1,
+  members: [{ id: 'alice' }, { id: 'bob' }],
+  groups: { all: ['alice', 'bob'] },
+}, null, 2), 'utf8')
+
+const vOff = run(['verify', '--root', vtmp])
+check('verify：默认（未开启）⇒ 报"禁用中"且退出码 0', vOff.status === 0 && /禁用中/.test(vOff.stdout), `exit=${vOff.status} out=${String(vOff.stdout).slice(0, 60)}`)
+check('verify：禁用时给出"建议开启"与开启方法', /建议开启/.test(vOff.stdout) && /--enable|enabled: true/.test(vOff.stdout))
+
+const nag1 = run(['nag', '--root', vtmp])
+check('nag：第一次 ⇒ 印出提示（未开启）', nag1.status === 0 && /禁用中/.test(nag1.stdout), `exit=${nag1.status}`)
+const nag2 = run(['nag', '--root', vtmp])
+check('nag：同一天再来 ⇒ 无需提示（一天至多一次）', nag2.status === 0 && /无需提示/.test(nag2.stdout), String(nag2.stdout).slice(0, 40))
+
+const vOn = run(['verify', '--enable', '--root', vtmp])
+check('verify --enable：退出码 0', vOn.status === 0, String(vOn.status))
+const vAfter = run(['verify', '--root', vtmp])
+check('verify：开启后 ⇒ 报"已开启"', /已开启/.test(vAfter.stdout), String(vAfter.stdout).slice(0, 60))
+const nagAfter = run(['nag', '--root', vtmp])
+check('nag：开启后 ⇒ 不再提示', /无需提示/.test(nagAfter.stdout), String(nagAfter.stdout).slice(0, 40))
+check('verify --disable：能关回去（★关回去 ≠ 安全，仍会提示）', run(['verify', '--disable', '--root', vtmp]).status === 0)
+
 for (const c of checks) console.log(`${c.ok ? 'PASS' : 'FAIL'}  ${c.name}${c.ok ? '' : '  :: ' + c.extra}`)
 const pass = checks.filter((c) => c.ok).length
 console.log(`\n${pass}/${checks.length} 通过`)
