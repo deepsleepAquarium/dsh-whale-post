@@ -23,13 +23,44 @@
  * ⚠️ ★不碰真邮局：全程**临时根** ✓。
  */
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, writeFileSync, existsSync, readdirSync, rmSync } from 'node:fs'
+import { mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync, rmSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const repo = join(here, '..')
-const CLIVER = process.env.COMPAT_OLD ?? '0.2.0'          // ★要跟哪个已发布版本对跑 ✓
+
+/**
+ * ★★★要跟哪个版本对跑 ✗✓ —— ★**默认"上一个已发布版本"，动态算** ✓
+ *
+ * ★★**为什么不能钉死 `0.2.0`** ✗✓（2026-10-10 改）：★那种写法**会在发布之后立刻过期** ✓ ——
+ *   ★★`0.3.0` 一发出去，"对跑老版"就变成了"跟**上上版**对跑" ✗ ⇒
+ *   ★★★**而升级时真会遇到的是"相邻两版混跑"** ✓✓（★没人从 `0.2.0` 直接跳到 `0.4.0` 而不经过 `0.3.0` ✓）。
+ * ★**怎么算** ✗：★问 npm 要 `dsh-whale-post-cli` 的**版本表** ✓ ⇒
+ *   ★★取**比本仓 `package.json` 里那个版本小的、最大的一个** ✓（★＝"上一个发布" ✓）；
+ *   ★**问不到（★离线／还没发过 ✓）⇒ 退回 `0.2.0`** ✓ 并**说明白** ✓（★不许假装算出来了 ✗）。
+ * ★★**`COMPAT_OLD` 仍然可以指定** ✓（★比如想专门验某一版 ✓）。
+ */
+function previousPublished() {
+  if (process.env.COMPAT_OLD) return { v: process.env.COMPAT_OLD, how: '★由 COMPAT_OLD 指定 ✓' }
+  const mine = JSON.parse(readFileSync(join(repo, 'package.json'), 'utf8')).version
+  try {
+    const r = spawnSync('npm', ['view', 'dsh-whale-post-cli', 'versions', '--json', '--registry', 'https://registry.npmjs.org'],
+      { encoding: 'utf8', shell: true, timeout: 120000 })
+    const all = JSON.parse(String(r.stdout ?? '[]'))
+    const cmp = (a, b) => {
+      const A = String(a).split('.').map(Number); const B = String(b).split('.').map(Number)
+      return (A[0] - B[0]) || (A[1] - B[1]) || (A[2] - B[2])
+    }
+    const lower = all.filter((v) => cmp(v, mine) < 0 && !String(v).includes('-'))
+    if (lower.length) return { v: lower.sort(cmp)[lower.length - 1], how: `★npm 上比 ${mine} 小的最大者 ✓` }
+    return { v: '0.2.0', how: '★npm 上没有比本版更小的了 ⇒ 退回 0.2.0（★当基线用 ✓）' }
+  } catch {
+    return { v: '0.2.0', how: '★问不到 npm（★离线？）⇒ 退回 0.2.0 ✓' }
+  }
+}
+const PREV = previousPublished()
+const CLIVER = PREV.v
 const tmp = join(process.env.TEMP ?? '/tmp', `whale-compat-${Date.now()}`)
 mkdirSync(tmp, { recursive: true })
 writeFileSync(join(tmp, 'roster.json'), JSON.stringify({
@@ -88,6 +119,6 @@ if (!reachedOld) {
 
 const pass = checks.filter((c) => c.ok).length
 for (const c of checks) console.log(`${c.ok ? 'PASS' : 'FAIL'}  ${c.name}${c.ok ? '' : '  :: ' + c.extra}`)
-console.log(`\n${pass}/${checks.length} 兼容   （★对跑的是 npm 上的 \`${CLIVER}\` ✓；临时邮局：${tmp}）`)
+console.log(`\n${pass}/${checks.length} 兼容   （★对跑的是 npm 上的 \`${CLIVER}\` ✓ —— ${PREV.how}；临时邮局：${tmp}）`)
 try { rmSync(tmp, { recursive: true, force: true }) } catch { /* 删不掉就留着 ✓ */ }
 process.exit(pass === checks.length ? 0 : 1)

@@ -73,6 +73,26 @@ git push origin v<this version>
 
 ★★ **Because step 4 touches documentation** ✓ ⇒ ★`doccheck` and `pkgcheck` can both be affected ✓ (★especially: **change both languages together** ✓).
 
+## ★★★ Step 6: after publishing, run the **two published versions** against each other** ✗✓
+
+```bash
+# ★★"checkout vs old" and "**two published versions**" **are not the same thing** ✗ —— npx paths, dependency resolution and packaged files can all differ ✓
+npx -y dsh-whale-post-cli@<new> send --as a --to b --body ... --root <temp root>
+npx -y dsh-whale-post-cli@<old> pump --as b --root <temp root>   # ★this direction should **bounce** (★new fields cannot enter the old signature domain ✗)
+npx -y dsh-whale-post-cli@<old> send --as b --to a --body ... --root <temp root>
+npx -y dsh-whale-post-cli@<new> pump --as a --root <temp root>   # ★this direction should **work** ✓
+```
+
+★★**Why do it separately** ✗: `npm run compat` runs **checkout vs the previous published version** ✓;
+★★whereas "two published versions" adds one more layer of reality: the copy `npx` installs **is what other people actually get** ✓.
+
+★Measured (when releasing `0.3.0`, 2026-10-10 ✓):
+| Direction | Result |
+|---|---|
+| `0.2.0` sends ⇒ `0.3.0` receives | **works** ✓ |
+| `0.3.0` sends ⇒ `0.2.0` receives | **bounces** ✓ (reports "a field **not in the signature domain**: `peerStateAtSend`" ✓) |
+
+★★The conclusion **goes into the `CHANGELOG` "Read first (2)"** ✗✓ (★"upgrade both sides first, then start sending" ✓).
 ---
 
 ## ★★ A cheat sheet ✗
