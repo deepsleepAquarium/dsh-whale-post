@@ -88,6 +88,16 @@
   ★Partially dormant (sending to a group) ⇒ **only the awake ones receive it**, and those dropped are returned in `skippedDormant` ✓
   (the CLI prints **"not delivered to: …"** ✓ —— **no silence** ✓).
   ★The attribute name comes from **configuration** ✓; unset ⇒ the rule is entirely off (backward compatible ✓).
+* ★★★ **Members who receive offline letters only: an online letter is now sent anyway + said so (no refusal)** ✗✓ (ported from the original on 2026-10-10; ★criteria 58-62 plus "**the keeper's order of 2026-10-06**" ✓)
+  —— ★**this is the last of the three "opposite directions"** ✗: ★it used to throw and refuse ✓; the new rule is
+  ★**send anyway + say plainly "offline-only ⇒ treated as offline for them"** ✓ (**never silent** ✗).
+  ★★**`mode` is not touched at all** ✗✓ (original criterion 60) —— ★**it is inside the signature domain** ⇒ ★quietly rewriting it
+  to `offline` would **break the signature** ✓; so the only option is "send anyway (still `online`) + say so" ✓.
+  ★The letter **still lands in their own slot** ✓; ★when sent to a group, **the awake members still receive it** ✓.
+  ★Config: `offlineOnlyFlag` (the attribute name) + ★**`offlineOnlyMode`** (`'warn'` default = send + say so ／ `'reject'` = the old refusal ✓).
+  ⚠️ ★**The mode is a separate field** ✗ —— the first version packed it into `offlineOnlyFlag` (writing `'reject'` as if it were the mode),
+  so the core went looking for "a member attribute named `reject`" ⇒ **it blocked nothing at all** ✓ (★a criterion caught it immediately ⇒ now two fields ✓).
+  The disclosure field `wakePrediction.offlineOnly` sits next to `willWait` (★same names as in the original ✓).
 * ★**`cli`: `--only-offline <attribute>` / `--dormant <attribute>`** —— ★both rules can finally be switched on from the command line ✓.
 * ★★★ **No handshake no longer means "refused"** ✗✓ (ported from the original on 2026-10-10; ★its criteria 1-3 plus "**the keeper's order of 2026-10-06 01:5x**" ✓)
   —— ★**another "opposite direction"** ✗: ★it used to throw and refuse when there was no handshake ✓; the new rule is

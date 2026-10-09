@@ -53,11 +53,17 @@ const DEFAULTS = {
   //   "核心不认识任何类型标识"与这里硬编码 `'direct'` 矛盾 ⇒ 挪进 config ✓。
   //   配成 `null` ⇒ **不替调用方猜类型** ✗：没显式给 type 的信直接被拒（宁可拒，不替人决定 ✓）。
   defaultType: 'direct',
-    // ★★只收离线的成员（2026-10-10，缸内口径移植）：★属性名**由配置给** ——
-    //   核心不认识任何具体属性名（ACCEPTANCE 的 戊）。配了它 ⇒ 对带该属性的成员**发在线即拒发**：
-    //   非 0 退出 ＋ 不落信箱 ＋ 不许静默降级 ＋ 文案带出路（缸里 2026-10-06 定的口径）。
-    //   ★不配（默认）⇒ 这一条完全不启用（向后兼容：老部署行为一字不变）。
+    // ★★"只收离线"的成员（2026-10-10 按**正本**改）：★属性名**由配置给** ——
+    //   核心不认识任何具体属性名（ACCEPTANCE 的"戊"）。★**三态** ✓：
+    //     · 不配 ⇒ 这一条**完全不启用** ✓（向后兼容）
+    //     · 配成属性名 ⇒ ★**照发 ＋ 明示** ✓（★正本判据 58-62：**不再拒发** ✗✓ ——
+    //       "叫不醒就留箱等人，但要大声说明" ✓；★**信封里的 `mode` 一字不改** ✓ —— 它在签名域里 ✓）
+    //     · ★要旧的"拒发" ⇒ 写 `offlineOnlyMode: 'reject'` ✓（★老部署一字不变 ✓）
     offlineOnlyFlag: undefined,
+    // ★★`'warn'`（默认）＝ 照发 ＋ 明示 ／ `'reject'` ＝ 旧的"拒发" ✗✓
+    //   ⚠️ ★**模式单独一项** ✗ —— 第一版我把它塞进 `offlineOnlyFlag` 里（写 `'reject'` 当模式），
+    //     结果核心去找"成员有没有叫 `reject` 的属性" ⇒ 找不到 ⇒ **根本不拦** ✓（判据当场抓出来 ✓）。
+    offlineOnlyMode: 'warn',
     // ★★被**明确**标成休眠的成员（2026-10-10 缸内口径移植）：属性名由配置给 ——
     //   核心不认识它 ✓；★**不根据"多久没 hello"自己猜休眠** ✗（那是猜，缸里明说"明确的 dormant 才退"✓）。
     //   配了它 ⇒ 对带该属性的成员**当场拒发**（非 0 ＋ 信不进它的信箱 ＋ 文案带出路）；
@@ -350,16 +356,23 @@ export function createBus(config = {}) {
     let targets = resolveTargets(to, { as, force })
     let skippedDormant = []          // ★被明确标成休眠、因此**没投**的收件人（如实带回去 ✓）
     if (targets.length === 0) throw new Error(`收件人算出来是空的（to=${to}）—— 别发没有收件人的信`)
-    // ★★"只收离线"的成员：属性名**由配置给**（★核心不认识任何具体属性名 ✓）——
-    //   对它们发在线 ⇒ **拒发**：非 0 ＋ 不落信箱 ＋ 不许静默降级 ✗ ＋ 文案**必须带出路** ✓
-    //   （缸里口径：不然有人以为是故障，转而去 `--force` ✗）
-    //   ⚠️ 这是**物理约束**（那个成员根本收不到在线件），**不是"闸"** ⇒ ★它**先于闸**、且 `--force` 不豁免 ✗
-    //   ⚠️ 用**展开后的 targets** ✓ ⇒ 发给一个组、组里有人只收离线，一样拦得住 ✓
+    // ★★★"只收离线"的成员（2026-10-10 按**正本**改：**照发 ＋ 明示**，不再拒发 ✗✓）——
+    //   ★正本判据 58-62 ＋「主人 2026-10-06 令」：★**"（B 分支）对只收离线者发在线 ⇒ 照发"** ✓，
+    //     且★**"明示「只收离线 ⇒ 已按离线处理」"** ✓（**不许静默** ✗）。
+    //   ⚠️ ★★**`mode` 一字不改** ✗✓ —— ★**它在签名域里** ✓ ⇒ ★"偷偷改成离线"会**破签** ✓；
+    //     所以只能"**照发（仍是 online）＋ 明示'对它们而言会按离线处理'**" ✓✓。
+    //   ★**三态**（★跟 `requireHello` 同一个模式 ✓）：属性名不配 ⇒ 不启用 ✓；
+    //     配了（真值）⇒ **照发 ＋ 明示** ✓；★**配成 `'reject'` ⇒ 保留旧的"拒发"** ✓（老部署一字不变 ✓）。
+    //   ⚠️ 用**展开后的 targets** ✓ ⇒ 发给一个组、组里有人只收离线，也一样能明示出来 ✓。
+    let offlineOnly = []
     if (m === 'online' && cfg.offlineOnlyFlag && services.roster && typeof services.roster.flag === 'function') {
       const stuck = targets.filter((t) => services.roster.flag(t, cfg.offlineOnlyFlag))
       if (stuck.length) {
-        throw new Error(`拒发：${stuck.join('、')} 只收离线件（配置 offlineOnlyFlag='${cfg.offlineOnlyFlag}'）—— ` +
-          `请用 --mode offline 重发。★这不是故障，--force 也不豁免：它们收不到在线件。`)
+        if (cfg.offlineOnlyMode === 'reject') {
+          throw new Error(`拒发：${stuck.join('、')} 只收离线件（配置 offlineOnlyFlag='${cfg.offlineOnlyFlag}' ＋ offlineOnlyMode='reject'）—— ` +
+            `请用 --mode offline 重发。★这不是故障，--force 也不豁免：它们收不到在线件。`)
+        }
+        offlineOnly = stuck     // ★★不拒发 —— 只**明示**出来 ✓（★信照落它们那一格 ✓）
       }
     }
     // ★★被**明确**标成休眠的成员（2026-10-10 缸内口径移植：**明确的 `dormant` 才退，不猜** ✗）——
@@ -433,7 +446,11 @@ export function createBus(config = {}) {
     return { id, seq, to, targets, mode: m, type, verdict, hop, env,
       ...(skippedDormant.length ? { skippedDormant } : {}),
       // ★★正本同名：`wakePrediction.willWait` ＝ **"这些人叫不醒，信会留在箱里等"** ✗✓（★不许静默 ✓）
-      ...(willWait.length ? { wakePrediction: { willWait } } : {}) }
+      //   ★`offlineOnly` ＝ ★**"这些人只收离线 ⇒ 这封在线件对它们而言会按离线处理"** ✓
+      //   （★但**信封里的 `mode` 一字不改** ✗ —— ★它在签名域里 ✓）
+      ...((willWait.length || offlineOnly.length)
+        ? { wakePrediction: { ...(willWait.length ? { willWait } : {}), ...(offlineOnly.length ? { offlineOnly } : {}) } }
+        : {}) }
   }
   // 回环链深：数一数这封信是本链第几跳（父信读不到 ⇒ 当第 1 跳，不冤枉人）
   function hopOf(parentId) {

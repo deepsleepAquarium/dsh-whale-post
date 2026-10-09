@@ -163,7 +163,7 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* 把这段文字送进那�
 | | `requireHello` | `true` | ★★**三态** ✗：★默认 ⇒ **照发 ＋ 明示"降级为离线"** ✓（★返回值 `wakePrediction.willWait` ✓）；★`false` ⇒ 不检查；★**`'reject'` ⇒ 旧的"拒发"** ✓。★**离线件根本不看握手** ✓ |
 | | `helloMaxAgeMs` | `24 小时` | ★握手多旧算过期 ✓ |
 | | `defaultType` | `'direct'` | ★★配 `null` ⇒ **没写类型的信直接拒发**（不替调用方猜 ✓） |
-| | `offlineOnlyFlag` | 不配 | ★对带此属性的成员**发在线即拒发** ✓（见 §七） |
+| | `offlineOnlyFlag` ＋ `offlineOnlyMode` | 不配／`'warn'` | ★★**三态** ✗：不配 ⇒ 不启用 ✓；配属性名 ⇒ ★**照发 ＋ 明示**（`wakePrediction.offlineOnly` ✓ —— ★正本判据 58-62：**不再拒发** ✗）；★`offlineOnlyMode: 'reject'` ⇒ **旧的拒发** ✓ |
 | | ★★`dormantFlag` ✗ | 不配 | ★★对**被明确标成休眠**的成员**当场拒发** ✗（信**不进它的信箱**；`--force` 不豁免 ✓）。★**不许自己猜休眠** ✗（不按"多久没 hello"判 ✓ —— 缸里口径："**明确的 dormant 才退，不猜**"✓） |
 | `roster` | `file` | `<root>/roster.json` | ★名单文件 ✓ |
 | | `groupWithout` | 不配 | ★**群发默认剔掉**带此属性的成员 ✓（见 §七） |

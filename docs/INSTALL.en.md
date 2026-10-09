@@ -165,7 +165,7 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* deliver this text into th
 | | `requireHello` | `true` | ★★**three states** ✗: ★the default ⇒ **send anyway + say plainly "downgraded to offline"** ✓ (via `wakePrediction.willWait` ✓); ★`false` ⇒ no check; ★**`'reject'` ⇒ the old "refuse to send"** ✓. ★**offline letters never look at the handshake** ✓ |
 | | `helloMaxAgeMs` | `24 hours` | ★how old a handshake may be ✓ |
 | | `defaultType` | `'direct'` | ★★set it to `null` ⇒ **a letter with no type is refused** (we do not guess for the caller ✓) |
-| | `offlineOnlyFlag` | unset | ★**an online letter to a member carrying this attribute is refused** ✓ (see §7) |
+| | `offlineOnlyFlag` + `offlineOnlyMode` | unset / `'warn'` | ★★**three states** ✗: unset ⇒ off ✓; an attribute name ⇒ ★**send anyway + say so** (`wakePrediction.offlineOnly` ✓ —— ★criteria 58-62: **no more refusal** ✗); ★`offlineOnlyMode: 'reject'` ⇒ **the old refusal** ✓ |
 | | ★★`dormantFlag` ✗ | unset | ★★a member **explicitly marked dormant** is **refused on the spot** ✗ (the letter **never enters their mailbox**; `--force` does not exempt it ✓). ★**Never guess dormancy yourself** ✗ (not from "how long since their last hello" ✓ —— the rule from the tank: "**only an explicit `dormant` bounces; do not guess**" ✓) |
 | `roster` | `file` | `<root>/roster.json` | ★the roster file ✓ |
 | | `groupWithout` | unset | ★**broadcasts drop** members carrying this attribute by default ✓ (see §7) |

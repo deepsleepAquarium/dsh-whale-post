@@ -113,28 +113,39 @@ try {
   busOff.hello({ as: 'alice' }); busOff.hello({ as: 'bob' }); busOff.hello({ as: 'carol' })
 
   const before = lsInbox('carol')
-  let eOff = ''
-  try { busOff.send({ as: 'alice', to: 'carol', mode: 'online', subject: 's', body: '在线件：应当被拒' }) } catch (e) { eOff = e.message }
-  check('★只收离线：对它发在线 ⇒ 拒发', /只收离线/.test(eOff), eOff.slice(0, 60))
-  check('★只收离线：文案带出路（--mode offline）且说明 --force 不豁免', /offline/.test(eOff) && /force/.test(eOff))
-  check('★只收离线：拒发**不落信箱**（对方 inbox 没多出东西）', lsInbox('carol') === before, `${before} ⇒ ${lsInbox('carol')}`)
-  check('只收离线：发**离线** ⇒ 照发', !!busOff.send({ as: 'alice', to: 'carol', mode: 'offline', subject: 's', body: '离线件：应当照发' }).id)
-  check('只收离线：发**别人**在线 ⇒ 不受影响', !!busOff.send({ as: 'alice', to: 'bob', mode: 'online', subject: 's', body: '在线件：发别人' }).id)
-  let eGroup = ''
-  try { busOff.send({ as: 'alice', to: 'pair', mode: 'online', subject: 's', body: '在线件：发给组' }) } catch (e) { eGroup = e.message }
-  check('★只收离线：发给**组**、组里有它 ⇒ 也拦（用展开后的 targets）', /只收离线/.test(eGroup), eGroup.slice(0, 60))
-  let eForce = ''
-  try { busOff.send({ as: 'alice', to: 'carol', mode: 'online', subject: 's', body: '在线件：force', force: true }) } catch (e) { eForce = e.message }
-  check('★★只收离线：**--force 也不豁免**（物理约束 ≠ 闸）', /只收离线/.test(eForce), eForce.slice(0, 60))
+  // ★★★"只收离线"的新口径（2026-10-10 按**正本**改：正本判据 58-62 ＋「主人 2026-10-06 令」）✗✓：
+  //   ★**不再拒发** ✗ ⇒ ★**照发 ＋ 明示「只收离线 ⇒ 已按离线处理」** ✓（★不许静默 ✗）；
+  //   ⚠️ ★**信封里的 `mode` 一字不改** ✗ —— ★它在签名域里 ⇒ "偷偷改成离线"会破签 ✓。
+  const rOff1 = busOff.send({ as: 'alice', to: 'carol', mode: 'online', subject: 's', body: '在线件：应当照发但要明示' })
+  check('★★只收离线：对它发在线 ⇒ **不再拒发** ✗（正本第 58 条）', !!rOff1.id)
+  check('★★只收离线：**明示「已按离线处理」** ✗（不许静默；★字段 `wakePrediction.offlineOnly`）',
+    Array.isArray(rOff1.wakePrediction?.offlineOnly) && rOff1.wakePrediction.offlineOnly.includes('carol'), JSON.stringify(rOff1.wakePrediction))
+  check('★★只收离线：信**照落它那一格** ✓（正本第 60 条）', lsInbox('carol') === before + 1, `${before} ⇒ ${lsInbox('carol')}`)
+  check('★★只收离线：**`mode` 一字不改** ✗（它在签名域里 ⇒ 改了会破签 ✓）', rOff1.env.mode === 'online', String(rOff1.env.mode))
+  check('只收离线：发**离线** ⇒ 照样能发', !!busOff.send({ as: 'alice', to: 'carol', mode: 'offline', subject: 's', body: '离线件：照样能发' }).id)
+  check('只收离线：发**别人**在线 ⇒ 不受影响（★也不该乱明示 ✓）',
+    (() => { const r = busOff.send({ as: 'alice', to: 'bob', mode: 'online', subject: 's', body: '在线件：发别人' }); return !!r.id && !r.wakePrediction })())
+  const rGroup = busOff.send({ as: 'alice', to: 'pair', mode: 'online', subject: 's', body: '在线件：发给组' })
+  check('★只收离线：发给**组**、组里有它 ⇒ 也**明示**（用展开后的 targets）', rGroup.wakePrediction?.offlineOnly?.includes('carol') === true, JSON.stringify(rGroup.wakePrediction))
+  check('★只收离线：组里**醒着的人照样收到** ✓（不再整封拒掉 ✓）', rGroup.targets.includes('bob'), JSON.stringify(rGroup.targets))
+  const rForce = busOff.send({ as: 'alice', to: 'carol', mode: 'online', subject: 's', body: '在线件：force', force: true })
+  check('★只收离线：`--force` 下同样**照发 ＋ 明示**', !!rForce.id && rForce.wakePrediction?.offlineOnly?.includes('carol') === true)
   check('只收离线：**不配** offlineOnlyFlag ⇒ 在线照发（向后兼容）',
     !!createBus({ root: tmpOff, services: { roster: rosterOff, types } }).send({ as: 'alice', to: 'carol', mode: 'online', subject: 's', body: '在线件：没配就照发' }).id)
+  //   ★★`'reject'` 三态里保留旧的"拒发" ⇒ 老部署写它 ⇒ **一字不变** ✓
+  const busRej = createBus({ root: tmpOff, services: { roster: rosterOff, types }, offlineOnlyFlag: 'off', offlineOnlyMode: 'reject' })
+  busRej.hello({ as: 'alice' })
+  let eRej = ''
+  try { busRej.send({ as: 'alice', to: 'carol', mode: 'online', subject: 's', body: '配了 reject 就该拒（正文有货）' }) } catch (e) { eRej = e.message }
+  check('★只收离线：`offlineOnlyMode: "reject"` ⇒ **保留旧的拒发** ✓（老部署一字不变 ✓）', /只收离线/.test(eRej), eRej.slice(0, 50))
   check('只收离线：属性名换了照样工作（★属性名不进核心）',
     (() => {
       writeFileSync(join(tmpOff, 'roster-offline2.json'), JSON.stringify({ apiVersion: 1, members: [{ id: 'alice' }, { id: 'carol' }], off2: ['carol'] }), 'utf8')
       const r2 = createRoster({ file: join(tmpOff, 'roster-offline2.json') })
-      let m = ''
-      try { createBus({ root: tmpOff, services: { roster: r2, types }, offlineOnlyFlag: 'off2' }).send({ as: 'alice', to: 'carol', mode: 'online', subject: 's', body: 'x' }) } catch (e) { m = e.message }
-      return /只收离线/.test(m)
+      const b2 = createBus({ root: tmpOff, services: { roster: r2, types }, offlineOnlyFlag: 'off2' })
+      b2.hello({ as: 'alice' })
+      const r = b2.send({ as: 'alice', to: 'carol', mode: 'online', subject: 's', body: '换个属性名照样明示（正文有货）' })
+      return r.wakePrediction?.offlineOnly?.includes('carol') === true
     })())
 
   // ★★群发默认不到"只收离线"的成员（缸里口径：★群发默认不到它，**点名才进** ✓）
