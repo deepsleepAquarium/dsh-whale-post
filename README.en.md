@@ -19,40 +19,95 @@
 
 ## Quick start
 
-> ★**Published to npm** ⇒ use `npx dsh-whale-post-cli …` directly (or `npm i -D dsh-whale-post-cli`); inside the repo, `node packages/cli/index.js …` works the same.
-```bash
-dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post # or use the registry name
-npm install                          # ★run once inside the repo (links the six packages into node_modules; without it the CLI cannot find its siblings)
-node packages/cli/index.js selftest  # ★check the exit code
-node packages/cli/index.js hello --as alice
-node packages/cli/index.js hello --as bob   # ★handshake first: sending without one is refused (by design)
-node packages/cli/index.js send --as alice --to bob --subject 'hi' --body 'first letter'
-node packages/cli/index.js pump --as bob    # bob reads his mail (reading it consumes it)
+### ★The fastest try (★no clone, no `npm install` ✗ —— just these four steps ✓)
 
-# Or use the published copy (no clone, no npm install):
-npx -y dsh-whale-post-cli@0.2.0 selftest
+★First stand up a **clean throwaway post office** (★**it touches nothing on your machine** ✓), then run it:
+
+```bash
+# 0) ★Prepare the roster first ✗ —— without it, the `send` below says "unknown recipient"
+#    (the protocol forbids "sending like UDP": a group name must be defined in the roster,
+#     and a person must already be in it ✓)
+mkdir whale-mail && cd whale-mail
+printf '%s' '{"apiVersion":1,"members":[{"id":"alice"},{"id":"bob"}],"groups":{"all":["alice","bob"]}}' > roster.json
+
+# 1) Handshake (★sending without one is refused ✓)
+npx -y dsh-whale-post-cli@0.2.0 hello --as alice --root .
+npx -y dsh-whale-post-cli@0.2.0 hello --as bob   --root .
+
+# 2) Send one (★offline by default ⇒ it lands in their mailbox and wakes nobody ✓)
+npx -y dsh-whale-post-cli@0.2.0 send --as alice --to bob --subject 'hi' --body 'first letter' --root .
+
+# 3) Receive (★"deliver it" or "leave it" is decided right here ✓)
+npx -y dsh-whale-post-cli@0.2.0 pump --as bob --root .
 ```
-★Installation, wiring, the interface table and the rules for writing a plugin ⇒ see [`docs/INSTALL.md`](docs/INSTALL.en.md); ★**the usage discipline written for AI agents** ⇒ see [`docs/FOR-AGENTS.md`](docs/FOR-AGENTS.en.md).
+
+★**What you should see** ✗ (★below is **really what it printed** ✓):
+
+```
+已投递 …-alice-0001-… → bob（seq 1）【离线（落在对方信箱，不唤醒）】
+投递策略：kept（留在信箱里等人来收）
+配额（offline 桶）：今日 1/80 条
+OK   …-alice-0001-….msg.json :: [离线] alice → bob：《hi》
+| first letter
+```
+
+★`--root .` means **the mailbox root is the current directory** ✓ —— `inbox/` / `seen/` / `ack/` / `hello/` all live inside it ✓.
+★**Read the exit code** ✗: `0` pass / `2` refused / `1` unexpected.
+
+### ★Developing inside the repo (take this path when you change the source ✓)
+
+```bash
+dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post
+npm install                          # ★run once inside the repo (links the packages into node_modules; without it the CLI cannot find its siblings)
+node packages/cli/index.js selftest  # ★check the exit code
+# ★The rest is identical to the npx lines above —— just replace
+#   `npx -y dsh-whale-post-cli@0.2.0` with `node packages/cli/index.js`
+#   (★and remember to create roster.json first, exactly the same ✓)
+```
+
+★Installation, wiring, the interface table, the configuration table and the rules for writing a plugin ⇒ see [`docs/INSTALL.en.md`](docs/INSTALL.en.md);
+★**the usage discipline written for AI agents** ⇒ see [`docs/FOR-AGENTS.en.md`](docs/FOR-AGENTS.en.md).
 
 ## Current state
 
-* **Seven pieces are already implemented** under `packages/`: `bus` (the core: envelope / signature / handshake / idempotency / persist to disk) / `roster` (roster interface) / `types` (type registry interface) / `deliver` (delivery strategy) / `gate` (quota and billing gate + loop gate) / `verify` (**security check: envelope signature + allow-list**, ★disabled by default) / `cli` (zero-dependency command line); `example/` is a composition example of "**how to wire them together**".
-* **Run the whole self-test in one go**: `node scripts/selftest-all.mjs` —— **exit code 0 = all seven passed** (it prints the criteria count itself; this file does not hard-code a number).
-* Every piece passes three gates: **it loads + it runs + it goes red when it is wrong** (acceptance specification in [`docs/ACCEPTANCE.md`](docs/ACCEPTANCE.en.md)).
+### ★The core (base edition) = `bus` + `roster` + `types` + `cli` ✗
+
+★These four together are **a working post office** ✓ —— sending, receiving, people and types are all covered:
+
+| Piece | What it handles | Details |
+|---|---|---|
+| `dsh-whale-post-bus` | ★**the core**: envelope / digest + HMAC signature / handshake / idempotency / persist to disk ✓ | [`packages/bus/README.md`](packages/bus/README.md) |
+| `dsh-whale-post-roster` | ★**who is on the roster** (including member attributes) ✓ | [`packages/roster/README.md`](packages/roster/README.md) |
+| `dsh-whale-post-types` | ★**what type a letter is** ✓ | [`packages/types/README.md`](packages/types/README.md) |
+| `dsh-whale-post-cli` | ★**the command line** (★**it is not a plugin** ✗) | [`packages/cli/README.md`](packages/cli/README.md) |
+
+### ★Everything else is a plugin (swappable, addable, optional ✗)
+
+★**Each one's description lives in its own README** ✓ —— this page does not repeat it ✓:
+
+| Plugin | What it adds | Details |
+|---|---|---|
+| `dsh-whale-post-deliver` | ★**delivery strategy**: offline waits, online delivers; ★**the live-session probe lives here** ✓ | [`packages/deliver/README.md`](packages/deliver/README.md) |
+| `dsh-whale-post-gate` | ★**the gate**: quota and billing + loop gate ✓ | [`packages/gate/README.md`](packages/gate/README.md) |
+| `dsh-whale-post-verify` | ★**security check**: envelope signature + allow-list (★**disabled by default** ✓) | [`packages/verify/README.md`](packages/verify/README.md) |
+
+★**How to wire them together** ⇒ [`docs/INSTALL.en.md`](docs/INSTALL.en.md) ✓; ★**a composition example** ⇒ [`example/`](example/README.md) ✓.
+
+### Other
+
+* ★**Run the whole self-test in one go**: `node scripts/selftest-all.mjs` —— **exit code 0 = all seven passed** (it prints the criteria count itself; this file does not hard-code a number ✓).
+* ★Every piece passes three gates: **it loads + it runs + it goes red when it is wrong** ✓ (★**running the self-test alone does not count; it must boot once for real** ✗ ⇒ see the acceptance specification in [`docs/ACCEPTANCE.en.md`](docs/ACCEPTANCE.en.md)).
 * ★★**Concurrent sequence claiming: tested** ✗✓ (2026-10-10) —— `node scripts/racetest.mjs`: **12 real sub-processes sending at once** ⇒
   **all exit codes 0 + every `seq` unique** ✓; ★it also replays "the `state` file written backwards" (write `nextSeq` back to 1 ⇒ a new letter still gets a new number ✓).
   ★**Still untested** ✗: the truncation path once the `seen` state array grows very long (hand-crafted only).
-* Version `0.2.0` (★**`0.1.x` has all six plugins failing to load in a real engine** ✗ ⇒ do not pin the old tag; pin **`v0.2.0`**);
-  the interfaces carry `apiVersion`, and **types can be extended at any time** (adding a type does not require touching the core).
+* ★Version `0.2.0` (★**`0.1.x` has all six plugins failing to load in a real engine** ✗ ⇒ do not pin the old tag; pin **`v0.2.0`**);
+  the interfaces carry `apiVersion`, and **types can be extended at any time** (adding a type does not require touching the core ✓).
   ★What changed in each version, and why ⇒ see [`CHANGELOG.en.md`](CHANGELOG.en.md).
-* **The install path was exercised once on a real engine**: the five pieces were installed with `dsh plugin --profile <p> add link:<repo>/packages/<piece>` into a **throwaway profile** ⇒ they **showed up in the profile config tree** (`dsh --profile <p> --dump-config` lists the five `dsh-whale-post-*` layers) ⇒ **it booted, served, and the log held no load errors** ⇒ then the throwaway profile was deleted, and **the two engines in service were never restarted**.
-  ★One trap worth repeating: a plugin package **must** declare
-  ```json
-  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }
-  ```
-  Without that line `dsh plugin add` **installs it as a plain dependency and never activates it as a profile layer** (our first version missed it; this drill caught it).
-* ★**The piece added later went through the same drill too** ✓ (2026-10-10 00:03): all **six plugins** were installed into one throwaway profile (`dsh 0.1.5-rc.1` + `--from-default-profile headless`) ⇒ `--dump-config` showed **six layers** ⇒ **a real boot: exit code 0, zero errors** ✓.
-  ★★**And that drill caught a fatal bug (fixed)** ✗: all six **`failed to apply`** —— `cannot get property "whale" without inject` (`apply()` read the `ctx.whale` property; in real Cordis, reading it requires `inject`). ★**And `--dump-config` cannot show it at all** ✗ —— it only composes the config tree and never runs `apply()`. ⇒ They now only use `ctx.provide(...)` + runtime `ctx.get(...)`, and a static criterion pins it down (the source must not contain `ctx.whale =` or `ctx.whale?.` ⇒ 0 hits).
+* ★**The install path was exercised on a real engine once** ✓ —— ★**and that drill caught a fatal bug (fixed)** ✗:
+  all six **`failed to apply`** (`apply()` read the `ctx.whale` property, and in real Cordis reading it requires `inject` ✓);
+  ★**and `--dump-config` cannot show it at all** ✗ (it only composes the config tree and **never runs `apply()`**).
+  ⇒ They now only use `ctx.provide(...)` + runtime `ctx.get(...)`, with a static criterion pinning it down ✓.
+  ★Details and the trap ⇒ [`docs/INSTALL.en.md`](docs/INSTALL.en.md) §6.
 
 ## What it is not
 * **Not a chat room**: no real-time push, no read-receipt anxiety (**an asynchronous mailbox**).
