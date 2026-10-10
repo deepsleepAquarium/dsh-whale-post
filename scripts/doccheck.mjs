@@ -98,6 +98,43 @@ for (const p of all) {
 check('③ 每份文档内部：**表格列数一致** （列不齐是最常见的坏法）', badTables.length === 0,
   badTables.length ? badTables.join('、') : `${all.length} 份文档全齐`)
 
+// ④ **文档里"我们自己的命令"用到的开关，代码里必须认** （2026-10-10 加，第 124 轮）
+//   为什么：第 123 轮发现 `selftest-all --update-baseline` **被文档写着、而代码里从来没被用过** ——
+//     "文档里写着的命令，跑了一点用都没有"。这类错**只有把开关逐个拿去代码里查才会露出来**。
+//   怎么查（**故意查得很窄，宁漏不误报**）：
+//     · 只看**代码块里的行**（正文里提一句 `--force` 不算命令）；
+//     · 只认**我们自己的调用**（`node packages/cli/index.js`／`npx -y dsh-whale-post-cli`／`node scripts/`）；
+//     · 取该行所有 `--开关`，**只比名字**（代码里常写 `opt('名字')`，`--` 是它加的）；
+//     · 名字在 `packages/` 或 `scripts/` 的源码里出现过 ⇒ 认。
+//   ⓘ 为什么不做成全仓扫：文档**本来就该**提到别的工具的开关
+//     （`npm pack --pack-destination`、`npm publish --workspace`、`dsh --patch`）⇒ 全仓扫会制造假警报。
+const codeText = []
+const collectCode = (d) => {
+  for (const e of readdirSync(d, { withFileTypes: true })) {
+    if (e.name === 'node_modules' || e.name === '.git' || e.name === '.strip-backups') continue
+    const p = join(d, e.name)
+    if (e.isDirectory()) { collectCode(p); continue }
+    if (/\.(js|mjs)$/.test(e.name)) codeText.push(readFileSync(p, 'utf8'))
+  }
+}
+collectCode(repo)
+const codeAll = codeText.join('\n')
+const MINE = /node\s+packages\/cli\/index\.js|npx\s+-y\s+dsh-whale-post-cli|node\s+scripts\//
+const deadFlags = []
+for (const p of all) {
+  let inFence = false
+  for (const line of readFileSync(p, 'utf8').split(/\r?\n/)) {
+    if (/^```/.test(line)) { inFence = !inFence; continue }
+    if (!inFence || !MINE.test(line)) continue
+    for (const m of line.matchAll(/(--[a-z][a-z0-9-]{2,})/g)) {
+      if (!codeAll.includes(m[1].replace(/^--/, ''))) deadFlags.push(`${rel(p)}：${m[1]}`)
+    }
+  }
+}
+check('④ 文档里"我们自己的命令"用到的开关，**代码里都认** （只查代码块里的自家命令）',
+  deadFlags.length === 0, deadFlags.length ? [...new Set(deadFlags)].join('、') : '没有认不出的开关')
+
+
 // ④、**判据条数**那条：**写了又撤了** （2026-10-10 15:1x）——
 //   **想防什么**：文档里写着“共 N 条判据” —— 而 N 是手工抄的 ⇒ 加一条它就过期。
 //   **为什么撤**：先去扫了一遍真的文档 ⇒ 全文只有 3 处提条数，而**它们指的都不是总数**（一是 `racetest` 的 11 条、

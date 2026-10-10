@@ -29,7 +29,7 @@ export const BASELINE = {
   verify: 49,
   cli: 54,
   xcheck: 6,
-  doccheck: 3,
+  doccheck: 4,
   pkgcheck: 16,
 }
 
