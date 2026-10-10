@@ -27,10 +27,18 @@ import { fileURLToPath } from 'node:url'
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..')
 const rel = (p) => relative(repo, p).replace(/\\/g, '/')
 
-/** ★扫出仓库里所有 `.md`（★排除 `node_modules` ✓） */
+/** ★扫出仓库里所有 `.md`（★排除 `node_modules` ＋ **改写时留的备份** ✓） */
+//   ★★**为什么要排备份** ✗✓（2026-10-10 加）：★备份用 `cp` 留在 `.strip-backups/` ✓ ⇒
+//     ★**它们和正本**同名**（★只是不同目录 ✓）⇒ ★★★**会被配成"一对中英文档"** ✗ ⇒
+//     ★报出来的**份数和对数全是虚的**（★实测：★26 份 → 50 份、9 对 → 17 对 ✓）✓。
+//   ★★**为什么不能只靠 `.gitignore`** ✗✓：★`.gitignore` 只对 **git** 生效 ✓ ⇒
+//     ★**本工具是直接读目录的** ⇒ ★**它照样扫得到** ✓ —— ★**所以排除规则要在**这里**再写一遍** ✓。
+//   ★**教训** ✗：★**"加了忽略"不等于"它不在了"** ✓ —— ★**要看**读的人是谁** ✓。
+const SKIP_DIRS = new Set(['node_modules', '.git', '.strip-backups'])
+const SKIP_FILE = /(^|\.)pilot-backup|\.pre[0-9]+$|\.bak-|^t-.*\.md$/
 function walk(dir, out = []) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
-    if (e.name === 'node_modules' || e.name === '.git') continue
+    if (SKIP_DIRS.has(e.name) || SKIP_FILE.test(e.name)) continue
     const p = join(dir, e.name)
     if (e.isDirectory()) walk(p, out)
     else if (e.name.endsWith('.md')) out.push(p)
