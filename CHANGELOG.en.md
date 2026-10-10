@@ -7,6 +7,34 @@
 
 ---
 
+## v0.6.0 —— 2026-10-11 (**released**)
+
+> **Re-issuing the previous batch under the correct number.**
+
+### **Why this release exists**
+
+The previous version added `gate`'s public interface `recount` and `cli`'s `reconcile` command ——
+**both the interface and the behaviour changed**, so this repository's own policy (`CONTRIBUTING` section 1:
+**an interface or behaviour change moves the middle number**) called for the **middle** number, and only the
+**last** number moved instead. **The harm was real**: anyone whose dependency range used the caret silently
+picked up a behaviour change —— and keeping "**may change**" apart from "**will not change**" is exactly what
+the middle number is for.
+
+So this release does two things: **it corrects the number**, and it moves that rule **to the step where the
+decision is made** (the release checklist gained a section before step 0: "decide the version number first").
+The rule was already written down in two places; the problem was not that it was missing, but that it was not
+consulted at the moment the number was chosen.
+
+### **What is in this release**
+
+* `gate`'s `recount()` and `cli`'s `reconcile` command (**reconciliation**: recompute a ledger from the
+  filesystem and compare it per day and per bucket; **match ⇒ exit 0; difference ⇒ exit 3**; the
+  recomputation runs on **the same production line as bookkeeping**, so drift is structurally impossible);
+* `gate`'s README: a new "Reconciliation" section, and its closing line fixed from "those three" to "those
+  four" (it was wrong on the npm page);
+* the "decide the version number first" section in the release checklist.
+
+Criteria stay at 367.
 ## v0.5.4 —— 2026-10-11 (**released**)
 
 > **Fixing a wrong sentence printed on the npm page: `gate` does not have one exit, or three — it has four.**
