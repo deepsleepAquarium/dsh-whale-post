@@ -40,7 +40,16 @@ import { readFileSync as _readFileSync, readdirSync as _readdirSync } from 'node
     try { src = _readFileSync(join(repo, 'packages', p, 'index.js'), 'utf8') } catch { continue }
     //   ★用共用的 `codeOnly`（★它会剥掉注释**与字符串**，★还认得正则 ✓）
     //     ★★**旧写法只删注释、不删字符串** ✗ ⇒ ★一条合法的错误提示里只要写了 `ctx.whale =` 就会**误报** ✗✓
-    if (/ctx\.whale\s*=|ctx\?\.whale\?\./.test(codeOnly(src))) offenders.push(p)
+    //   ★★★**而 2026-10-11 05:3x 的负向测试发现：这个正则有"假阴性"** ✗✓✓ ——
+    //     ★原来只认 `ctx.whale =`（★**直接赋值**）与 `ctx?.whale?.`（★**可选链**）✗ ⇒
+    //     ★★**认不出 `ctx.whale.<某属性> = 1`** ✓ —— ★而**那正是当年事故的形状** ✓
+    //     （★`cannot get property "whale" without inject` 是**读属性**时抛的 ✓✓）：
+    //     ★我往 `types` 里注入那句 ⇒ ★**它照样 PASS** ✗ ⇒ ★**下一个人这样写、它也会放行** ✓。
+    //   ★★**为什么现在敢改宽** ✗✓：★先查了"正当写法"是什么 —— ★`example/plugin-skeleton/index.js`
+    //     ★写得很清楚：**注册用 `ctx.provide('whale.xxx', …)`、取用别的服务用 `ctx.get('whale.xxx')`** ✓、
+    //     ★**永远不要读写 `ctx.whale` 这个属性** ✓✓ ⇒ ★那些正当写法**都不含 `ctx.whale`** ✓ ⇒
+    //     ★**加宽不会误伤** ✓（★这就是"先弄懂惯例、再收紧守卫" ✓ —— ★反着做就是"太严的守卫" ✓）。
+    if (/\bctx\??\.whale\b/.test(codeOnly(src))) offenders.push(p)
   }
   console.log(`— ${'static'.padEnd(9)} ${offenders.length === 0 ? 'PASS  无 ctx.whale 属性读写（真引擎上会抛 without inject）' : 'FAIL  这几件还在读 ctx.whale：' + offenders.join('、')}`)
   if (offenders.length) { process.exitCode = 1; extrasFailed = true }
