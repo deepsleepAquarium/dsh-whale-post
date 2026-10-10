@@ -201,6 +201,81 @@ for (const f of verDocs) {
 check('⑬ 文档说的"npm 上是哪个版本"**与 `package.json` 一致** （否则用户装到上一个版本）',
   verMismatch.length === 0, verMismatch.length ? verMismatch.join('、') : `五份文档都是 ${mineVer} `)
 
+// ⑭ **文档里写的"默认值"必须与代码里的 `DEFAULTS` 一致** （2026-10-10 加）
+//   为什么：第 122 轮撞见「组合示例写 `direct` 100／`club` 40，而代码默认是 120／60」——
+//     而**根因是"默认值没有权威出处"**：`packages/gate/README` 的字段表里只写了"四个样例桶"，
+//     所以"哪个数才对"没人能对。这类错**只有在有人逐键对的时候才会露出来**，所以钉成判据。
+//   怎么比：README 的表格行 `| \`键\` | \`值\` |` 对 `index.js` 里 `const DEFAULTS = {…}` 的键；
+//     两边的值都**归一成数**再比 —— `64 KiB` ↔ `64 * 1024`、`24 小时` ↔ `24 * 3600 * 1000`。
+//   它**宁可漏报**：文档没写的键、写法认不出的，一律不吭声（**文档允许只写一部分**）。
+//   ⓘ 归一化里踩过一次：`'* 1024'.split('*')` 会切出空串，而 **`Number('')` 是 `0` 不是 `NaN`**
+//     ⇒ `64 * 1024` 被算成 `0` ⇒ **四个键全被误报**。空片段必须先去掉。
+const normDefault = (raw) => {
+  const s = String(raw).trim().replace(/^['"`]|['"`,]+$/g, '').trim()
+  if (s === 'undefined' || s === 'null') return null
+  if (/^(true|false)$/.test(s)) return { n: null, k: 'bool:' + s }
+  if (/^\[\]$/.test(s)) return { n: null, k: 'empty-array' }
+  const mul = s.match(/^([\d.]+)\s*(\*\s*[\d\s*]+)$/)
+  if (mul) {
+    const factors = mul[2].split('*').map((x) => x.trim()).filter((x) => x !== '' && !Number.isNaN(Number(x))).map(Number)
+    return { n: Number(mul[1]) * factors.reduce((a, b) => a * b, 1), k: 'number' }
+  }
+  if (/^-?\d+$/.test(s)) return { n: Number(s), k: 'number' }
+  const dm = s.match(/^(\d+)\s*(KiB|MiB|KB|MB|字节|小时|分钟|秒|天|次|条)?$/)
+  if (dm) {
+    const scale = { KiB: 1024, MiB: 1024 * 1024, KB: 1000, MB: 1000 * 1000, 字节: 1, 小时: 3600 * 1000, 分钟: 60 * 1000, 秒: 1000, 天: 86400 * 1000 }[dm[2] ?? '']
+    return { n: scale ? Number(dm[1]) * scale : Number(dm[1]), k: 'number' }
+  }
+  return null
+}
+const codeDefaultsOf = (src) => {
+  const out = {}
+  const dm = /const DEFAULTS = \{([\s\S]*?)\n\}/.exec(src)
+  if (!dm) return out
+  const body = dm[1]
+  for (const line of body.split(/\r?\n/)) {
+    const m = line.match(/^\s{2}(\w+):\s*(.+?),?\s*(\/\/.*)?$/)
+    if (m && !m[2].trim().startsWith('{')) out[m[1]] = m[2].trim()
+  }
+  for (const block of ['loop', 'quota']) {
+    const bm = new RegExp(block + ': \\{([\\s\\S]*?)\\n\\s{2}\\}').exec(body)
+    if (!bm) continue
+    for (const line of bm[1].split(/\r?\n/)) {
+      const m = line.match(/^\s*(\w+):\s*(.+?),?\s*(\/\/.*)?$/)
+      if (m && !m[2].trim().startsWith('{')) out[block + '.' + m[1]] = m[2].trim()
+    }
+    const tm = /types: \{([\s\S]*?)\n\s{4}\}/.exec(body)
+    if (tm) {
+      for (const line of tm[1].split(/\r?\n/)) {
+        const m = line.match(/^\s*(\w+): \{ label: '[^']*', limit: (\d+)/)
+        if (m) out[block + '.types.' + m[1]] = m[2]
+      }
+    }
+  }
+  return out
+}
+const defDrift = []
+let defChecked = 0
+for (const p of ALL) {
+  const src = join(repo, 'packages', p, 'index.js')
+  const rm = join(repo, 'packages', p, 'README.md')
+  if (!existsSync(src) || !existsSync(rm)) continue
+  const code = codeDefaultsOf(readFileSync(src, 'utf8'))
+  for (const line of readFileSync(rm, 'utf8').split(/\r?\n/)) {
+    const m = line.match(/^\|\s*`([\w.]+)`\s*\|\s*([^|]+?)\s*\|/)
+    if (!m || !(m[1] in code)) continue
+    defChecked++
+    const a = normDefault(code[m[1]])
+    const b = normDefault(m[2].replace(/`/g, ''))
+    if (!a || !b) continue
+    const same = a.n === null && b.n === null ? a.k.split(':')[0] === b.k.split(':')[0] : a.n === b.n
+    if (!same) defDrift.push(`${p}.${m[1]}：代码 ${code[m[1]]} vs README ${m[2].trim()}`)
+  }
+}
+check('⑭ 包内 README 写的"默认值"与代码 `DEFAULTS` **一致** （对不上的才报）',
+  defDrift.length === 0, defDrift.length ? defDrift.join('、') : `比了 ${defChecked} 个键，全一致`)
+
+
 // ⑫ **仓库领先 npm 多少** （2026-10-10 加 —— 这是**报告**，不是错误）
 //   **为什么要它**：第 65 轮我**临时用 `git log` 去数**"tag 之后有几个提交、有没有改过代码" ——
 //     而那种"临时数一下"的东西**下次还得再数** （同"把临时探针固化成工具"那条纪律）。

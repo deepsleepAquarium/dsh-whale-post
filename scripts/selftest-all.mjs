@@ -7,6 +7,7 @@
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { BASELINE, TOTAL } from './criteria-baseline.mjs'
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -172,6 +173,28 @@ if (grew.length) {
   console.log('  ⓘ `node scripts/selftest-all.mjs --update-baseline` ')
 }
 if (counts.size) console.log(`ⓘ 共 ${[...counts.values()].reduce((a, b) => a + b, 0)} 条判据（基准 ${TOTAL} 条）`)
+
+//   ★★**`--update-baseline` 真的写回基准** ✗✓✓（★2026-10-10 修，第 123 轮）：
+//     ★**这个开关以前只是被解析、★从来没有被用过** ✗ ——
+//     ★★提示里让人"跑 `--update-baseline` 更新基准"，★**而它什么都不做** ✓✓（★"文档里写着的命令跑了一点用都没有" ✓）。
+//     ★现在它**只改那几行数字**（★`件名: N,` ✓）⇒ ★基准文件的注释与格式**一个字不动** ✓。
+if (updateBaseline) {
+  const file = join(repo, 'scripts', 'criteria-baseline.mjs')
+  let text = readFileSync(file, 'utf8')
+  const changed = []
+  const missing = []
+  for (const [name, now] of counts) {
+    const re = new RegExp('^(\\s*' + name + ':\\s*)(\\d+)(,)', 'm')
+    const m = re.exec(text)
+    if (!m) { missing.push(name); continue }
+    if (Number(m[2]) !== now) { changed.push(`${name} ${m[2]} → ${now}`); text = text.replace(re, `$1${now}$3`) }
+  }
+  writeFileSync(file, text, 'utf8')
+  console.log(changed.length ? `\n✓ 基准已更新：${changed.join('、')}` : '\nⓘ 基准已经是最新的（没有要改的）')
+  if (missing.length) console.log(`  ⚠️ 这几件不在基准里、这次没写：${missing.join('、')}`)
+  const notRun = Object.keys(BASELINE).filter((n) => !counts.has(n))
+  if (notRun.length) console.log(`  ⓘ 这几件这次没跑到 ⇒ 它们的数字没动：${notRun.join('、')}`)
+}
 
 const failed = bad3.length > 0 || shrank.length > 0
 // 另有一个**并发压测**不在这里跑 （它起十几个真子进程、慢一些）：
