@@ -140,6 +140,9 @@ Three rules (do not mix them up):
 | | `pump({ as, keep, reader })` | receive; **no reader ⇒ nothing is consumed** (letters stay put) |
 | | `verify(letter)` | returns the **list of problems** with an envelope (empty = fine) |
 | | `hello({ as })` | handshake (senders check how fresh yours is) |
+| | `helloFresh(as)` / `FIELD_ORDER` / `LEGACY_FIELDS` | is a handshake fresh / **the order of the signed fields** / **the old field names** (you need both if you compute a signature yourself) |
+| | `declaredOnlineCap(as)` / `declaredRecv(as)` / `declaredQuiet(as)` | the three things the other side **declared about itself** in its handshake: its daily cap for online letters / offline-only / its do-not-disturb window (only a fresh handshake counts) |
+| | `inQuietHours(as, atMs?)` | is it inside its do-not-disturb window now (or at a given instant); **the window wraps around midnight** |
 | | `format(env)` | render an envelope as human-readable text |
 | | `paths()` / `root()` / `keyHex()` / `digest(s)` / `seal(f)` / `sign(env)` / `loadState(as)` | low-level parts (used by self-tests, tools and the gate) |
 | `ctx.whale.roster` | `list()` / `has(id)` / `label(id)` | the minimal set: who is there / is this person there / what are they called |
@@ -151,11 +154,16 @@ Three rules (do not mix them up):
 | `ctx.whale.types` | `register(id, meta)` / `resolve(id)` / `list()` / `meta(id)` | register / look up / list; **an unregistered type is refused on the spot** |
 | `ctx.whale.deliver` | `deliver(letter, ctx)` | returns `'delivered'` / `'kept'` / `'rejected'` |
 | | `blocked(id)` / `sessionOf(id)` | is this recipient blocked / is that session alive |
+| | `dormancyOf(id)` | is this person **explicitly dormant** (used by the two above) |
 | `ctx.whale.gate` | `check(letter, ctx)` | block or not: `'pass'` / `{ reject, reason }` |
 | | `record(letter, targets)` / `report({ as, days })` | record after a successful delivery / read the ledger |
+| | `quotaUnits(letter, types, bucket)` | how many "units" one letter costs (for your own estimates or a dashboard) |
 | `ctx.whale.verify` | `verify(letter)` | `{ ok, why?, skipped? }`; **while disabled it lets letters through but says `skipped: true`** |
 | | `nag()` | returns the notice when one is due, `null` when it is not |
 | | `status()` / `enable()` / `disable()` | the truthful status / turn on / turn off |
+| | `keyFor(from)` / `digestOf(body)` / `fields()` / `FALLBACK_FIELD_ORDER` | the parts verification needs: someone's key / a body digest / the signed fields taken from `bus` / the fallback when that is unavailable |
+
+> Every package also exports `apiVersion` (the interface version; currently `1`), and `gate` and `verify` additionally expose their own `cfg` (the configuration currently in force).
 
 ### Configuration (including "what happens if you leave it out")
 

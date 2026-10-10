@@ -139,6 +139,9 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* 把这段文字送进那�
 | | `pump({ as, keep, reader })` | 收信；**没有读者就不消费**（信原样留着） |
 | | `verify(letter)` | 查信封的问题，返回**问题数组**（空＝没问题） |
 | | `hello({ as })` | 握手（发信前对方会看你新不新鲜） |
+| | `helloFresh(as)`／`FIELD_ORDER`／`LEGACY_FIELDS` | 握手新不新鲜／**签名域字段顺序**／**老旧字段**（要自己算签名时必须用这两个） |
+| | `declaredOnlineCap(as)`／`declaredRecv(as)`／`declaredQuiet(as)` | 对方在握手时**自己声明**的三件：在线件小日上限／只收离线／勿扰时段（只认新鲜的握手） |
+| | `inQuietHours(as, atMs?)` | 此刻（或指定时刻）在不在它的勿扰时段里；**跨午夜会绕圈** |
 | | `format(env)` | 把信封排成给人看的文本 |
 | | `paths()`／`root()`／`keyHex()`／`digest(s)`／`seal(f)`／`sign(env)`／`loadState(as)` | 底层零件（自测与工具用） |
 | `ctx.whale.roster` | `list()`／`has(id)`／`label(id)` | 最小集：有哪些人／有没有他／他叫什么 |
@@ -150,11 +153,16 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* 把这段文字送进那�
 | `ctx.whale.types` | `register(id, meta)`／`resolve(id)`／`list()`／`meta(id)` | 注册／查／列表；**未注册的类型当场拒** |
 | `ctx.whale.deliver` | `deliver(letter, ctx)` | 返回 `'delivered'`／`'kept'`／`'rejected'` |
 | | `blocked(id)`／`sessionOf(id)` | 这个收件人被挡了吗／那个会话活着吗 |
+| | `dormancyOf(id)` | 这个人是**明示休眠**吗（上面两件判断时用它） |
 | `ctx.whale.gate` | `check(letter, ctx)` | 拦不拦：`'pass'`／`{ reject, reason }` |
 | | `record(letter, targets)`／`report({ as, days })` | 投出去之后记账／查账 |
+| | `quotaUnits(letter, types, bucket)` | 一封信算几个"单位"（自己预估或做面板时用） |
 | `ctx.whale.verify` | `verify(letter)` | `{ ok, why?, skipped? }`；**禁用时放行但带 `skipped:true`** |
 | | `nag()` | 该提示就返回文案，不该提示返回 `null` |
 | | `status()`／`enable()`／`disable()` | 如实状态／开／关 |
+| | `keyFor(from)`／`digestOf(body)`／`fields()`／`FALLBACK_FIELD_ORDER` | 验签用的零件：某人那把钥匙／正文摘要／从 `bus` 取签名域／取不到时的兜底 |
+
+> 每个包还都导出 `apiVersion`（接口版本，现在是 `1`）；`gate` 与 `verify` 另外挂着自己的 `cfg`（当前生效的配置）。
 
 ### 配置项（"不写会怎样"也写清）
 
