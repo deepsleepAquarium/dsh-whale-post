@@ -91,6 +91,7 @@ node packages/cli/index.js selftest  # ★check the exit code
 | `dsh-whale-post-gate` | ★**the gate**: quota and billing + loop gate ✓ | [`packages/gate/README.md`](packages/gate/README.md) |
 | `dsh-whale-post-verify` | ★**security check**: envelope signature + allow-list (★**disabled by default** ✓) | [`packages/verify/README.md`](packages/verify/README.md) |
 
+★★**Where we stand in the DSH plugin shop** ✗✓ ⇒ [`docs/SHOP.en.md`](docs/SHOP.en.md) ✓ (★**listed — and automatically so** ✓; ★**only `cli` / `verify` are missing and the rest is stuck at 0.1.x** ✗).
 ★★**Picking this up later** ✗✓ ⇒ [`docs/HANDOFF.en.md`](docs/HANDOFF.en.md) ✓ (★**current state + what to do next + what to read first** ✓).
 ★★**How to ship a new version** ✗✓ ⇒ [`docs/RELEASE.en.md`](docs/RELEASE.en.md) ✓ (★**the steps plus why** ✓ —— ★★**publishing is irreversible**, slow beats wrong ✓).
 ★**How to wire them together** ⇒ [`docs/INSTALL.en.md`](docs/INSTALL.en.md) ✓; ★**a composition example** ⇒ [`example/`](example/README.md) ✓.
