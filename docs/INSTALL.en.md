@@ -20,11 +20,31 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post
 
 ## 2. Minimal wiring (`cordis.patch.yml`)
 
+> **⚠️ Read this before the YAML below — it matters more than the YAML. There are two ways to install, and you must pick exactly one.**
+>
+> Measured on 2026-10-10, both really booted in a throwaway profile:
+>
+> * **A. Install with `dsh plugin --profile <name> add link:<this repo>/packages/<package>`.** That writes the package
+>   names into the profile's `package.json` under `dsh.profile.bundles`, and every package **ships its own**
+>   `cordis.patch.yml` (its `dsh.bundle.patch`) ⇒ **it takes effect immediately; you write nothing into
+>   `cordis.patch.yml`.** Measured: exit code 0, 32.4 s.
+> * **B. Put the packages into the profile's `node_modules` and hand-write the `cordis.patch.yml` below.** If you go
+>   this way you **must first delete every `dsh-whale-post-*` entry from `dsh.profile.bundles`**, leaving only the
+>   official `@deepseek-ai/dsh-base` and `@deepseek-ai/dsh-headless`. Measured: exit code 0, 27.1 s.
+>
+> **Mixing the two crashes immediately**: each plugin gets registered twice and the boot fails with
+> `service "whale.bus" has been registered at <whale-bus>` ⇒ nothing starts at all.
+> In other words: **if you ever see the word `registered` in the error, you have gone down both roads — go look at
+> `dsh.profile.bundles` for those seven package names.**
+
 > **Do not change the indentation of this block** — measured on 2026-10-10: it used to indent every entry by only **1 space**
 > (level with the element of `- insert:`), so YAML saw "a pile of sibling `- id:` document items" and failed with
 > `YAMLException: end of the stream or a document separator is expected` ⇒ **not a single plugin could be installed**.
 > The version below has **correct indentation and was really run through `--dump-config` and a real boot**
-> (it matches [`../example/cordis.patch.yml`](../example/cordis.patch.yml)).
+> (it is **behaviourally equivalent to, but not word-for-word the same as** [`../example/cordis.patch.yml`](../example/cordis.patch.yml) —
+> that one is a **complete example** (it spells out `requireHello: true` and lists two more quota types,
+> `broadcast` and `club`), while this one is **minimal wiring**. Neither difference changes behaviour:
+> the default for `requireHello` is already `true`, and the two extra types are only sample numbers).
 
 ```yaml
 - insert:

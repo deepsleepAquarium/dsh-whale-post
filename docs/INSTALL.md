@@ -20,10 +20,29 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post
 
 ## 二、最小接线（`cordis.patch.yml`）
 
+> **⚠️ 先读这一条，它比下面那份 YAML 更重要：装法有两条，只能选一条走。**
+>
+> 2026-10-10 实测（在临时 profile 上两种都真启过）：
+>
+> * **甲、用 `dsh plugin --profile <名> add link:<本仓>/packages/<件名>` 装。** 它会把包名写进该 profile
+>   `package.json` 的 `dsh.profile.bundles`，而每个包**自带** `cordis.patch.yml`（`dsh.bundle.patch`）
+>   ⇒ **装完就生效，一个字都不用往 `cordis.patch.yml` 里写。** 实测：退出码 0，32.4 秒。
+> * **乙、把包放进 profile 的 `node_modules`，然后手写下面那份 `cordis.patch.yml`。** 走这条就
+>   **必须先把 `dsh.profile.bundles` 里的 `dsh-whale-post-*` 全部删掉**（只留官方的 `@deepseek-ai/dsh-base`
+>   与 `@deepseek-ai/dsh-headless`）。实测：退出码 0，27.1 秒。
+>
+> **两条混用会当场崩**：每件会被注册两次，启动时报
+> `service "whale.bus" has been registered at <whale-bus>` ⇒ 一个插件都起不来。
+> 换句话说：**看到 `registered` 这个词，就是走重了**，回头看 `dsh.profile.bundles` 里有没有那七个包名。
+
 > **这段的缩进不能改** —— 2026-10-10 实测：原来这里每一项只缩进 **1 空格**（跟 `- insert:` 的元素**平级**），
 > YAML 看到的是"一堆平级的 `- id:` 文档项"，直接报
 > `YAMLException: end of the stream or a document separator is expected` ⇒ **一个插件都装不上**。
-> 下面这份是**缩进正确、且真跑过 `--dump-config` 与真启**的版本（与 [`../example/cordis.patch.yml`](../example/cordis.patch.yml) 一致）。
+> 下面这份是**缩进正确、且真跑过 `--dump-config` 与真启**的版本。它与
+> [`../example/cordis.patch.yml`](../example/cordis.patch.yml) **行为等价，但不是逐字相同** ——
+> 那份是**完整示例**（显式写出 `requireHello: true`，配额表里多列了 `broadcast` 与 `club` 两个类型），
+> 这份是**最小接线**。两处差别都不改变行为：`requireHello` 的默认值本来就是 `true`，
+> 多列的那两个类型只是示例数值。
 
 ```yaml
 - insert:
