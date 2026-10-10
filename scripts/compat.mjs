@@ -117,10 +117,24 @@ check('③ 本版 `send` 退出码 0', sendNew.status === 0, `退出码 ${sendNe
 const oldSeenBefore = seenOf('alice').length
 const pumpOld = runOldVerbose(['pump', '--as', 'alice'])
 const reachedOld = seenOf('alice').length > oldSeenBefore
-console.log(`\nⓘ **报告**（★不判红 ✗）：本版发的信，老版（${CLIVER}）${reachedOld ? '**收得到** ✓（★两边签名域一致 ⇒ 普通信互通 ✓）' : '**收不到** ✗（★见 CHANGELOG「必读（二）：混跑时不兼容」✓）'}`)
+console.log(`\nⓘ **报告**：本版发的信，老版（${CLIVER}）${reachedOld ? '**收得到** ✓（★两边签名域一致 ⇒ 普通信互通 ✓）' : '**收不到** ✗（★见 CHANGELOG「必读（二）」✓）'}`)
 if (!reachedOld) {
   const why = String(pumpOld.stdout ?? '').split(/\r?\n/).find((l) => l.includes('未登记') || l.includes('签名域') || l.includes('退信'))
   if (why) console.log(`   老版说的是：${why.trim().slice(0, 140)}`)
+}
+//   ★★★**"报告"也必须**有证据** ✗✓（2026-10-10 加 —— ★因为这一行**错了一整个月没人发现** ✓）：
+//     ★★**病** ✗：★上面那行"报告"**不判红** ✓ ⇒ ★它就算**说错话**也没人管 ✓ ——
+//       ★★★**而它确实错过** ✓：★判据写成"看 `inbox` 长度"（★而 `pump` 会清空收件箱 ✓）
+//       ⇒ ★**`reachedOld` 永远是 `false`** ⇒ ★它一直报"老版收不到" ✗ —— ★**而实测收得到** ✓✓。
+//     ★★**方** ✗✓：★**给"报告"配一条自洽检查** ✓ —— ★**既不要求"必须收得到"，也不要求"必须收不到"** ✓
+//       （★那是**事实**，不是**标准** ✓）；★只要求：★**你说的那件事，现场必须有对应的痕迹** ✓✓。
+//     ★★★**这条判据守的不是"兼容性"，是"报告的可信度"** ✗✓ —— ★**没证据的报告，等于没报告** ✓。
+{
+  const sawReceipt = seenOf('alice').length > oldSeenBefore
+  const bounced = (() => { try { return readdirSync(join(tmp, '退信')).length > 0 } catch { return false } })()
+  check('★★★**"报告"有证据**: 说"收得到" ⇒ `seen/` 里有凭证；说"收不到" ⇒ `退信/` 里有退信（★不许瞎写 ✓）',
+    sawReceipt === reachedOld && (reachedOld || bounced),
+    `reachedOld=${reachedOld} 凭证新增=${sawReceipt} 有退信=${bounced}`)
 }
 
 const pass = checks.filter((c) => c.ok).length
