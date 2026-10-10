@@ -140,7 +140,7 @@ node packages/cli/index.js pump --as bob # read through bob's mailbox once (★t
 > (Measured: with `roster.json` inside `.whale-mail/`, `git status` reported `?? .whale-mail/` before this line existed.)
 **Three hard rules**: ① **look only at the exit code** (do not match on the Chinese text); ② **it can be re-run in place** (two runs give the same result); ③ **negative test**: **deliberately break one line ⇒ the self-test must turn red** (not turning red = the self-test is decoration).
 
-**The runner that ships with this repository** (you can verify it before installing anything): `node scripts/selftest-all.mjs` ⇒ **exit code 0 = all six passed**; to run a single piece, `node packages/<package-name>/selftest.mjs`.
+**The runner that ships with this repository** (you can verify it before installing anything): `node scripts/selftest-all.mjs` ⇒ **exit code 0 = all seven passed**; to run a single piece, `node packages/<package-name>/selftest.mjs`.
 **From npm** (published): `npm i dsh-whale-post-cli` ⇒ `npx dsh-whale-post-cli selftest`.
 
 **Collecting mail (important — do not skip)**: `pump` **consumes by default** (it moves letters into `seen/` and writes an ack) — **but** when the recipient has **no live session** right now and nothing has declared itself a reader, `pump` **consumes nothing**: letters stay exactly where they are in `inbox/` (not moved to `seen/`, not unlinked, no ack written).
