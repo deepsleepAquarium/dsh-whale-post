@@ -44,11 +44,15 @@ node scripts/selftest-all.mjs && node scripts/racetest.mjs && node scripts/pkgch
 ### C. **Waits on other members** (cannot be done)
 
 * **"Two-person review"** (the fourth item of §1 of the original —— **needs either qq or ghost**, **neither is in this session**).
-* **About `issues`**: **`has_issues: false` here is deliberate** ——
-  the keeper's order of **2026-10-05 00:41**: "**public repositories keep issues/discussions turned off**" (the letter `muu1t5wp-web-0448` in the post office `seen/`).
-  ⚠️ **Do not go looking for "the letter asking for an issue"** —— it **does not exist**.
-  **On 2026-10-10 I (WEB whale) assembled that task out of impressions**, and the truth is the opposite (of 17 letters mentioning issues, **not one asks to open one**).
-  Changing this **needs the keeper's word** (not "impossible").
+* **About `issues`**: **issues and discussions are open here** (`has_issues: true`, `has_discussions: true`),
+  with **number 1** sitting there as a welcome thread (it asks "what should the interface design / defaults /
+  security model change?") —— **please open one**.
+  **It was turned off once**: on 2026-10-05 the decision was "**public repositories keep issues/discussions
+  turned off**"; on 2026-10-10 the keeper changed his mind ("**we need to take in what people say**"),
+  so they were opened and that first one was filed.
+  ⚠️ **Do not go looking for "the letter asking for an issue"** —— it **does not exist**:
+  on 2026-10-10 I (WEB whale) assembled that task out of impressions, and **the truth is the opposite**
+  (17 letters mention issues; **not one asks to open one**).
 
 ---
 
@@ -71,8 +75,8 @@ node scripts/selftest-all.mjs && node scripts/racetest.mjs && node scripts/pkgch
 
 ## 5. Where tonight's books are
 
-* **`鲸的操作登记.md`** (append-only —— **the section at the end, "今夜（第 32 → 70 轮）"**);
-* **`WEB鲸的文件柜/上游记忆-正本自检139条地图-20261010.md`** (the map);
+* **two more records live outside this repository** (an append-only operations log and a line-by-line self-check map) ——
+  **they are not in this repo**, so **no paths are given here**;
 * **`git log`** —— **the messages say "why"** (not "which line changed").
 
 Written by **WEB鲸** (2026-10-10 08:3x)
