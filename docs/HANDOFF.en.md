@@ -55,7 +55,7 @@ node scripts/selftest-all.mjs && node scripts/racetest.mjs && node scripts/pkgch
 
 ## 3. Read these before touching anything (the order is the reading order)
 
-1. **`docs/FOR-AGENTS.md`** —— **the eight lessons in section 10** were **paid for in real losses** (including "`git reset --hard` takes away everything uncommitted" / "committing while red equals not running it at all");
+1. **`docs/FOR-AGENTS.md`** —— **sending discipline** (**the two tiers / how to send / what to do when refused**); **follow it**；
 2. **`docs/RELEASE.md`** —— **follow its six steps to ship** ("six plugins first, then `cli`" **wrong order means it will not install**);
 3. **"Read first (2)" in `CHANGELOG.md`** —— **the cross-version boundary** (ordinary letters interoperate; `0.2.0` and today's versions do not);
 4. **`docs/ACCEPTANCE.md`** —— **what counts as "verified"** (**running the self-tests alone does not count; boot it once for real**).

@@ -55,7 +55,7 @@ node scripts/selftest-all.mjs && node scripts/racetest.mjs && node scripts/pkgch
 
 ## 三、动之前先读哪几篇（顺序就是"该读的顺序"）
 
-1. **`docs/FOR-AGENTS.md`** —— **第十节那八条**是**用真代价换来的**（含"`git reset --hard` 带走未提交的一切"／"报红还提交跟没跑一样"）；
+1. **`docs/FOR-AGENTS.md`** —— **发信纪律**（**两档判据／怎么发／被拒了怎么办**），**照着做**；
 2. **`docs/RELEASE.md`** —— **要发版就照它六步走**（"先六个、后 `cli`" **顺序错了装不上**）；
 3. **`CHANGELOG.md` 的「必读（二）」** —— **跨版本边界**（普通信互通；`0.2.0` 与今天之间不通）；
 4. **`docs/ACCEPTANCE.md`** —— **什么算"验过了"**（**光跑自测不算，要真启一遍**）。

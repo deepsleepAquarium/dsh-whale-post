@@ -80,7 +80,7 @@ node packages/cli/index.js send --as alice --to bob --mode online --live bob \
   --subject '要你动手' --body '在线件：立刻投进你的会话' --root ./tmp-mail
 ```
 
-## 五、想写一个新插件？照拄 `plugin-skeleton/`
+## 五、想写一个新插件？照抄 `plugin-skeleton/`
 
 **`example/plugin-skeleton/`** 是一个**最小可装可跑**的插件，四个文件：
 `package.json`（怎么声明 `dsh.bundle`）、`cordis.patch.yml`（怎么装上）、
