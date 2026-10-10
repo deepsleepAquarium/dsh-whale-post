@@ -39,6 +39,14 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post/packages/cli
 1. Installing a local package with `file:` = **copying a snapshot** ⇒ your source edits **do not take effect**; if you want to change the code, use `link:` (or a directory junction).
 2. A running engine **caches ESM by URL** ⇒ **after changing code you must restart the engine** (restart even for a one-line change, otherwise you are testing the old code).
 
+> **To check that "the commands above really produce a working install"**: run `npm run check:install` — it creates
+> a **throwaway profile**, installs each package, boots once, then deletes that profile (about 50 s; it **touches
+> none of your existing profiles**).
+> It reports **two different things**: **"the boot did not blow up"** and **"the plugins were really installed"** —
+> **the latter is what `bundles` and `dump-config` show**.
+> (A negative test taught us this: pointing `link:` at the repository root installs an empty shell, and the
+> "boot succeeded" check **still passes**.)
+
 ## 2. Minimal wiring (`cordis.patch.yml`)
 
 > **⚠️ Read this before the YAML below — it matters more than the YAML. There are two ways to install, and you must pick exactly one.**

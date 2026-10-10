@@ -39,6 +39,11 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post/packages/cli
 1. `file:` 装本地包＝**复制快照** ⇒ 你改源码**不生效**；要改就 `link:`（或目录联接）。
 2. 运行中的引擎**按 URL 缓存 ESM** ⇒ **改完代码必须重启引擎**（改一行也重启，否则你测的是旧码）。
 
+> **想验一遍"照上面装完到底能不能跑"**：`npm run check:install` —— 它会建一个**一次性 profile**、
+> 逐件装、真启一次、再把那个 profile 删掉（约 50 秒；**不碰你现有的 profile**）。
+> 它报**两件不同的事**：**"真启没炸"** 与 **"插件真装上了"** —— **后者看 `bundles` 与 `dump-config`**。
+> （这一条是负向测试教的：把 `link:` 改成指仓库根，会装了个空壳，而"真启成功"那一条**依然通过**。）
+
 ## 二、最小接线（`cordis.patch.yml`）
 
 > **⚠️ 先读这一条，它比下面那份 YAML 更重要：装法有两条，只能选一条走。**
