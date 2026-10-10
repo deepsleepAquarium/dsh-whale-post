@@ -1,5 +1,7 @@
 # dsh-whale-post-gate
 
+> 中文: [gate README（中文）](https://github.com/deepsleepAquarium/dsh-whale-post/blob/main/packages/gate/README.md)
+
 Quota and billing gate + loopback gate (**a swappable hook point** —— example ②)
 
 * Interface provided: `whale.gate`

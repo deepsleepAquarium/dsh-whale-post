@@ -1,5 +1,7 @@
 # dsh-whale-post-deliver
 
+> 中文: [deliver README（中文）](https://github.com/deepsleepAquarium/dsh-whale-post/blob/main/packages/deliver/README.md)
+
 Delivery policy: an offline piece stays in the mailbox for someone to pick up / an online piece goes out right away (**a swappable hook point** —— example ①)
 
 * Interface provided: `whale.deliver`

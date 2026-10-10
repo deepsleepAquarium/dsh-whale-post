@@ -1,5 +1,7 @@
 # dsh-whale-post-verify
 
+> English: [verify README in English](https://github.com/deepsleepAquarium/dsh-whale-post/blob/main/packages/verify/README.en.md)
+
 安全校验（信封验签 ＋ 名单白名单）；**默认禁用**，禁用期间会提示开启，连提三天后不再提
 
 * 提供接口：`whale.verify`

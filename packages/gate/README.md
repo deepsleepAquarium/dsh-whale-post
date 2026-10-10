@@ -1,5 +1,7 @@
 # dsh-whale-post-gate
 
+> English: [gate README in English](https://github.com/deepsleepAquarium/dsh-whale-post/blob/main/packages/gate/README.en.md)
+
 配额与计费闸 ＋ 回环闸（**可换的挂点** —— 示例②）
 
 * 提供接口：`whale.gate`

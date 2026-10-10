@@ -1,5 +1,7 @@
 # dsh-whale-post-deliver
 
+> English: [deliver README in English](https://github.com/deepsleepAquarium/dsh-whale-post/blob/main/packages/deliver/README.en.md)
+
 投递策略：离线留在信箱等人／在线立刻投出（**可换的挂点** —— 示例①）
 
 * 提供接口：`whale.deliver`

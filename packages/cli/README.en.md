@@ -1,5 +1,7 @@
 # dsh-whale-post-cli
 
+> 中文: [cli README（中文）](https://github.com/deepsleepAquarium/dsh-whale-post/blob/main/packages/cli/README.md)
+
 Zero-dependency command line (**it is an entry tool, not a plugin**)
 
 * Provides: (none: it is a command line, not a plugin)

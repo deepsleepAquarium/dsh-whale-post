@@ -1,5 +1,7 @@
 # dsh-whale-post-roster
 
+> English: [roster README in English](https://github.com/deepsleepAquarium/dsh-whale-post/blob/main/packages/roster/README.en.md)
+
 名单接口：**谁在名单里**（含**成员属性**与**群发清单**）＋ 读 JSON 的样例实现
 
 * 提供接口：`whale.roster`

@@ -1,5 +1,7 @@
 # dsh-whale-post-types
 
+> English: [types README in English](https://github.com/deepsleepAquarium/dsh-whale-post/blob/main/packages/types/README.en.md)
+
 **邮件类型注册表**接口 ＋ 样例类型（`direct`／`broadcast`／`club`）
 
 * 提供接口：`whale.types`

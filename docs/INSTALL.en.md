@@ -123,10 +123,10 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post/packages/cli
 
 ## 3. Is it installed or not
 
-> **Which version you are getting**: **the latest on npm is now `0.5.0`**; while **this checkout is `0.5.0` too** (**the two now agree**).
-> The two **differing is expected** — the `npx` lines below install **`0.5.0`** (and it does work).
+> **Which version you are getting**: **the latest on npm is now `0.5.1`**; while **this checkout is `0.5.1` too** (**the two now agree**).
+> The two **differing is expected** — the `npx` lines below install **`0.5.1`** (and it does work).
 >
-> **All seven packages are on npm at `0.5.0`** (including the first release of `verify`) ⇒ you can go straight to `npx -y dsh-whale-post-cli@0.5.0 …`;
+> **All seven packages are on npm at `0.5.1`** (including the first release of `verify`) ⇒ you can go straight to `npx -y dsh-whale-post-cli@0.5.1 …`;
 > to develop inside the repository (or change the source) ⇒ run from the repo path (`node packages/cli/index.js …`).
 > ⓘ **Do not use `0.1.x`** — with it, all six plugins fail to load in a real engine (see the "read this before upgrading" section of `CHANGELOG`).
 ```bash

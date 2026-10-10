@@ -1,5 +1,7 @@
 # dsh-whale-post-bus
 
+> English: [bus README in English](https://github.com/deepsleepAquarium/dsh-whale-post/blob/main/packages/bus/README.en.md)
+
 核心：信封 / 摘要＋HMAC 签名 / 握手 / 幂等 / 落盘
 
 * 提供接口：`whale.bus`

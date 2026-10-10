@@ -7,6 +7,22 @@
 
 ---
 
+## v0.5.1 —— 2026-10-11 (**released**)
+
+> **One line of change: make the English version reachable from the npm page.**
+
+### **Why this deserved its own release**
+
+`0.5.0` gave the eight Chinese-only documents an English twin. Then, right after publishing:
+`npm view` still returns the **Chinese** readme —— because the npm page renders `README.md`,
+so `README.en.md` rides along in the tarball but **readers cannot reach it from the npm page**.
+
+So each of the seven packages published to npm (six plugins + `cli`) gains one line: the Chinese
+page links to the English version on GitHub, and the English page links back. Absolute URLs,
+because the npm page cannot resolve repository-relative links.
+
+* Documentation only, **no behaviour changed** ⇒ patch number;
+* one extra link on each side ⇒ the structure stays item-by-item equal (`doccheck` 5/5).
 ## v0.5.0 —— 2026-10-10 (**released**)
 
 > **Two things: `quiet` got its other half (the receiving side), and the decorative marks are gone from the output text.**

@@ -1,5 +1,7 @@
 # dsh-whale-post-verify
 
+> 中文: [verify README（中文）](https://github.com/deepsleepAquarium/dsh-whale-post/blob/main/packages/verify/README.md)
+
 Security check (envelope signature verification + the roster allow-list); **disabled by default**, and while it is disabled it prompts you to turn it on, then stops prompting after three days straight
 
 * Provides the interface: `whale.verify`

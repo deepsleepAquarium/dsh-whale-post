@@ -1,5 +1,7 @@
 # dsh-whale-post-cli
 
+> English: [cli README in English](https://github.com/deepsleepAquarium/dsh-whale-post/blob/main/packages/cli/README.en.md)
+
 零依赖命令行（**它是入口工具，不是插件**）
 
 * 提供接口：（无：它是命令行，不是插件）
@@ -54,5 +56,5 @@
 * **`--body` 不许冒充参数** —— `--body --force` 会被当成"正文＝`--force` 且带 `force`" ⇒ **顺手把三道闸全绕过去**；
   选项值以 `--` 开头一律当写错（退出码 2）。
 * **参数顺序无关** —— `--as`／`--to` 写在命令前后都行。
-* **npm 上最新已经是 `0.5.0`**（下面这行 `npx` 装的就是它）；而**本仓库也是 `0.5.0`** —— **两边已经一致**。
-* **用 npm 上那一份**：`npx -y dsh-whale-post-cli@0.5.0 <命令>`（不用 clone、不用 `npm install`）。
+* **npm 上最新已经是 `0.5.1`**（下面这行 `npx` 装的就是它）；而**本仓库也是 `0.5.1`** —— **两边已经一致**。
+* **用 npm 上那一份**：`npx -y dsh-whale-post-cli@0.5.1 <命令>`（不用 clone、不用 `npm install`）。

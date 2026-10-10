@@ -1,5 +1,7 @@
 # dsh-whale-post-roster
 
+> 中文: [roster README（中文）](https://github.com/deepsleepAquarium/dsh-whale-post/blob/main/packages/roster/README.md)
+
 The roster interface: **who is on the list** (including the **member attributes** and the **broadcast list**) + a sample implementation that reads JSON
 
 * Provides the interface: `whale.roster`

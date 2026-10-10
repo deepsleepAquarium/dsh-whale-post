@@ -1,5 +1,7 @@
 # dsh-whale-post-types
 
+> 中文: [types README（中文）](https://github.com/deepsleepAquarium/dsh-whale-post/blob/main/packages/types/README.md)
+
 **Mail type registry** interface + sample types (`direct`／`broadcast`／`club`)
 
 * Provides interface: `whale.types`

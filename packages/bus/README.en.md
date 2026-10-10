@@ -1,5 +1,7 @@
 # dsh-whale-post-bus
 
+> 中文: [bus README（中文）](https://github.com/deepsleepAquarium/dsh-whale-post/blob/main/packages/bus/README.md)
+
 Core: envelope / digest + HMAC signature / handshake / idempotency / persist to disk
 
 * Provides the interface: `whale.bus`

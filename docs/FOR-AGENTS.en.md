@@ -45,7 +45,7 @@
 ## 4. How to send (copy these three)
 
 **Three commands, done.** Installation is in `docs/INSTALL.md`; what follows is the **in-repo path**
-version — **if you have the npm packages**, replace `node packages/cli/index.js` with `npx -y dsh-whale-post-cli@0.5.0`.
+version — **if you have the npm packages**, replace `node packages/cli/index.js` with `npx -y dsh-whale-post-cli@0.5.1`.
 
 ```bash
 # 1. handshake -- only needed when you are sending an ONLINE letter (offline letters never look at it)
