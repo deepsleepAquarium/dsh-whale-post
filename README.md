@@ -30,14 +30,14 @@ mkdir whale-mail && cd whale-mail
 printf '%s' '{"apiVersion":1,"members":[{"id":"alice"},{"id":"bob"}],"groups":{"all":["alice","bob"]}}' > roster.json
 
 # 1) 握手（★没握过手不许发信 ✓）
-npx -y dsh-whale-post-cli@0.2.0 hello --as alice --root .
-npx -y dsh-whale-post-cli@0.2.0 hello --as bob   --root .
+npx -y dsh-whale-post-cli@0.4.0 hello --as alice --root .
+npx -y dsh-whale-post-cli@0.4.0 hello --as bob   --root .
 
 # 2) 发一封（★默认离线 ⇒ 信落在对方信箱里，不叫醒任何人 ✓）
-npx -y dsh-whale-post-cli@0.2.0 send --as alice --to bob --subject 'hi' --body 'first letter' --root .
+npx -y dsh-whale-post-cli@0.4.0 send --as alice --to bob --subject 'hi' --body 'first letter' --root .
 
 # 3) 收信（★投出去／留下来，都由这一句决定 ✓）
-npx -y dsh-whale-post-cli@0.2.0 pump --as bob --root .
+npx -y dsh-whale-post-cli@0.4.0 pump --as bob --root .
 ```
 
 **跑完你会看到**（下面是**真跑出来的**输出）：
@@ -59,7 +59,7 @@ OK   …-alice-0001-….msg.json :: [离线] alice → bob：《hi》
 dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post
 npm install                          # ★仓内要先装一次（把六个插件链进 node_modules；否则 CLI 找不到兄弟件）
 node packages/cli/index.js selftest  # ★看退出码
-# ★其余命令与上面 npx 那几行完全一样，把 `npx -y dsh-whale-post-cli@0.2.0` 换成
+# ★其余命令与上面 npx 那几行完全一样，把 `npx -y dsh-whale-post-cli@0.4.0` 换成
 #   `node packages/cli/index.js` 即可（★记得同样先备 roster.json ✓）
 ```
 
@@ -112,8 +112,8 @@ node packages/cli/index.js selftest  # ★看退出码
 * 每件都过三关：**能加载 ＋ 能跑 ＋ 跑错会红**（**光跑自测不算，必须真启一遍** ⇒ 验收规格见 [`docs/ACCEPTANCE.md`](docs/ACCEPTANCE.md)）。
 * **版本口径**：**`0.4.0` 已发上 npm**（上面那几行 `npx` 装的就是它，**已按
   [`docs/RELEASE.md`](docs/RELEASE.md) 第 2 步真装验收过**）。
-  ⓘ npm 的 registry 有**几分钟同步延迟** ⇒ 刚发完那一会儿可能还装不到 `@0.3.0`
-  —— **装不到就先用 `@0.2.0`**（它也在 npm 上、也真能跑）。
+  ⓘ npm 的 registry 有**几分钟同步延迟** ⇒ 刚发完那一会儿可能还装不到 `@0.4.0`
+  —— **装不到就先用 `@0.3.0`**（它也在 npm 上、也真能跑）。
 * **要钉哪个 tag**：钉 **`v0.4.0`**（**`0.1.x` 装进真引擎会六个插件全部加载不上**）；
   接口带 `apiVersion`，**类型可以随时扩充**（加类型不用动核心）。逐版改了什么、为什么 ⇒ 见 [`CHANGELOG.md`](CHANGELOG.md)。
 * **装法已在真引擎上实测过** —— **而那次实测抓到一个致命 bug（已修）**：

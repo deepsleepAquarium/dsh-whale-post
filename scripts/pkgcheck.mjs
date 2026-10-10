@@ -167,18 +167,35 @@ check('⑩ ★仓库根目录没有散落的临时探针 ✗（`t-*.mjs` ✓ —
 //     ⇒ ★**用户照它去装 ⇒ 装到**上一个版本**** ✗（★还以为自己装的是最新 ✓）。
 //   ★★**为什么这条该判红** ✗✓（★而第 ⑫ 条不判红 ✓）：★第 ⑫ 条说的是"**仓库领先于 npm**" ✓ ——
 //     ★那是**正常状态** ✓；★而这条说的是"**文档指向了一个错的版本**" ✓ —— ★★★**那是**错**，不是**状态**** ✓✓。
-//   ★**查法** ✗：★在四份文档里找"npm 上最新是 `X.Y.Z`"这一句 ✓ ⇒ ★**X.Y.Z 必须等于 `package.json`** ✓。
-//     ★**中英各一份** ✓（★`README` 中英 ＋ `docs/INSTALL` 中英 ＋ `packages/cli/README` ✓）。
+//   ★**查法** ✗：★在五份文档里找"告诉人装哪个版本"的地方 ✓ ⇒ ★**那里的版本号必须等于 `package.json`** ✓。
+//   ★★★**而第一次写窄了** ✗✓（2026-10-10 15:0x 扩 ✓）：★原来只认「npm 上最新…是 X」这一种说法 ✓ ⇒
+//     ★★★**而★实测 `README` 的"快速开始"里有七处 `npx -y dsh-whale-post-cli@0.2.0`** ✗✓ ——
+//     ★★**它一处都没报** ✓ ⇒ ★★**而那是**最要命的一处**（★用户直接照抄的就是它 ✓）** ✓✓。
+//   ★★**格局的教训** ✗✓：★**判据只认"我记得的那种写法" ⇒ 换个写法它就成了摆设** ✓。
 const verDocs = ['README.md', 'README.en.md', 'docs/INSTALL.md', 'docs/INSTALL.en.md', 'packages/cli/README.md']
 const mineVer = JSON.parse(readFileSync(join(repo, 'package.json'), 'utf8')).version
 const verMismatch = []
+//   ★★**认全写法** ✗✓（★每一种都要能抓到版本号 ✓）：
+const VER_PATTERNS = [
+  // 「npm 上最新（已经）是 X」／"the latest on npm is (now) X"
+  /(?:npm \u4e0a\u6700\u65b0[\u5df2\u7ecf]*\u662f|the latest on npm is(?: now)?)\s*`?(\d+\.\d+\.\d+)`?/g,
+  // 「版本 X」／「版本号 X」
+  /(?:\u7248\u672c|\u7248\u53f7)\s*`?(\d+\.\d+\.\d+)`?/g,
+  // ★★**`npx …@X.Y.Z`** ✗✓ —— ★**这是用户直接照抄的那一处，★最要命 ✓**
+  /dsh-whale-post-cli@(\d+\.\d+\.\d+)/g,
+  // 「钉 **vX**」／"pin **vX**"
+  /(?:\u9489|pin)\s*\*\*`?v(\d+\.\d+\.\d+)`?\*\*/g,
+  // 「本仓库（也）是 X」／"this checkout is (already) X"
+  /(?:\u672c\u4ed3\u5e93[\u5df2\u4e5f]*\u7ecf?\u662f|this checkout is(?: already)?)\s*`?(\d+\.\d+\.\d+)`?/g,
+]
 for (const f of verDocs) {
   const p = join(repo, f)
   if (!existsSync(p)) continue
   const text = readFileSync(p, 'utf8')
-  //   ★抓"npm 上最新…`X.Y.Z`"这一句里的版本号 ✓（★中英两种说法都认 ✓）
-  for (const m of text.matchAll(/(?:npm \u4e0a\u6700\u65b0[\u5df2\u7ecf]*\u662f|the latest on npm is(?: now)?|已\u53d1\u4e0a npm|is published on npm|\u672c\u4ed3\u5e93[\u5df2\u4e5f]*\u7ecf?\u662f|this checkout is(?: already)?|\u9489 \*\*`?v?|pin \*\*`?v?)\s*`?v?(\d+\.\d+\.\d+)`?/g)) {
-    if (m[1] !== mineVer) verMismatch.push(`${f} 说 ${m[1]}（★实际 ${mineVer}）`)
+  for (const re of VER_PATTERNS) {
+    for (const m of text.matchAll(re)) {
+      if (m[1] && m[1] !== mineVer) verMismatch.push(`${f} 说 ${m[1]}（★实际 ${mineVer}）`)
+    }
   }
 }
 check('⑬ ★★文档说的"npm 上是哪个版本"**与 `package.json` 一致** ✗（★否则用户装到上一个版本 ✓）',
