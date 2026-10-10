@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { BASELINE, TOTAL } from './criteria-baseline.mjs'
+import { codeOnly } from './code-only.mjs'
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..')
 const only = process.argv.includes('--each')
@@ -29,8 +30,9 @@ import { readFileSync as _readFileSync, readdirSync as _readdirSync } from 'node
   for (const p of ['bus', 'roster', 'types', 'deliver', 'gate', 'verify', 'cli']) {
     let src = ''
     try { src = _readFileSync(join(repo, 'packages', p, 'index.js'), 'utf8') } catch { continue }
-    const codeOnly = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
-    if (/ctx\.whale\s*=|ctx\?\.whale\?\./.test(codeOnly)) offenders.push(p)
+    //   ★用共用的 `codeOnly`（★它会剥掉注释**与字符串**，★还认得正则 ✓）
+    //     ★★**旧写法只删注释、不删字符串** ✗ ⇒ ★一条合法的错误提示里只要写了 `ctx.whale =` 就会**误报** ✗✓
+    if (/ctx\.whale\s*=|ctx\?\.whale\?\./.test(codeOnly(src))) offenders.push(p)
   }
   console.log(`— ${'static'.padEnd(9)} ${offenders.length === 0 ? 'PASS  无 ctx.whale 属性读写（真引擎上会抛 without inject）' : 'FAIL  这几件还在读 ctx.whale：' + offenders.join('、')}`)
   if (offenders.length) process.exitCode = 1
