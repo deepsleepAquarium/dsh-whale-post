@@ -83,6 +83,11 @@ I searched all **14329** entries (the build stamped `builtAt: 2026-10-10T07:30:1
 **per-day quota buckets and quiet hours** / **fail-closed on unregistered fields**.
 **If any of the three is judged covered, we will drop that one** (**no argument**).
 
+**After submitting, I checked the descriptions against the source myself** (**the rules say descriptions must be accurate**) —
+**and two of the three were wrong**: `bus` claimed *"recipients come from a roster file"*, which is **not true of that package**
+(**the `roster` package reads the file; the core only asks an interface**), and `verify` said *fail-closed* **without mentioning that it ships disabled**.
+**Both are fixed on the same branch, and the PR says so.**
+
 **How the two differ**: **the shop (`dsh-plugin-shop`) is a shelf that harvests by itself** (**it has our six packages**);
 **this list is read by a person, and only takes the few worth a look**.
 
