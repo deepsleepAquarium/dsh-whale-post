@@ -33,7 +33,10 @@ node scripts/selftest-all.mjs && node scripts/racetest.mjs && node scripts/pkgch
   装 WebDAV 服务器 ＋ 共享夹 ＋ 低权账号 ⇒ 把远端根从"模拟邮筒"换成真地址
   —— **换一行配置**（`--remote` 或 `WHALE_POST_REMOTE_ROOT`）。
   **现成的零件**：`scripts/fake-phone.mjs`（五动作）＋ `send --remote`（投）＋ `pickup`（取＋回执镜像）。
-* **把 `quiet` 真正用起来**（`hello --quiet 22:00-09:00` —— **已能声明，而"班级内谁该声明"还是空的**）。
+* **把 `quiet` 真正用起来**（`hello --quiet 22:00-09:00` —— **机制齐了**：`hello` 信封里能同时带
+  `recv`（只收离线／能被叫醒）／`onlineCapPerDay`（自报上限）／`quiet`（勿扰时段），
+  **`bus.hello()` 三个都收**；**"谁该声明"早有答案：邮差自己声明**（设计文档 附录三 —— 花名册管身份、`hello` 管习惯），
+  ⇒ **要用起来，只需在我们自己的那次 `hello` 里把这三个字段填上**）。
 
 ### 乙、**要等维护者**（别自己动）
 

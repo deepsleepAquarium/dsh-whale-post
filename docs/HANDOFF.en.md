@@ -33,7 +33,11 @@ node scripts/selftest-all.mjs && node scripts/racetest.mjs && node scripts/pkgch
   install a WebDAV server + a share + a low-privilege account ⇒ point the remote root at a real address
   —— **a one-line config change** (`--remote` or `WHALE_POST_REMOTE_ROOT`).
   **The parts already exist**: `scripts/fake-phone.mjs` (five actions) + `send --remote` (deliver) + `pickup` (collect + mirror receipts).
-* **Actually use `quiet`** (`hello --quiet 22:00-09:00` —— **it can be declared, but "who in the tank should declare it" is still empty**).
+* **Actually use `quiet`** (`hello --quiet 22:00-09:00` —— **the machinery is complete**: the `hello` envelope can
+  carry `recv` (offline-only / can be woken), `onlineCapPerDay` (self-declared ceiling) and `quiet` (do-not-disturb
+  window), and **`bus.hello()` accepts all three**; and **"who should declare it" already has an answer: the courier
+  declares it itself** (design doc, appendix 3 —— the roster carries identity, `hello` carries habits),
+  ⇒ **to actually use it, just fill those three fields in our own `hello`**).
 
 ### B. **Waits on the keeper** (do not act on your own)
 
