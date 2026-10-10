@@ -6,7 +6,7 @@
  *      · `--body --force` 这种"参数冒充正文"必须 exit 2（否则能绕过三道闸）
  * 判据看退出码：0 过／非 0 不过。
  */
-import { spawnSync } from 'node:child_process'
+import { spawnSync, spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { mkdirSync, writeFileSync, readdirSync, readFileSync, unlinkSync, existsSync, statSync, utimesSync, copyFileSync } from 'node:fs'
@@ -354,6 +354,45 @@ check('没配 `--remote-only` ⇒ **照旧写本机** （不改旧行为）',
       return s.status === 0 && readdirSync(join(r, 'inbox', 'phone')).filter((f) => f.endsWith('.msg.json')).length === 1
     } catch { return false }
   })())
+
+// ③ 跨进程并发投递（2026-10-11 补）——
+//   **为什么补**：上面那条只测了"一个进程投一封"。而换成真共享夹之后，第一次会出现
+//   **两台机器同时写同一个共享夹**。判据里 `racetest` 测的是**进程内**并发（发号／记账）——
+//   **跨进程这一层原先没人测**，而它正是"信会不会丢"的那一层。
+//   **口径（事先写死）**：8 个进程同时 `send --remote` ⇒ ① 全退出码 0；② 一封不少、id 不重复；
+//   ③ 发号连号（0001…0008 ⇒ 并发没塌）；④ 无 `.tmp` 残骸；⑤ 收件人一次全读出。
+//   ⓘ **本机目录 ≠ 真 SMB**：这条测的是"逻辑上没有丢"，真共享夹的时延与文件锁还要在真机上复跑一次。
+const concRoot = join(process.env.TEMP ?? '/tmp', `whale-cli-conc-${Date.now()}`)
+const concLocal = join(concRoot, 'local'); const concShare = join(concRoot, 'share')
+const concRoster = JSON.stringify({ apiVersion: 1, members: [{ id: 'web' }, { id: 'phone', phone: true }] })
+for (const d of [concLocal, concShare]) { mkdirSync(d, { recursive: true }); writeFileSync(join(d, 'roster.json'), concRoster, 'utf8') }
+run(['hello', '--as', 'web', '--root', concLocal])
+run(['hello', '--as', 'phone', '--root', concShare])
+//   **8 个同时起** —— `stdio: 'ignore'`：沙箱下 piped stdio 会 EPERM，而这里不需要读它的输出
+const concSpawn = (args) => new Promise((res) => {
+  const p = spawn(process.execPath, [bin, ...args], { stdio: 'ignore' })
+  p.on('close', (code) => res(code))
+})
+const CONC_N = 8
+const concCodes = await Promise.all(Array.from({ length: CONC_N }, (_, i) => concSpawn([
+  'send', '--as', 'web', '--to', 'phone',
+  '--subject', `并发第 ${i + 1} 封`,
+  '--body', `正文有货，别当回执（并发 ${i + 1}/${CONC_N}）`,
+  '--root', concLocal, '--remote', concShare, '--remote-only', 'phone',
+])))
+const concInbox = join(concShare, 'inbox', 'phone')
+const concFiles = (() => { try { return readdirSync(concInbox).filter((f) => f.endsWith('.msg.json')) } catch { return [] } })()
+const concIds = concFiles.map((f) => f.replace(/\.msg\.json$/, ''))
+const concSeq = concFiles.map((f) => (f.split('-')[2] ?? '')).sort()
+const concTmp = (() => { try { return readdirSync(concInbox).filter((f) => f.includes('.tmp')).length } catch { return -1 } })()
+check('并发投递：8 个进程同时 `send --remote` ⇒ **全部退出码 0**', concCodes.every((c) => c === 0), JSON.stringify(concCodes))
+check('并发投递：**一封不少**、id 不重复（本机不留第二份）',
+  concFiles.length === CONC_N && new Set(concIds).size === CONC_N, concFiles.length + ' 封 / ' + new Set(concIds).size + ' 个 id')
+check('并发投递：**发号连号**（0001…0008 ⇒ 并发发号没塌）',
+  concSeq.join(',') === Array.from({ length: CONC_N }, (_, i) => String(i + 1).padStart(4, '0')).join(','), concSeq.join(','))
+check('并发投递：**无 `.tmp` 残骸**', concTmp === 0, String(concTmp))
+const concPump = run(['pump', '--as', 'phone', '--root', concShare])
+check('并发投递：收件人**一次全读出**（`pump` 退出码 0）', concPump.status === 0, String(concPump.status))
 
 for (const c of checks) console.log(`${c.ok ? 'PASS' : 'FAIL'}  ${c.name}${c.ok ? '' : '  :: ' + c.extra}`)
 const pass = checks.filter((c) => c.ok).length
