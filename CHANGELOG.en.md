@@ -71,7 +71,13 @@
 
 ★**All three keep a way back** ✗: ★`requireHello: 'reject'` / `offlineOnlyMode: 'reject'` ⇒ ★**an old deployment writing those sees no change at all** ✓.
 
-### ★★★ Read first (2): **mixed versions are not compatible** ✗✓ —— ★**the one thing to know during an upgrade**
+### ★★★ Read first (2): **across mixed versions, receipts are bounced by the old side** ✗✓ —— ★**the one thing to know during an upgrade**
+
+★★**One thing to state plainly first** ✗✓ (★corrected by measurement on 2026-10-10 ✓): ★**ordinary letters are interoperable** ✓.
+★From `0.3.0` onwards both sides have the **same signature domain** ✓ (★`recv` / `quiet` / `peerStateAtSend` are all present ✓)
+⇒ ★`0.3.0` sends ⇒ `0.4.0` receives: **works** ✓; ★`0.4.0` sends ⇒ `0.3.0` receives: **also works** ✓✓.
+★★**What does not work is the earlier step** ✗✓: ★between `0.2.0` and today's versions the **signature domain differs by 7 fields** ✓
+⇒ ★**letters (and receipts) sent by a new version are bounced by `0.2.0`** ✓ (★it reports "a field **not in the signature domain**" ✓).
 
 ★★ **Measured** (2026-10-10 ✓, ★running `npx …@0.2.0` against the checkout ✓):
 

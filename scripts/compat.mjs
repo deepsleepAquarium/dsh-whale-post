@@ -108,10 +108,16 @@ check('★★★老版发的信 ⇒ **本版收得下** ✗✓（★拆得开、
 // ── ② 本版发 ⇒ 老版收（★**报告**，不判红 ✗）
 const sendNew = runNew(['send', '--as', 'bob', '--to', 'alice', '--body', '本版发的信：正文有货，别当回执。'])
 check('③ 本版 `send` 退出码 0', sendNew.status === 0, `退出码 ${sendNew.status}`)
-const oldInboxBefore = inbox('alice').length
+//   ★★★**这里原来判错了** ✗✓（2026-10-10 修 —— ★★而它一直在**报告一句错话** ✓）：
+//     ★我写的是 `inbox('alice').length > oldInboxBefore` ✓ —— ★★而**`pump` 会把信**消费掉**（★收件箱**清空** ✓）**
+//     ⇒ ★★★**`inbox` 永远不会增长 ⇒ `reachedOld` 永远 `false`** ✗✓
+//     ⇒ ★**于是它一直打印"老版**收不到**"** ✗ —— ★★★**而实测老版收得到** ✓✓。
+//   ★★**这正是我在第 57 轮修过的**同一个坑** ✗✓（★"判收件箱 +1" ⇒ **该判 `seen/` 里的消费凭证** ✓）——
+//     ★**而这一处我漏了** ✓。★教训：★**同一个形状出现第二次时，要回头把别处也扫一遍** ✓。
+const oldSeenBefore = seenOf('alice').length
 const pumpOld = runOldVerbose(['pump', '--as', 'alice'])
-const reachedOld = inbox('alice').length > oldInboxBefore
-console.log(`\nⓘ **报告**（★不判红 ✗）：本版发的信，老版（${CLIVER}）${reachedOld ? '**收得到** ✓（★那条单向墙没了 ⇒ 该更新 CHANGELOG 的「必读（二）」）' : '**收不到** ✗（★已知 ✓ —— ★见 CHANGELOG「必读（二）：混跑时不兼容」）'}`)
+const reachedOld = seenOf('alice').length > oldSeenBefore
+console.log(`\nⓘ **报告**（★不判红 ✗）：本版发的信，老版（${CLIVER}）${reachedOld ? '**收得到** ✓（★两边签名域一致 ⇒ 普通信互通 ✓）' : '**收不到** ✗（★见 CHANGELOG「必读（二）：混跑时不兼容」✓）'}`)
 if (!reachedOld) {
   const why = String(pumpOld.stdout ?? '').split(/\r?\n/).find((l) => l.includes('未登记') || l.includes('签名域') || l.includes('退信'))
   if (why) console.log(`   老版说的是：${why.trim().slice(0, 140)}`)
