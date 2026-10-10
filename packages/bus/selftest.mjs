@@ -2,7 +2,7 @@
  * dsh-whale-post-bus 的**加载级自测**：真的 import、真的 apply、真的发一封、真的收一封。
  * 判据看退出码：0 过／非 0 不过。临时根，真数据零接触。
  */
-import { mkdirSync, writeFileSync, existsSync, readFileSync, readdirSync, unlinkSync } from 'node:fs'
+import { mkdirSync, writeFileSync, existsSync, readFileSync, readdirSync, unlinkSync, copyFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { apply, createBus, apiVersion } from './index.js'
 import { createRoster } from '../roster/index.js'
@@ -601,6 +601,38 @@ check('★★★`quiet`：勿扰时段内**即使有读者也不消费** ✗✓�
       const after = readdirSync(join(r, 'inbox', 'bob')).length
       // ★信还在 ✓ ＋ ★而理由说的是"勿扰"（★不是"没有读者" ✗）✓
       return before === 1 && after === 1 && out[0].kept === true && String(out[0].why).includes('勿扰')
+    } catch { return false }
+  })())
+// ★★★**“截断”那条路径：两道保险都在吗** ✗✓（2026-10-10 补）——
+//   ★★背景 ✗✓：`state.seen` 那个数组会被 `slice(-2000)` **截断** ✓ ——
+//     ★★★**而被截掉的 id 若再出现 ⇒ 会不会被当成“没读过”⇒ 重复消费** ✗✓？
+//   ★★答案 ✓：不会 ✓ —— ★判 `dup` 时**两路都看**（`bus/index.js` ✓）：
+//     · ★★`state.seen` 数组（★会被截 ✗）；
+//     · ★★★**`seen/<我>/<id>.msg.json` 那个文件**（★**永不被截** ✓）。
+//   ★★为什么这条要单独钉 ✗✓：★**它靠的是那个 `existsSync`** ✓ ——
+//     ★★将来有人“优化”掉它（★比如“数组已经够了，不用再查盘” ✗）
+//     ⇒ ★**截断之后就真的会重复消费** ✗✓。
+check('★★★状态数组被**截空**、而 `seen/` 文件还在 ⇒ **仍判重复** ✗✓（★两道保险 ✓）',
+  (() => {
+    try {
+      const r = join(tmp, 'trunc'); mkdirSync(r, { recursive: true })
+      const rf = join(r, 'roster.json')
+      writeFileSync(rf, JSON.stringify({ apiVersion: 1, members: [{ id: 'alice' }, { id: 'bob' }] }), 'utf8')
+      const bu = createBus({ root: r, services: { roster: createRoster({ file: rf }) } })
+      bu.hello({ as: 'alice' }); bu.hello({ as: 'bob' })
+      const s = bu.send({ as: 'alice', to: 'bob', mode: 'offline', type: 'direct', body: '截断测试（★正文有货，别当回执）' })
+      const first = bu.pump({ as: 'bob', reader: true })
+      if (!first.length || first[0].dup) return false           // ★第一次该不是 dup ✓
+      //   ★★模拟“被截断”：把 `state.seen` 数组**清空** ✓（★而 `seen/` 文件**不动** ✓）
+      const stPath = join(r, 'state', 'bob.json')
+      const st = JSON.parse(readFileSync(stPath, 'utf8'))
+      st.seen = []
+      writeFileSync(stPath, JSON.stringify(st, null, 2), 'utf8')
+      //   ★把同一封信**放回收件箱**（★模拟“同一封又来了” ✓）
+      const fname = s.id + '.msg.json'
+      copyFileSync(join(r, 'seen', 'bob', fname), join(r, 'inbox', 'bob', fname))
+      const second = bu.pump({ as: 'bob', reader: true })
+      return second.length === 1 && second[0].dup === true
     } catch { return false }
   })())
 } catch (err) {

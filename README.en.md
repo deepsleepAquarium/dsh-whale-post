@@ -108,7 +108,10 @@ node packages/cli/index.js selftest  # ★check the exit code
   (★and the quota ledger is **money**, with **no fallback at all** ✓); ★it now writes **one increment file per entry**
   (★"each writes its own file" —— the same cure the original used for `ack` ✓) ⇒ ★**not a single entry may be lost** ✓.
   ★11 criteria in all ✓.
-  ★**Still untested** ✗: the truncation path once the `seen` state array grows very long (hand-crafted only).
+  ★★★**That truncation path is now a criterion** ✗✓ (2026-10-10): the `seen` state array **is truncated** by `slice(-2000)` ✓ ——
+  ★★and "have I read this" has **two layers of insurance** ✓: ★the `state.seen` array (★which does get truncated ✓) + ★**the file `seen/<me>/<id>.msg.json` (★which never is ✓)**.
+  ★★The criterion builds the **harshest scene**: ★empty the state array, ★put the same letter **back into the inbox** ⇒ ★**it must still count as a duplicate** ✓✓;
+  ★**and the negative test proves it**: ★remove only the `existsSync` branch ⇒ ★**the criterion goes red immediately** ✓.
 * ★★**Cross-package consistency** ✗✓ (added 2026-10-10): `node scripts/xcheck.mjs` —— ★**six items** (★digest / signature domain / **MAC** / legacy fields / day boundary / "the name says what it is" ✓);
   ★it watches ★**"is one thing computed in two places still equal"** ✓ (★we hit that shape twice ✓).
 * ★★**Which version to pin** ✗✓: ★**`0.4.0` is published on npm** ✓ (★that is what the `npx` lines above install ✓,
