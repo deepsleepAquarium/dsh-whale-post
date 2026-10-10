@@ -15,11 +15,11 @@
  *
  * ★用法 ✗：`node scripts/check-install.mjs`（★会真建 profile、真启一次，约 1 分钟 ✓）
  */
-import { existsSync, readFileSync, rmSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync, readdirSync, mkdirSync, copyFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { homedir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..')
 const parts = ['bus', 'roster', 'types', 'deliver', 'gate', 'verify', 'cli']
@@ -66,6 +66,35 @@ try {
   const bOut = String(b.stdout ?? '') + String(b.stderr ?? '')
   const errs = bOut.split(/\r?\n/).filter((l) => /Error|failed|registered|Cannot find/.test(l)).length
   say(b.status === 0 && errs === 0, '⑤ 真启退出码 0、没有错误行（★只说明"没炸"，★装没装上要看 ③④）', `退出码 ${b.status}，错误行 ${errs}`)
+
+  // ── ⑦ ★文档里的命令真跑一遍（★照 `example/README.md` 第三节 ✓）────────
+  //   ★★**为什么要它** ✗✓（2026-10-10）：★`example/README` 那节自称"跑一次（判据：退出码）" ✓ ⇒
+  //     ★**而"自称"要真跑才算数** ✓ —— ★这一轮我手动跑通了 ✓，★**而手动跑过的东西下次还得再跑** ✗ ⇒ ★**并进来** ✓✓。
+  //   ★**做法** ✗：★在一个**临时邮局**里照那七条走 ✓（★`--root` 指临时目录 ⇒ ★**不碰真数据** ✓）。
+  const mail = join(tmpdir(), 'whale-checkinstall-mail-' + Date.now())
+  try {
+    mkdirSync(mail, { recursive: true })
+    copyFileSync(join(repo, 'example', 'roster.json'), join(mail, 'roster.json'))
+    const cli = join(repo, 'packages', 'cli', 'index.js')
+    const steps = [
+      ['hello', '--as', 'alice', '--root', mail],
+      ['hello', '--as', 'bob', '--root', mail],
+      ['send', '--as', 'alice', '--to', 'bob', '--subject', '第一封', '--body', '离线件：等你来收', '--root', mail],
+      ['pump', '--as', 'bob', '--root', mail],
+      ['quota', '--as', 'alice', '--root', mail],
+      ['send', '--as', 'alice', '--to', 'bob', '--mode', 'online', '--live', 'bob', '--subject', '要你动手', '--body', '在线件', '--root', mail],
+    ]
+    let failed = 0
+    for (const s of steps) {
+      const r = spawnSync(process.execPath, [cli, ...s], { encoding: 'utf8' })
+      if (r.status !== 0) { failed++; console.log('        ★ ' + s[0] + ' 退出码 ' + r.status + ' :: ' + String(r.stderr ?? '').split(/\r?\n/)[0]) }
+    }
+    say(failed === 0, '⑦ 照 example/README 第三节跑六条命令（★退出码全 0 ✓）', failed ? failed + ' 条不过' : '')
+  } catch (e) {
+    say(false, '⑦ 跑文档命令时出错', String(e.message).slice(0, 80))
+  } finally {
+    try { rmSync(mail, { recursive: true, force: true }) } catch { /* 删不掉就留着 */ }
+  }
 } finally {
   // ── ⑥ 收摊：★删掉那个一次性 profile（★不留垃圾 ✓）──────────────────
   try {
