@@ -8,6 +8,29 @@
 
 ---
 
+## Before step 0: **decide the version number first** (the step most easily skipped —— and skipping it ships the wrong number)
+
+**Ask one question**: **did the interface or the behaviour change this time?**
+
+| What changed | Which number goes up | How it moves |
+|---|---|---|
+| The **interface** (a new method / exit) **or the behaviour** (same input, different result) | the **middle** number | **middle number plus one, last number back to zero** |
+| **Documentation only, or a fix that changes no behaviour** | the **last** number | **last number plus one** |
+
+**Why this deserves its own step** (from an actual run on 2026-10-11):
+
+> That time `gate` gained the public interface `recount` and `cli` gained the `reconcile` command ——
+> **both the interface and the behaviour changed**, and only the last number moved. The rule was
+> **already written down in two places** (`CONTRIBUTING` section 1 and the "version policy" note at the end
+> of this file). **The harm was real**: anyone whose dependency range used the caret silently picked up a
+> behaviour change —— and keeping "may change" apart from "will not change" is exactly what the middle
+> number is for. So a rule parked in a cheat sheet does not work: **put it where the decision is made**.
+
+**And read the "documentation only" line carefully**: it means **documentation only**; if any code moved at
+all (even adding one exit), follow the row above.
+
+---
+
 ## Step 0: run four things first; **all green before you ship**
 
 ```bash
