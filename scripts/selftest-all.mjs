@@ -12,6 +12,14 @@ import { BASELINE, TOTAL } from './criteria-baseline.mjs'
 import { codeOnly } from './code-only.mjs'
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..')
+//   ★★**非"包项"的守卫失败了，也必须影响退出码** ✗✓（2026-10-11 修）——
+//     文件末尾是 `process.exit(failed ? 1 : 0)` ✓，★而 `failed` **只统计七个包** ✗ ⇒
+//     ★`static`（"源码里不许读写 `ctx.whale`"）与 `docs`（交接文档的判据条数）★**原先只设 `process.exitCode`** ✓
+//     ⇒ ★**被末尾那句盖掉** ✗✓ ⇒ ★**它们喊了、而退出码照样是 0** ✓ —— ★**一个不被看的守卫等于没有** ✓。
+//   ⓘ **怎么发现的**：★2026-10-11 给 `docs` 加判据后，按 `CONTRIBUTING` 那条
+//     "★**随便改坏一行、自测必须变红**"做**负向测试** ⇒ ★**它 FAIL 了、而退出码还是 0** ✓✓
+//     —— ★★**负向测试抓出来的不是新代码的错、★是旧代码的错** ✓（★`static` 一直如此 ✓）。
+let extrasFailed = false
 const only = process.argv.includes('--each')
 //   `--update-baseline`：把"现在每件多少条"写回基准 （**显式动作** ⇒ 删判据时糊弄不过去）
 const updateBaseline = process.argv.includes('--update-baseline')
@@ -35,7 +43,32 @@ import { readFileSync as _readFileSync, readdirSync as _readdirSync } from 'node
     if (/ctx\.whale\s*=|ctx\?\.whale\?\./.test(codeOnly(src))) offenders.push(p)
   }
   console.log(`— ${'static'.padEnd(9)} ${offenders.length === 0 ? 'PASS  无 ctx.whale 属性读写（真引擎上会抛 without inject）' : 'FAIL  这几件还在读 ctx.whale：' + offenders.join('、')}`)
-  if (offenders.length) process.exitCode = 1
+  if (offenders.length) { process.exitCode = 1; extrasFailed = true }
+}
+// ★★ 交接文档里的"判据条数"必须等于基准总数（2026-10-11 加）——
+//   **为什么加**：`docs/HANDOFF` 的状态表里写着「**判据 <N> 条**」，而**没有判据守它** ✗ ⇒
+//     它从 360 → 365 → 367 **一路靠人手工改**；而 `doccheck` 比中英结构、`pkgcheck` 比包元数据，
+//     **都不看这个数** ⇒ ★**它只会慢慢变旧，而"照旧数字去理解这套判据"就会判断错** ✓。
+//   ⓘ **中英两份都查** ✓ —— `doccheck` 保证的是**结构**对等，**保证不了两个数字相等** ✗
+//     （2026-10-11 就出过一次：中文改了、英文没跟上，而 `doccheck` 仍是 5/5）。
+//   ⓘ **方向是单向的**：★这里查的是"**文档说的 ＝ 基准的总数**" ✓（基准是真相 ✓），
+//     而不是"两边都要改"那种写法 —— **只许文档跟基准，不许基准跟文档** ✓。
+{
+  const want = Number(TOTAL)
+  const say = []
+  for (const [rel, re] of [
+    ['docs/HANDOFF.md', /\*\*判据\*\*\s*\|\s*\*\*(\d+)\s*条\*\*/],
+    ['docs/HANDOFF.en.md', /\*\*criteria\*\*\s*\|\s*\*\*(\d+)\*\*/],
+  ]) {
+    let n = null
+    try { const m = readFileSync(join(repo, rel), 'utf8').match(re); if (m) n = Number(m[1]) } catch { /* 读不到 ⇒ 当作没写 */ }
+    say.push({ rel, n })
+  }
+  const bad = say.filter((s) => s.n !== want)
+  console.log(`— ${'docs'.padEnd(9)} ${bad.length === 0
+    ? 'PASS  交接文档里的判据条数 ＝ 基准总数（' + want + '，中英一致）'
+    : 'FAIL  ' + bad.map((s) => s.rel + ' 说 ' + (s.n ?? '没找到')).join('；') + '，而基准是 ' + want + ' 条'}`)
+  if (bad.length) { process.exitCode = 1; extrasFailed = true }
 }
 for (const p of items) {
   const file = join(repo, 'packages', p, 'selftest.mjs')
@@ -198,7 +231,11 @@ if (updateBaseline) {
   if (notRun.length) console.log(`  ⓘ 这几件这次没跑到 ⇒ 它们的数字没动：${notRun.join('、')}`)
 }
 
-const failed = bad3.length > 0 || shrank.length > 0
+const failed = bad3.length > 0 || shrank.length > 0 || extrasFailed
+//   ★★**汇总那句话也要对** ✗✓：★"全过：七件都全过"说的是**七个包项** ✓ ——
+//     ★而 `static`／`docs` **不在那七项里** ✗ ⇒ ★它们红了的时候，★上面那行会**照样打"全过"** ✓✓
+//     ⇒ ★**退出码对、话不对，一样会骗人** ✓ ⇒ 这里补一句说清 ✓（2026-10-11 加）。
+if (extrasFailed) console.log('★ 注意：上面有**非"包项"的守卫**没过（`static` 或 `docs`）—— 七个包项全过**不等于**整个自测过')
 // 另有一个**并发压测**不在这里跑 （它起十几个真子进程、慢一些）：
 //   `node scripts/racetest.mjs` —— **改了发号或落盘就要跑它** （发号撞号只在那里才看得见）
 console.log('ⓘ 另有并发压测：node scripts/racetest.mjs（改了发号／落盘就一定要跑）')
