@@ -13,7 +13,7 @@
 |---|---|
 | **all seven on npm** | **`0.5.2`** (`bus` / `roster` / `types` / `deliver` / `gate` / `verify` / `cli`) |
 | **tags** | **`v0.1.0` / `v0.2.0` / `v0.3.0` / `v0.4.0` / `v0.5.0` / `v0.5.1` / `v0.5.2`** (**pin `v0.5.2`**) |
-| **criteria** | **365** (`npm run selftest` **11 items**) |
+| **criteria** | **367** (`npm run selftest` **11 items**) |
 | **tools** | `racetest`(11) / `xcheck`(6) / `doccheck`(5) / `pkgcheck`(17) / `compat`(5) / `check:imports` (scans 30 files) / `check:install` (7 steps, real install + boot) |
 | **the pre-commit gate** | **install it first**: `npm run hooks:install` (local configuration —— **a fresh clone will not have it**); once installed, `git commit` runs `selftest` automatically, **bypassing requires an explicit `--no-verify`** |
 
@@ -38,15 +38,12 @@ node scripts/selftest-all.mjs && node scripts/racetest.mjs && node scripts/pkgch
   window), and **`bus.hello()` accepts all three**; and **"who should declare it" already has an answer: the courier
   declares it itself** (design doc, appendix 3 —— the roster carries identity, `hello` carries habits),
   ⇒ **to actually use it, just fill those three fields in our own `hello`**).
-* **Add a "reconciliation" command for the ledger** (design doc, appendix 2 · **the second half of S6h ⑤** —— the
-  first half is done, **this half is not**): **recompute a ledger from the filesystem** (scan `seen/` plus the
-  markers already counted), so the ledger can be *checked* rather than only trusted.
-  Today: `gate`'s ledger is "**a base file + increment files**" (`state/quota-<as>.json` +
-  `state/quota-<as>.d/*.json`) with the rule "**the count may be low, never high**" (a crash may under-count ⇒
-  in the sender's favour, **never double-count**) —— and **nothing can recompute it**: `rebuild` / `recount` /
-  `recompute` / 对账 appear **0 times** in the whole repository, and the CLI has no such subcommand.
-  Why it matters: it is what the design doc calls "**the foundation of 'the ledger is optional'**" —— without a
-  recomputation the ledger can only be believed, never verified.
+
+**(The former item here, "add a reconciliation command for the ledger", was finished on 2026-10-11** ⇒ moved out
+of "next steps": `whale-post reconcile --as <who> [--days N] [--remote <root>]` —— `gate` gained `recount()` and
+the CLI gained `reconcile`; the ground rules and "**what can and cannot be recomputed**" are written in the
+`reconcile` comments, and the usage is in `packages/cli/README` (both languages). **Letters sent to the remote
+side are not on this machine** ⇒ by default only the local root is counted; pass `--remote` to include it.)
 
 ### B. **Waits on the keeper** (do not act on your own)
 

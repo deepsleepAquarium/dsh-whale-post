@@ -154,27 +154,10 @@ export function createGate(config = {}) {
     for (const f of files) {
       let x
       try { x = JSON.parse(readFileSync(join(incrDir(as), f), 'utf8')) } catch { continue }   // 读不出来的那一笔**跳过** （下次还在）
-      const day = x.day
-      if (!day) continue
-      const d = out.days[day] ?? (out.days[day] = { letters: 0, units: 0, byBucket: {}, recent: [] })
-      d.byBucket = d.byBucket ?? {}
-      d.letters = Number(d.letters ?? 0) + Number(x.letters ?? 0)
-      d.units = Number(d.units ?? 0) + Number(x.units ?? 0)
-      d.bytes = Number(d.bytes ?? 0) + Number(x.bytes ?? 0)
-      if (x.forced) d.forced = Number(d.forced ?? 0) + Number(x.forced)
-      if (x.offlineLetters) d.offlineLetters = Number(d.offlineLetters ?? 0) + Number(x.offlineLetters)
-      for (const [k, v] of Object.entries(x.byBucket ?? {})) {
-        const t = d.byBucket[k] ?? (d.byBucket[k] = { letters: 0, units: 0, over: 0, feeCent: 0 })
-        t.letters = Number(t.letters ?? 0) + Number(v.letters ?? 0)
-        t.units = Number(t.units ?? 0) + Number(v.units ?? 0)
-        t.over = Number(t.over ?? 0) + Number(v.over ?? 0)
-        t.feeCent = Number((Number(t.feeCent ?? 0) + Number(v.feeCent ?? 0)).toFixed(4))
-      }
-      for (const [k, v] of Object.entries(x.byPhone ?? {})) {
-        d.byPhone = d.byPhone ?? {}
-        d.byPhone[k] = Number(d.byPhone[k] ?? 0) + Number(v)
-      }
-      if (x.recent) d.recent = [...(d.recent ?? []), ...x.recent].slice(-200)
+      if (!x.day) continue
+      //   2026-10-11：合并那段抽成 `mergeIncrement` —— **`recount`（对账重算）用的是同一个**
+      //     ⇒ "读账"与"重算"不可能各写一套（那正是 `xcheck` 防的静默漂移）。
+      mergeIncrement(out.days, x)
       if (x.recentTop) out.recent = [...(out.recent ?? []), ...x.recentTop].slice(-200)
     }
     return out
@@ -316,16 +299,42 @@ export function createGate(config = {}) {
     const as = letter.as ?? letter.from                       // 信封里字段叫 from，check 里叫 as —— 两处都认
     const tg = Array.isArray(targets) && targets.length ? targets : (letter.targets ?? [letter.to])
     const j = load(as)                                        // 只读 （算越额基准用）
-    const day = localDay(letter.sentAtMs ?? clockMs())
-    const d = j.days[day] ?? { letters: 0, units: 0, byBucket: {}, recent: [] }
-    const bucket = bucketOf(letter)
-    const cap = cfg.quota.types[bucket] ?? { label: bucket, limit: cfg.quota.defaultLimit }
+    //   2026-10-11：增量改由 `incrementFor` 生产 —— **与 `recount`（对账重算）同一条生产线**，
+    //     于是"重算与记账漂移"在结构上不可能。这里只补两件"**记账那一刻才知道**"的事：
+    //     `over`（越了多少）与 `feeCent`（计费）—— 它们取决于当时读到的已用量，事后重算必然不同，
+    //     所以 `recount` 那边**不假装能算**它们（照实列进 notComparable）。
+    const built = incrementFor(letter, tg)
+    const { inc, bucket, cap, units, bytes } = built
+    const d = j.days[inc.day] ?? { letters: 0, units: 0, byBucket: {}, recent: [] }
     const b = (d.byBucket ?? {})[bucket] ?? { letters: 0, units: 0, over: 0, feeCent: 0 }
-    const units = quotaUnits({ ...letter, targets: tg }, { resolve: (id) => cfg.quota.types[id] }, bucket)
     const over = Number.isFinite(cap.limit) ? Math.max(0, b.units + units - cap.limit) : 0
     const charge = Math.min(units, over)
-    const bytes = Buffer.byteLength(letter.body ?? '', 'utf8')
     const feeCent = Number.isFinite(cap.limit) ? charge * cfg.quota.feePerUnitCent + (bytes * charge / Math.max(1, units) / 200) * cfg.quota.feePer200BCent : 0
+    inc.byBucket[bucket].over = charge
+    inc.byBucket[bucket].feeCent = Number(feeCent.toFixed(4))
+    //   **各写各的** —— 文件名带时间戳 ＋ 随机 ⇒ 两个进程只会写两个**不同**的文件 
+    const dir = incrDir(as)
+    mkdirSync(dir, { recursive: true })
+    const name = `${String(Date.now()).padStart(13, '0')}-${randomUUID().slice(0, 8)}.json`
+    atomic(join(dir, name), JSON.stringify(inc, null, 2))
+    return { bucket, units, used: b.units + units, limit: cap.limit, over: charge, feeCent }
+  }
+
+  /**
+   * 把"一封信"变成"一条增量" —— **`record` 与 `recount` 共用这一个**（2026-10-11 抽出来）。
+   *
+   * **为什么抽** ✗✓：`recount`（对账：从文件系统重算一份账）必须和**记账**用**同一套规则** ——
+   *   否则两边会静默地漂（那正是 `xcheck` 存在的理由："同一件事在两处各算一次，再怎么写注释都会漂"）。
+   *   抽出来之后，"漂移"在结构上就不可能：两边**同一条生产线上出的货**。
+   * **不含什么** ✗：`over`／`feeCent` 由**调用方**补 —— 它们取决于"**记账那一刻**读到的已用量"，
+   *   事后重算必然不同 ⇒ 那两个数**天生不属于**"可从文件重算"的部分。
+   */
+  function incrementFor(letter, tg, atMsOverride) {
+    const day = localDay(atMsOverride ?? letter.sentAtMs ?? clockMs())
+    const bucket = bucketOf(letter)
+    const cap = cfg.quota.types[bucket] ?? { label: bucket, limit: cfg.quota.defaultLimit }
+    const units = quotaUnits({ ...letter, targets: tg }, { resolve: (id) => cfg.quota.types[id] }, bucket)
+    const bytes = Buffer.byteLength(letter.body ?? '', 'utf8')
     const inc = {
       day,
       letters: 1,
@@ -333,22 +342,75 @@ export function createGate(config = {}) {
       bytes,
       ...(letter.force ? { forced: 1 } : {}),
       ...(bucket === 'offline' ? { offlineLetters: 1 } : {}),
-      byBucket: { [bucket]: { letters: 1, units, over: charge, feeCent: Number(feeCent.toFixed(4)) } },
+      byBucket: { [bucket]: { letters: 1, units, over: 0, feeCent: 0 } },
       // S8：数"今天叫醒过某个收件人几次" —— 只数**在线件** （离线件躺着等人，不算叫醒）
       ...(letter.mode !== 'offline' ? { byPhone: Object.fromEntries(tg.map((t) => [String(t), 1])) } : {}),
       // `recent` 是"**叫醒记录**" —— 只记**在线件** （2026-10-10 改）——
-      //   离线件**豁免整套回环闸** ⇒ 让它占满 `recent` 会把后面的**在线件**误拦 
+      //   离线件**豁免整套回环闸** ⇒ 让它占满 `recent` 会把后面的**在线件**误拦
       ...(letter.mode !== 'offline'
         ? { recent: [{ to: letter.to, atMs: letter.sentAtMs ?? clockMs() }], recentTop: [{ to: letter.to, atMs: letter.sentAtMs ?? clockMs() }] }
         : {}),
       atMs: clockMs(),
     }
-    //   **各写各的** —— 文件名带时间戳 ＋ 随机 ⇒ 两个进程只会写两个**不同**的文件 
-    const dir = incrDir(as)
-    mkdirSync(dir, { recursive: true })
-    const name = `${String(Date.now()).padStart(13, '0')}-${randomUUID().slice(0, 8)}.json`
-    atomic(join(dir, name), JSON.stringify(inc, null, 2))
-    return { bucket, units, used: b.units + units, limit: cap.limit, over: charge, feeCent }
+    return { inc, bucket, cap, units, bytes }
+  }
+
+  /**
+   * 把一条增量并进"按天的账" —— **`report`（读增量文件）与 `recount`（合并重算结果）共用**。
+   * 抄的是原来 `report` 里那段循环体，一字未改语义（全是累加 ⇒ 加的顺序不影响结果）。
+   */
+  function mergeIncrement(days, inc) {
+    const day = inc.day
+    if (!day) return days
+    const d = days[day] ?? (days[day] = { letters: 0, units: 0, byBucket: {}, recent: [] })
+    d.byBucket = d.byBucket ?? {}
+    d.letters = Number(d.letters ?? 0) + Number(inc.letters ?? 0)
+    d.units = Number(d.units ?? 0) + Number(inc.units ?? 0)
+    d.bytes = Number(d.bytes ?? 0) + Number(inc.bytes ?? 0)
+    if (inc.forced) d.forced = Number(d.forced ?? 0) + Number(inc.forced)
+    if (inc.offlineLetters) d.offlineLetters = Number(d.offlineLetters ?? 0) + Number(inc.offlineLetters)
+    for (const [k, v] of Object.entries(inc.byBucket ?? {})) {
+      const t = d.byBucket[k] ?? (d.byBucket[k] = { letters: 0, units: 0, over: 0, feeCent: 0 })
+      t.letters = Number(t.letters ?? 0) + Number(v.letters ?? 0)
+      t.units = Number(t.units ?? 0) + Number(v.units ?? 0)
+      t.over = Number(t.over ?? 0) + Number(v.over ?? 0)
+      t.feeCent = Number((Number(t.feeCent ?? 0) + Number(v.feeCent ?? 0)).toFixed(4))
+    }
+    for (const [k, v] of Object.entries(inc.byPhone ?? {})) {
+      d.byPhone = d.byPhone ?? {}
+      d.byPhone[k] = Number(d.byPhone[k] ?? 0) + Number(v)
+    }
+    if (inc.recent) d.recent = [...(d.recent ?? []), ...inc.recent].slice(-200)
+    return days
+  }
+
+  /**
+   * **对账的重算那一半**：从"信"重算一份按天的账（设计文档 附录二 · S6h ⑤ 的后半）。
+   *
+   * 用法：调用方（`cli reconcile`）去**扫文件系统**（`inbox/*` ＋ `seen/*` ⇒ 每封信一条 entry），
+   *   把 `{ letter, atMs }` 交进来；**日界用 `localDay()`**、**桶与单位用 `bucketOf`／`quotaUnits`**
+   *   —— 与 `record` **同一条生产线** ⇒ 不会漂。
+   *
+   * ⚠️ **能从文件重算的**（`comparable`）：`letters`／`units`／`bytes`／`byBucket.<桶>.{letters,units}`。
+   * ⚠️ **不能的**（`notComparable`，**必须照实说、不许假装能算**）：
+   *   · `forced` —— "用没用 `force`"是**发送那一刻的选择**，信里不留痕；
+   *   · `over`／`feeCent` —— 取决于**记账当时**读到的已用量，事后必然不同；
+   *   · `byPhone` —— 是记账时的收件端属性（不是信里的字段）；
+   *   · `recent`／`recentTop` —— 那是**收据**（给人看的），不是计数。
+   */
+  function recount(entries = []) {
+    const days = {}
+    for (const e of entries) {
+      const letter = e.letter ?? e
+      const tg = Array.isArray(letter.targets) && letter.targets.length ? letter.targets : (letter.to === undefined ? [] : [letter.to])
+      const { inc } = incrementFor(letter, tg, e.atMs)
+      mergeIncrement(days, inc)
+    }
+    return {
+      days,
+      comparable: ['letters', 'units', 'bytes', 'byBucket.<bucket>.letters', 'byBucket.<bucket>.units'],
+      notComparable: ['forced', 'over', 'feeCent', 'byPhone', 'recent'],
+    }
   }
 
   /** 查账（只读）：某人的今日与近 n 天 */
@@ -364,7 +426,7 @@ export function createGate(config = {}) {
     return { as, today: j.days[localDay()] ?? null, spanDays: keys.length, ...sum, days: j.days ?? {},
       buckets: Object.keys(cfg.quota.types).map((t) => ({ bucket: t, limit: cfg.quota.types[t].limit, used: Number(j.days[localDay()]?.byBucket?.[t]?.units ?? 0) })) }
   }
-  return { apiVersion, check, record, report, cfg, localDay, quotaUnits }
+  return { apiVersion, check, record, report, recount, cfg, localDay, quotaUnits, bucketOf }
 }
 
 export function apply(ctx, config = {}) {

@@ -670,6 +670,85 @@ function main() {
       if (services.gate.cfg.quota.onOver === 'price') console.log('（闸在 price 档：越额照发，只记账）')
       return 0
     }
+    if (cmd === 'reconcile') {
+      //  ★对账（设计文档 附录二 · S6h ⑤ 的后半）：**从文件系统重算一份账**，再跟台账逐日逐桶比。
+      //    为什么要有它：台账是"基线 ＋ 增量文件"，**只能信、不能验** ⇒ 这一条是"账本可选"的地基。
+      //    ★口径：日界用 `localDay(letter.sentAtMs ?? 文件 mtime)` —— **与 `record()` 同一个来源**
+      //      （`record` 用 `letter.sentAtMs ?? clockMs()`；信里没有 `sentAtMs` 时退回**落盘时刻**，
+      //       那是这台机器上唯一还找得到的时刻）；桶与单位**复用 `gate` 的 `bucketOf`／`quotaUnits`**
+      //      ⇒ 与记账**同一条生产线**（"重算与记账漂移"因此在结构上不可能）。
+      //    ⚠️ **不能算的照实说**：`forced`（force 是发送那一刻的选择、信里不留痕）、`over`／`feeCent`
+      //      （取决于记账当时读到的已用量）、`byPhone`／`recent`（记账时属性与收据，不是计数）。
+      //    ⚠️ **投到远端的信不在本机** ⇒ 默认只算本机根；要连远端一起算就带 `--remote`。
+      const as = opt('as')
+      if (!as) die(2, '对账要指定 --as <谁>（对的是"这个人发信"的那本账）')
+      const days = Number(opt('days', 7)) || 7
+      const remoteR = opt('remote') ?? process.env.WHALE_POST_REMOTE_ROOT
+      const entries = []
+      const seenIds = new Set()
+      const scan = (base) => {
+        if (!base || !existsSync(base)) return 0
+        let n = 0
+        for (const box of ['inbox', 'seen']) {
+          const dir = join(base, box)
+          let ws = []
+          try { ws = readdirSync(dir) } catch { continue }
+          for (const w of ws) {
+            let fs2 = []
+            try { fs2 = readdirSync(join(dir, w)) } catch { continue }
+            for (const f of fs2) {
+              if (!f.endsWith('.msg.json')) continue
+              const p = join(dir, w, f)
+              let letter
+              try { letter = JSON.parse(readFileSync(p, 'utf8')) } catch { continue }
+              if ((letter.from ?? letter.as) !== as) continue
+              const id = letter.id ?? f
+              if (seenIds.has(id)) continue        // 同一封信可能两边都在（pickup 是"先写本地、再删远端"）
+              seenIds.add(id)
+              let atMs
+              try { atMs = statSync(p).mtimeMs } catch { atMs = undefined }
+              entries.push({ letter, atMs })
+              n++
+            }
+          }
+        }
+        return n
+      }
+      //  ⚠️ 根要用 `wireRoot()` 自己算 —— **不能引用 `wire()` 里那个块作用域的 `r`** ✗
+      //     （2026-10-11 第一版就写成 `scan(r)` ⇒ 跑起来 `ReferenceError: r is not defined`，
+      //      而 `node --check` **语法全过** ⇒ 只有真跑才炸。仓里 `remoteOnlyFlag` 那次也是同一类。）
+      const localR = wireRoot()
+      const nLocal = scan(localR)
+      const nRemote = remoteR ? scan(remoteR) : 0
+      const rec = services.gate.recount(entries)
+      const rep = services.gate.report({ as, days })
+      const keys = [...new Set([...Object.keys(rep.days ?? {}), ...Object.keys(rec.days ?? {})])].sort().slice(-days)
+      let bad = 0
+      const one = (d, name, x, y) => {
+        const al = Number(x?.letters ?? 0); const bl = Number(y?.letters ?? 0)
+        const au = Number(x?.units ?? 0); const bu = Number(y?.units ?? 0)
+        const diff = al !== bl || au !== bu
+        if (diff) bad++
+        console.log(`  ${d}  ${String(name).padEnd(14)}${String(al + ' 封/' + au + ' 单位').padEnd(16)}${String(bl + ' 封/' + bu + ' 单位').padEnd(16)}${diff ? '★ 不一致' : '✓'}`)
+      }
+      console.log(`对账：as=${as}　最近 ${days} 天　根=本机${remoteR ? ' ＋ 远端 ' + remoteR : '（只有本机；远端那一半看不见）'}`)
+      console.log(`  扫到：本机 ${nLocal} 封${nRemote ? ' ＋ 远端 ' + nRemote + ' 封' : ''}（按 id 去重后 ${entries.length} 封）`)
+      console.log('  day         桶              台账            重算            差')
+      for (const d of keys) {
+        const a = rep.days?.[d] ?? {}
+        const b = rec.days?.[d] ?? {}
+        const bs = [...new Set([...Object.keys(a.byBucket ?? {}), ...Object.keys(b.byBucket ?? {})])].sort()
+        if (!bs.length) one(d, '（全部）', a, b)
+        for (const k of bs) one(d, k, a.byBucket?.[k], b.byBucket?.[k])
+      }
+      console.log(`  没比的项：${rec.notComparable.join('、')}（文件里没有这些事实 ⇒ 不许假装能算）`)
+      if (bad) {
+        console.log(`★ 有 ${bad} 处对不上。差从哪来：① 记账那一步没跑到（口径允许"少记"）；② 信被删或被搬走；③ 日界；④ 远端那一半没算进来`)
+        return 3
+      }
+      console.log('✓ 一致（能比的那几项，逐日逐桶都对得上）')
+      return 0
+    }
     if (cmd === 'verify') {
       const v = services.verify
       if (flag('enable')) { v.enable(); console.log('安全校验：已开启（信封验签 ＋ 白名单）'); return 0 }

@@ -13,7 +13,7 @@
 |---|---|
 | **npm 上七件** | **`0.5.2`**（`bus`／`roster`／`types`／`deliver`／`gate`／`verify`／`cli`） |
 | **tag** | **`v0.1.0`／`v0.2.0`／`v0.3.0`／`v0.4.0`／`v0.5.0`／`v0.5.1`／`v0.5.2`**（**钉 `v0.5.2`**） |
-| **判据** | **365 条**（`npm run selftest` **11 项**） |
+| **判据** | **367 条**（`npm run selftest` **11 项**） |
 | **工具** | `racetest`(11)／`xcheck`(6)／`doccheck`(5)／`pkgcheck`(17)／`compat`(5)／`check:imports`（扫 30 个文件）／`check:install`（7 步，真装＋真启） |
 | **提交前的门** | **要先装**：`npm run hooks:install`（本地配置 —— **新 clone 不会自动有**）；装上后 `git commit` 会自动跑 `selftest`，**绕过要显式 `--no-verify`** |
 
@@ -37,12 +37,11 @@ node scripts/selftest-all.mjs && node scripts/racetest.mjs && node scripts/pkgch
   `recv`（只收离线／能被叫醒）／`onlineCapPerDay`（自报上限）／`quiet`（勿扰时段），
   **`bus.hello()` 三个都收**；**"谁该声明"早有答案：邮差自己声明**（设计文档 附录三 —— 花名册管身份、`hello` 管习惯），
   ⇒ **要用起来，只需在我们自己的那次 `hello` 里把这三个字段填上**）。
-* **给台账补一条"对账命令"**（设计文档 附录二 · **S6h ⑤ 的后半** —— 前半已经做了，
-  **这一半还没有**）：**从文件系统重算一份账**（扫 `seen/` ＋ 已经计入的标记），用来给台账"对账"。
-  现状：`gate` 的台账是「**基线 ＋ 增量小文件**」（`state/quota-<as>.json` ＋ `state/quota-<as>.d/*.json`），
-  口径是「**账可少不可多**」（崩了可能漏记 ⇒ 对发信人有利，**绝不双记**）—— 而**没有任何入口能重算它**：
-  `rebuild`／`recount`／`recompute`／`对账` 在全仓 **0 处**，CLI 的子命令里也没有。
-  为什么值得做：它是设计文档那句「**"账本可选"的地基**」—— 没有重算，台账就是"只能信、不能验"。
+
+★**（原先这里那条"给台账补一条对账命令"，2026-10-11 已经做完了** ⇒ 挪出"下一步" ✓：
+`whale-post reconcile --as <谁> [--days N] [--remote <根>]` —— `gate` 侧加了 `recount()`、
+`cli` 侧加了 `reconcile` ✓；口径与"**哪些能重算、哪些不能**"写在 `reconcile` 的注释里 ✓，
+命令用法写在 `packages/cli/README`（中英 ✓）。**投到远端的信不在本机** ⇒ 默认只算本机根，要连远端就带 `--remote` ✓。）
 
 ### 乙、**要等维护者**（别自己动）
 

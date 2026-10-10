@@ -394,6 +394,32 @@ check('并发投递：**无 `.tmp` 残骸**', concTmp === 0, String(concTmp))
 const concPump = run(['pump', '--as', 'phone', '--root', concShare])
 check('并发投递：收件人**一次全读出**（`pump` 退出码 0）', concPump.status === 0, String(concPump.status))
 
+// ④ 对账（`reconcile`）—— 2026-10-11 补。设计文档 附录二 · **S6h ⑤ 的后半**：
+//   "从文件系统重算一份账"（前半是"账可少不可多"，早就做了）。
+//   口径见 `cli/index.js` 里 `reconcile` 那段注释：日界 `localDay(letter.sentAtMs ?? 文件 mtime)`、
+//   桶与单位**复用 `gate` 的 `bucketOf`／`quotaUnits`**（与记账同一条生产线 ⇒ 不会漂）。
+//   **两条**：刚发完 ⇒ **一致**（退出 0）；**故意让文件少一封 ⇒ 必须报差**（退出 3）。
+//   ⚠️ **后一条才是关键**：它证明重算是**真去读文件**的 ——
+//      否则"把台账原样打印一遍"也能让第一条过（那种"对账"一文不值）。
+const recRoot = join(process.env.TEMP ?? '/tmp', `whale-cli-rec-${Date.now()}`)
+mkdirSync(recRoot, { recursive: true })
+writeFileSync(join(recRoot, 'roster.json'), JSON.stringify({ apiVersion: 1, members: [{ id: 'web' }, { id: 'bob' }] }), 'utf8')
+run(['hello', '--as', 'web', '--root', recRoot])
+run(['hello', '--as', 'bob', '--root', recRoot])
+run(['send', '--as', 'web', '--to', 'bob', '--subject', '对账一', '--body', '正文有货一', '--root', recRoot])
+run(['send', '--as', 'web', '--to', 'bob', '--subject', '对账二', '--body', '正文有货二二', '--root', recRoot])
+run(['pump', '--as', 'bob', '--root', recRoot])
+const recOk = run(['reconcile', '--as', 'web', '--days', '3', '--root', recRoot])
+check('对账：刚发完 ⇒ **一致**（退出码 0）', recOk.status === 0, `${recOk.status} :: ${String(recOk.stdout).slice(0, 120)}`)
+//   ★故意破坏：把 bob 的 `seen/` 里删掉一封 ⇒ 重算会比台账**少**一封（口径允许"少记" ⇒ 这是**合法**的差）
+try {
+  const sd = join(recRoot, 'seen', 'bob')
+  const f0 = readdirSync(sd).filter((f) => f.endsWith('.msg.json'))[0]
+  unlinkSync(join(sd, f0))
+} catch { /* 没删成 ⇒ 下一条会红，而那正是我们想看见的 */ }
+const recBad = run(['reconcile', '--as', 'web', '--days', '3', '--root', recRoot])
+check('对账：**少一封 ⇒ 必须报差**（退出码 3；证明它是真读文件的）', recBad.status === 3, String(recBad.status))
+
 for (const c of checks) console.log(`${c.ok ? 'PASS' : 'FAIL'}  ${c.name}${c.ok ? '' : '  :: ' + c.extra}`)
 const pass = checks.filter((c) => c.ok).length
 console.log(`\n${pass}/${checks.length} 通过`)
