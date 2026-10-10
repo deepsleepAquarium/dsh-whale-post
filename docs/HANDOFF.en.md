@@ -11,8 +11,8 @@
 
 | Item | Value |
 |---|---|
-| **all seven on npm** | **`0.5.3`** (`bus` / `roster` / `types` / `deliver` / `gate` / `verify` / `cli`) |
-| **tags** | **`v0.1.0` / `v0.2.0` / `v0.3.0` / `v0.4.0` / `v0.5.0` / `v0.5.1` / `v0.5.3`** (**pin `v0.5.3`**) |
+| **all seven on npm** | **`0.5.4`** (`bus` / `roster` / `types` / `deliver` / `gate` / `verify` / `cli`) |
+| **tags** | **`v0.1.0` / `v0.2.0` / `v0.3.0` / `v0.4.0` / `v0.5.0` / `v0.5.1` / `v0.5.4`** (**pin `v0.5.4`**) |
 | **criteria** | **367** (`npm run selftest` **11 items**) |
 | **tools** | `racetest`(11) / `xcheck`(6) / `doccheck`(5) / `pkgcheck`(17) / `compat`(5) / `check:imports` (scans 30 files) / `check:install` (7 steps, real install + boot) |
 | **the pre-commit gate** | **install it first**: `npm run hooks:install` (local configuration —— **a fresh clone will not have it**); once installed, `git commit` runs `selftest` automatically, **bypassing requires an explicit `--no-verify`** |

@@ -7,6 +7,26 @@
 
 ---
 
+## v0.5.4 —— 2026-10-11 (**released**)
+
+> **Fixing a wrong sentence printed on the npm page: `gate` does not have one exit, or three — it has four.**
+
+### **What was wrong**
+
+`gate`'s README ended with "the core and the other plugins only recognise those three: `check` / `record` /
+`report`". After `0.5.3` added `recount` (the recomputation behind reconciliation) that sentence stopped being
+true —— and it sits on the npm page for `gate`, **where anyone who installs it can read it**.
+
+### **The fix**
+
+* That sentence now says "**those four**", matching the code;
+* The README **gains a "Reconciliation" section in both languages**: the command lives in `cli`
+  (`whale-post reconcile --as <who> …`), **match ⇒ exit 0; difference ⇒ exit 3**, and **what it can and
+  cannot recompute** (the ones it cannot —— `forced` / `over` / `feeCent` / `byPhone` / `recent` —— are
+  listed honestly by the command itself);
+* The interface list in `index.js`'s header comment also gains `recount` —— that list is the "public surface",
+  and leaving it out would make the next person think there are only three exits;
+* Documentation and comments only, **no behaviour changed** ⇒ patch number. Criteria stay at 367.
 ## v0.5.3 —— 2026-10-11 (**released**)
 
 > **The ledger gained a reconciliation command: recompute a ledger from the filesystem.**
