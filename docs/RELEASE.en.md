@@ -90,7 +90,9 @@ git push origin v<this version>
 Before a release, the docs say "**the latest on npm is the previous version / this checkout is already this version (in preparation)**" ——
 **after the release those two sentences are stale** ⇒ change them to "**the latest on npm is this version**".
 
-**Where to look**: `README` / `docs/INSTALL` / `packages/cli/README` (one Chinese and one English copy each) plus
+**Where to look**: `README` / `docs/INSTALL` / `packages/cli/README` (one Chinese and one English copy each),
+**and the tag list line in `docs/HANDOFF`** (added 2026-10-11: it was **never** on this list ⇒ three releases went by
+without anyone updating it ⇒ the table was missing three tags) plus
 the "(**in preparation**)" note in the `## v<this version>` heading of the `CHANGELOG`.
 
 **And while you are there, re-check** the **"tools (count)"** line in `docs/HANDOFF`

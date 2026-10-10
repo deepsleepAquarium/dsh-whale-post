@@ -90,6 +90,7 @@ git push origin v<本版>
 **发布之后这两句就过期了** ⇒ 改成"**npm 上最新就是本版**"。
 
 **要看的地方**：`README`／`docs/INSTALL`／`packages/cli/README`（中英各一份）＋
+**还有 `docs/HANDOFF` 那一行 tag 列表**（★2026-10-11 补：它**从来不在**这份清单里 ⇒ 连着三版没人补 ⇒ 表里少了三个 tag ✗）＋
 `CHANGELOG` 那个 `## v<本版>` 标题里的"（**准备中**）"。
 
 **顺手再核一遍**：`docs/HANDOFF` 里那一行**"工具(数字)"**（`racetest`／`xcheck`／`doccheck`／
