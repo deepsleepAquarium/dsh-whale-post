@@ -1,6 +1,6 @@
 {
   "name": "dsh-whale-post-roster",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "名单接口（谁在名单里）＋ 读 JSON 的样例实现 · Roster interface (who is on the list) + a JSON-backed sample",
   "keywords": [
     "dsh",

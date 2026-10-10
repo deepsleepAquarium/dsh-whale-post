@@ -1,6 +1,6 @@
 {
   "name": "dsh-whale-post-verify",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "安全校验（信封验签 ＋ 名单白名单）；默认禁用，禁用期间会提示开启，连提三天后不再提 · Security check (envelope signature + roster allowlist); off by default",
   "keywords": [
     "dsh",

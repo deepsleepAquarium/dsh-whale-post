@@ -7,6 +7,35 @@
 
 ---
 
+## v0.6.1 —— 2026-10-11 (**released**)
+
+> **Removing a sentence from the first line of `--help` that had stopped being true.**
+
+### **Why this release exists**
+
+The first line of `--help` used to say "six packages are on npm … (the seventh, `verify`, is in-repo, not yet published)".
+
+That was true while `verify` had not been published — but it was published later (from `0.5.0` on), **and nobody
+went back to change the sentence**. So the first line every newcomer sees after
+`npx -y dsh-whale-post-cli --help` was a false statement — and that line is the one they are most likely to read.
+
+**How it was found**: an end-to-end check that installs from npm and runs the CLI; reading the first line of `--help`
+showed it was wrong. **The same class was checked too**: all 27 published artifacts (the `files` of the seven packages)
+were `git grep`-ed for `待发` / `未发` / `尚未发布` / `not yet published` — nothing else turned up.
+
+### **What changed**
+
+* First line of `packages/cli/index.js`'s `--help`: **all seven are on npm** (no more "the Nth one");
+* the 40 version mentions (`README`, `INSTALL`, `HANDOFF`, `FOR-AGENTS`, the `cli` `README`) moved to `0.6.1`;
+  the tag list in `HANDOFF` was regenerated (**11 tags**, including `v0.6.1`).
+
+### **Which number this is, and why**
+
+**Text only, no behaviour change** (help text is not an interface) ⇒ by this repository's policy the **last number**
+moves: `0.6.0` → `0.6.1`. The **middle number stays** — no new interface, no behaviour change.
+
+---
+
 ## v0.6.0 —— 2026-10-11 (**released**)
 
 > **Re-issuing the previous batch under the correct number.**

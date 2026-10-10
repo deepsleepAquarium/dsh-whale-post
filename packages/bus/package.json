@@ -1,6 +1,6 @@
 {
   "name": "dsh-whale-post-bus",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "核心：信封／签名／握手／幂等／落盘 · Core: envelope, signing, handshake, idempotence, on-disk store",
   "keywords": [
     "dsh",
