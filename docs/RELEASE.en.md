@@ -90,10 +90,23 @@ git push origin v<this version>
 Before a release, the docs say "**the latest on npm is the previous version / this checkout is already this version (in preparation)**" ——
 **after the release those two sentences are stale** ⇒ change them to "**the latest on npm is this version**".
 
-**Where to look**: `README` / `docs/INSTALL` / `packages/cli/README` (one Chinese and one English copy each),
-**and the tag list line in `docs/HANDOFF`** (added 2026-10-11: it was **never** on this list ⇒ three releases went by
-without anyone updating it ⇒ the table was missing three tags) plus
-the "(**in preparation**)" note in the `## v<this version>` heading of the `CHANGELOG`.
+**Search for them first; do not just follow a list** (changed 2026-10-11):
+
+```bash
+# search the whole repository for the current version (excluding CHANGELOG —— that is history, leave it alone)
+grep -rn "$(node -p 'require("./package.json").version')" --include='*.md' . | grep -v CHANGELOG
+```
+
+**Every place that makes a claim about "what is on npm right now" has to change**, and **every hit deserves a look**.
+
+**Why a search recipe instead of a file list**: this list **used to name three places**, while **the real list is
+whatever the search returns**. On the night of 2026-10-11 that cost two misses: the tag list in `docs/HANDOFF`
+**was not on the list** ⇒ **three tags went missing**, and `docs/FOR-AGENTS` **was not on it either** ⇒ it only
+survived because the release script happened to update it. **Lists rot; a search does not.**
+
+**The known ones** (examples only —— **never the whole set; the search decides**): `README` / `docs/INSTALL` /
+`docs/HANDOFF` (including its tag list line) / `docs/FOR-AGENTS` / `packages/cli/README` (one Chinese and one
+English copy each) plus the "(**in preparation**)" note in the `## v<this version>` heading of the `CHANGELOG`.
 
 **And while you are there, re-check** the **"tools (count)"** line in `docs/HANDOFF`
 (how many criteria `racetest` / `xcheck` / `doccheck` / `pkgcheck` / `compat` / `check:imports` each report).

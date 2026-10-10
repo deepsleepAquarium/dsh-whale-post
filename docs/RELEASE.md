@@ -89,8 +89,21 @@ git push origin v<本版>
 发布前，文档里写的是"**npm 上最新是上一版／本仓库已经是本版（准备中）**" ——
 **发布之后这两句就过期了** ⇒ 改成"**npm 上最新就是本版**"。
 
-**要看的地方**：`README`／`docs/INSTALL`／`packages/cli/README`（中英各一份）＋
-**还有 `docs/HANDOFF` 那一行 tag 列表**（★2026-10-11 补：它**从来不在**这份清单里 ⇒ 连着三版没人补 ⇒ 表里少了三个 tag ✗）＋
+**先搜一遍，别只照清单改** ✗✓（2026-10-11 改）：
+
+```bash
+# 用当前版本号全仓搜（排除 CHANGELOG —— 那是历史，不该动）
+grep -rn "$(node -p 'require("./package.json").version')" --include='*.md' . | grep -v CHANGELOG
+```
+
+★**凡是"**声明** npm 上现在是什么"的地方都要改** ✓；★搜出来的**每一处都要看一眼** ✓。
+★★**为什么给"搜法"而不是给"文件清单"** ✗✓✓：★这份清单**原来列了三处** ✓，而**真正的清单是搜出来的** ✓ ——
+★2026-10-11 那晚就吃了两次亏：★`docs/HANDOFF` 的 tag 列表**不在清单里** ⇒ **连丢三个 tag** ✗；
+★`docs/FOR-AGENTS`**也不在** ⇒ 只是因为发版脚本顺手改了它才没出事 ✓✓
+⇒ ★★**清单会腐，搜法不会** ✓。
+
+**已知的几处**（★只是例子，★不是全集 —— ★以搜出来的为准 ✓）：`README`／`docs/INSTALL`／
+`docs/HANDOFF`（含 tag 列表那一行）／`docs/FOR-AGENTS`／`packages/cli/README`（中英各一份）＋
 `CHANGELOG` 那个 `## v<本版>` 标题里的"（**准备中**）"。
 
 **顺手再核一遍**：`docs/HANDOFF` 里那一行**"工具(数字)"**（`racetest`／`xcheck`／`doccheck`／
