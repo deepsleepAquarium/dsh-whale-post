@@ -5,6 +5,10 @@
  *   check(letter) → 'pass' | { reject, reason }
  *   record(letter, targets)        ← 可选扩展：投递成功后才记账（被拦下的信不占额度）
  *   report({ as, days })           ← 可选扩展：查账（只读）
+ *   recount(entries)               ← 可选扩展：对账用 —— 从"信"重算一份按天的账（`cli reconcile` 拿它比）
+ *                                     ⚠️ 与 `record` **同一条生产线**（共用 `incrementFor`／`mergeIncrement`）
+ *                                     所以"重算与记账漂移"在结构上不可能；返回里带 `notComparable`，
+ *                                     照实列出**文件里没有、因此重算不出来**的那几项。
  *
  * 装了三道闸，每道都写明了为什么：
  *   ① **纯回执拒发**：正文去掉空白标点后只剩"收到／好的／谢谢"⇒ 拒发。

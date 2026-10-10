@@ -63,4 +63,17 @@ all three gates are there to stop "**waking someone up one time too many**" —�
 ## Swapping it out
 
 If you want a different billing scheme (say billing by the byte, or no limit at all) ⇒ **replace only this piece**,
-and the core and the other plugins do not have to change a single line (they only recognise those three: `check` / `record` / `report`).
+and the core and the other plugins do not have to change a single line (they only recognise those four: `check` / `record` / `report` / `recount`).
+
+## Reconciliation (the ledger can be *checked*, not only believed)
+
+The ledger is **a base file + increment files**, with the rule "**the count may be low, never high**" (a crash may
+under-count ⇒ in the sender's favour, **never double-count**). `recount` is the half that makes it *checkable*:
+it recomputes a per-day ledger from the **filesystem** and compares it with the recorded one, day by day and
+bucket by bucket. The command lives in `cli` —— `whale-post reconcile --as <who> [--days N] [--remote <root>]`
+(usage in `packages/cli/README`): **match ⇒ exit 0; difference ⇒ exit 3**.
+
+⚠️ **What it can recompute**: `letters` / `units` / `bytes` / `byBucket.<bucket>.{letters, units}`;
+**what it cannot** (the files do not carry those facts, and the command **lists them honestly**): `forced`
+(`force` is a choice made at send time), `over` / `feeCent` (they depend on the usage read at bookkeeping time),
+`byPhone` / `recent` (bookkeeping-time attributes and receipts).
