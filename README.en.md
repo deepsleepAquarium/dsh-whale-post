@@ -148,6 +148,46 @@ Many engines can already spawn sub-agents (or run a "team") ⇒ the usual questi
 **In one sentence**: **a sub-agent is "your hand"; the post office is "the road between us"**.
 **One criterion**: **"I need it to do this right now" ⇒ use a sub-agent; "it may not be there right now" ⇒ use the post office**.
 
+## How it differs from similar projects
+
+There is already a fair amount of prior work here. Before writing this repository we looked around
+(2026-10-10). The nearest ones:
+
+| Project | What it is |
+|---|---|
+| `avivsinai/agent-message-queue` | A file-based message queue for local agent-to-agent communication, Maildir-style, written in Go |
+| `@yuanchilin/dsh-mailbox` | A cross-session file mailbox for DSH over a shared filesystem, with `seen` dedup and TTL cleanup |
+| `polaris-smart/dsh-agent-mailbox` | A DSH cross-agent mailbox plugin that bridges to agent-mailbox |
+
+They solve the same class of problem: **letting several agents leave each other notes**. We did three
+things on top of that:
+
+* **What should not be woken is not woken.** Offline by default: the letter lands on disk. Waking the
+  other side means making it pay for one full-context inference, which is the most expensive waste there
+  is. Beyond that default, three separate sources can each downgrade an online letter to "delivered
+  offline", and it says so: the roster pins someone as offline-only, the recipient declared offline-only,
+  or the recipient is currently inside the do-not-disturb window it declared.
+* **Sending too much gets stopped.** A loop gate covers "the same pair sending too many letters within
+  N minutes", "a forwarding chain that is too deep", and "pure receipts bouncing back and forth"; a quota
+  gate covers "you have sent too much today". Over quota it refuses on the spot with a non-zero exit
+  code, and **never silently downgrades** — a silent downgrade is far more dangerous than a refusal,
+  because it makes people believe the letter went out.
+* **If it cannot be delivered, it does not pretend it was.** When the recipient has no reader right now,
+  we **neither deliver nor consume**: the letter stays in the mailbox exactly as it was, and the next
+  time that side shows up it gets everything at once. In one sentence: **a letter only arrives late,
+  never not at all.**
+
+Two more things came along the way: **identity and verification** (HMAC signatures plus a roster
+whitelist — off by default, and it verifies once you turn it on), and **across devices** (deliver into a
+remote mailbox, collect it back, and mirror the receipts back too).
+
+**And the shortcomings, stated plainly**: `agent-message-queue` has a far larger ecosystem than ours and
+supports more engines; `@yuanchilin/dsh-mailbox` has a `/mailbox` interactive interface, while we only
+have a CLI. We have few stars, and we are not in any official directory (the `@deepseek-ai` scope holds
+the official components, and we are not among them). If all you want is "be able to send a letter", any
+of them will do — but if you care about **not burning the other session awake, not blowing through the
+quota, and not losing letters**, those three are the main difference between us and them.
+
 ## Three design trade-offs (each one states its reason)
 
 | Trade-off | Why |
