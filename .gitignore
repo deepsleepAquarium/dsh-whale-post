@@ -24,6 +24,9 @@ hello/
 *secret*
 *.授权
 
+# 改写文档时留的备份（★不进仓库 ✓）
+.strip-backups/
+
 # 日志与临时件
 *.log
 *.tmp

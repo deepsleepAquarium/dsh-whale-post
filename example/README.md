@@ -1,6 +1,6 @@
 # 组合示例（example）
 
-★这一份回答的问题只有一个：**七个件怎么接起来**。
+这一份回答的问题只有一个：**七个件怎么接起来**。
 （只给包、不给接法 ⇒ 别人拿到手装不起来。这一份就是那份"接法"。）
 
 ## 一、最小接线（`cordis.patch.yml`）
@@ -35,15 +35,15 @@
             direct:    { label: 'direct',    limit: 100 }
             broadcast: { label: 'broadcast', limit: 45 }
             club:      { label: 'club',      limit: 40 }
-            offline:   { label: '离线',      limit: 80, perSend: true }   # ★离线件按发信次数计
+            offline:   { label: '离线',      limit: 80, perSend: true }   # 离线件按发信次数计
 
     - id: whale-verify
-      name: dsh-whale-post-verify                # ★安全校验：**默认禁用**（enabled 不写就是禁用）
+      name: dsh-whale-post-verify                # 安全校验：**默认禁用**（enabled 不写就是禁用）
       config:
         enabled: false                           # 开就写 true；禁用期间会提示你开启（连提三天后不再提）
 ```
 
-★**顺序无关**：六个插件之间只靠接口（`ctx.whale.*`）—— 核心不认识任何名字与类型标识。
+**顺序无关**：六个插件之间只靠接口（`ctx.whale.*`）—— 核心不认识任何名字与类型标识。
 
 ## 二、名单文件（`roster.json`）
 
@@ -54,13 +54,13 @@
   "groups": { "all": ["alice", "bob"] } }
 ```
 
-`id` 就是信箱目录名（`<root>/inbox/<id>/`）。★**名单只在这个文件里**，代码里一个名字都没有。
+`id` 就是信箱目录名（`<root>/inbox/<id>/`）。**名单只在这个文件里**，代码里一个名字都没有。
 
 ## 三、跑一次（判据：退出码）
 
 ```bash
 # 用 CLI 起一个临时邮局（不动你的真数据）
-# ★先把名单放进去（不发名单 = 谁也不认识谁 ⇒ 会报"未知收件人"）
+# 先把名单放进去（不发名单 = 谁也不认识谁 ⇒ 会报"未知收件人"）
 mkdir -p ./tmp-mail && cp example/roster.json ./tmp-mail/roster.json
 
 node packages/cli/index.js hello --as alice --root ./tmp-mail
@@ -71,9 +71,9 @@ node packages/cli/index.js quota --as alice --root ./tmp-mail    # ⇒ 离线 1 
 echo $?    # 0 ＝ 过
 ```
 
-★**离线件不会丢**：`send` 之后信就躺在 `inbox/bob/` 里；`bob` 什么时候来收都行（没有活体会话 ⇒ **不投也不消费** ⇒ 信只会晚到，不会不到）。
+**离线件不会丢**：`send` 之后信就躺在 `inbox/bob/` 里；`bob` 什么时候来收都行（没有活体会话 ⇒ **不投也不消费** ⇒ 信只会晚到，不会不到）。
 
-★**要看在线投递**：给收件人标上"此刻有活体会话"——
+**要看在线投递**：给收件人标上"此刻有活体会话"——
 
 ```bash
 node packages/cli/index.js send --as alice --to bob --mode online --live bob \
@@ -87,4 +87,4 @@ node scripts/selftest-all.mjs        # 七件一把跑完（退出码 0 ＝ 全�
 node packages/bus/selftest.mjs       # 单件跑（看细节）
 ```
 
-★每条判据都守着一条真实事故（见 [`../docs/ACCEPTANCE.md`](../docs/ACCEPTANCE.md)）。
+每条判据都守着一条真实事故（见 [`../docs/ACCEPTANCE.md`](../docs/ACCEPTANCE.md)）。

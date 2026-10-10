@@ -26,7 +26,7 @@
 | `types` | Register / resolve; an unregistered type is **refused on the spot** and the semantics are written into the documentation; **adding a new type in a test requires touching zero lines of the core**; real type identifiers 0 hits |
 | `deliver` | An offline letter really stays in the mailbox (not consumed); an online letter goes out in the current round and **only once**; **the recipient has no live session ⇒ the letter stays in `inbox`** |
 | `gate` | Over quota refuses to send + a non-zero exit code + nothing persisted to disk; a group send counts units by the number of recipients; the loop gate blocks by "M letters in N minutes / chain depth / pure receipt"; an empty body is refused |
-| `verify` | **While disabled** it lets letters through but with `skipped: true` (★it does not pretend to have verified); once enabled it is fail-closed (missing field / **unregistered field** / digest mismatch / signature mismatch / outside the allow-list ⇒ all refused); ★**impersonation must fail** (signing my name with someone else's key); nagging: while disabled it prints at most once a day for days 1–3 and **stops after day 3**, while `status().enabled` **is always the truth** |
+| `verify` | **While disabled** it lets letters through but with `skipped: true` (it does not pretend to have verified); once enabled it is fail-closed (missing field / **unregistered field** / digest mismatch / signature mismatch / outside the allow-list ⇒ all refused); **impersonation must fail** (signing my name with someone else's key); nagging: while disabled it prints at most once a day for days 1–3 and **stops after day 3**, while `status().enabled` **is always the truth** |
 | `cli` | Zero dependencies; argument order does not matter; a wrong value refuses to send; the help text contains no internal information |
 
 ## 3. Three hard rules
@@ -43,15 +43,15 @@
 **Comparing hashes alone, or running module-level self-tests alone, does not count.**
 A hash only proves "the file did not change", and a module self-test only proves "this module did not crash by itself" —— neither proves **that it can survive once it is hooked into the engine**.
 
-> ★★**And `--dump-config` does not count either** ✗ —— **the evidence we produced ourselves on 2026-10-10**:
+> **And `--dump-config` does not count either** —— **the evidence we produced ourselves on 2026-10-10**:
 > all six passed the "load-level self-test", `dsh plugin --profile <throwaway> add link:…` returned exit code 0 for every one,
-> and `--dump-config` showed **all six layers neatly present** ✓ —— ★**it looked perfect** ✓.
-> Then came **one real launch**: ★**all six `failed to apply`** ✗, because of
+> and `--dump-config` showed **all six layers neatly present** —— **it looked perfect**.
+> Then came **one real launch**: **all six `failed to apply`**, because of
 > `cannot get property "whale" without inject` (`apply()` read the `ctx.whale` property;
 > in real Cordis, reading it requires `inject`).
-> ⇒ ★**`--dump-config` only composes the config tree and never runs `apply()`** —— it cannot even prove "a plugin can apply" ✗.
-> ⇒ There is only one criterion: **one real launch, with no load errors in the log** ✓.
-> (★That pit is now pinned down as a static criterion: the source must not contain `ctx.whale =` or `ctx.whale?.` ⇒ 0 hits.)
+> ⇒ **`--dump-config` only composes the config tree and never runs `apply()`** —— it cannot even prove "a plugin can apply".
+> ⇒ There is only one criterion: **one real launch, with no load errors in the log**.
+> (That pit is now pinned down as a static criterion: the source must not contain `ctx.whale =` or `ctx.whale?.` ⇒ 0 hits.)
 
 ## 5. How to run it
 
@@ -63,11 +63,11 @@ The self-test builds a fake post office in a **temporary directory** and **never
 
 ## 6. Boundaries and limits (written down so nobody mistakes them for guarantees)
 
-* ★**The core trusts two interface providers (`roster` / `types`)** — ★**if a provider lies, the core cannot catch it**: e.g. a provider that resolves every id makes the type check meaningless. ★This is a **deliberate design choice**: the core **does not know any type identifier**, so it **cannot decide by itself what counts as a legal type**. ⇒ To defend that layer, validate and self-test inside the **provider**.
-* ★**The chain-depth gate is not a security boundary**: it relies on the replier honestly including `re` — leave it out and the chain depth resets. It is a **politeness / cost gate**.
-* ★★**When `verify` is disabled it blocks nothing** ✗ —— ★**it is not "secure by default"**: the default tier is "**known insecure + nags you every day**". To be secure, write `enabled: true`; installing this piece **is not** the same as turning verification on.
-* ★**`--force` bypasses all three loop gates**: that is a deliberate escape hatch, but it **leaves a trace** (the ledger counts `forced`).
-* ★**It only solves "one machine"**: the mailbox is a directory on disk; crossing machines needs a shared directory.
-* ★**Now tested** (added 2026-10-10): ★**several processes racing for a sequence number** —— `node scripts/racetest.mjs`:
-  **12 real sub-processes sending at once** ⇒ all exit codes 0 + 12 letters delivered + **every `seq` unique** ✓ + the "`state` written backwards" replay ✓.
-* ★**Not tested**: the truncation path once the `seen` state array grows very long (hand-crafted only). ★Do **not** treat that one as guaranteed.
+* **The core trusts two interface providers (`roster` / `types`)** — **if a provider lies, the core cannot catch it**: e.g. a provider that resolves every id makes the type check meaningless. This is a **deliberate design choice**: the core **does not know any type identifier**, so it **cannot decide by itself what counts as a legal type**. ⇒ To defend that layer, validate and self-test inside the **provider**.
+* **The chain-depth gate is not a security boundary**: it relies on the replier honestly including `re` — leave it out and the chain depth resets. It is a **politeness / cost gate**.
+* **When `verify` is disabled it blocks nothing** —— **it is not "secure by default"**: the default tier is "**known insecure + nags you every day**". To be secure, write `enabled: true`; installing this piece **is not** the same as turning verification on.
+* **`--force` bypasses all three loop gates**: that is a deliberate escape hatch, but it **leaves a trace** (the ledger counts `forced`).
+* **It only solves "one machine"**: the mailbox is a directory on disk; crossing machines needs a shared directory.
+* **Now tested** (added 2026-10-10): **several processes racing for a sequence number** —— `node scripts/racetest.mjs`:
+  **12 real sub-processes sending at once** ⇒ all exit codes 0 + 12 letters delivered + **every `seq` unique** + the "`state` written backwards" replay.
+* **Not tested**: the truncation path once the `seen` state array grows very long (hand-crafted only). Do **not** treat that one as guaranteed.
