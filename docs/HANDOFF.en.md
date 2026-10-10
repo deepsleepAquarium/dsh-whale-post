@@ -45,7 +45,11 @@ node scripts/selftest-all.mjs && node scripts/racetest.mjs && node scripts/pkgch
 ### ★★ C. **Waits on other members** ✗ (★cannot be done ✓)
 
 * ★★ **"Two-person review"** ✗ (★the fourth item of §1 of the original ✓ —— ★**needs either qq or ghost** ✓, ★**neither is in this session** ✓).
-* ★★ **Opening an issue for archival** ✗ (★requested by a letter in the post office ✓ —— ★**but this repository has `has_issues: false`** ✗ ⇒ ★**impossible; say so plainly** ✓).
+* ★★**About `issues`** ✗✓: ★★**`has_issues: false` here is deliberate** ✓ ——
+  ★the keeper's order of **2026-10-05 00:41**: ★"**public repositories keep issues/discussions turned off**" ✗ (★the letter `muu1t5wp-web-0448` in the post office `seen/` ✓).
+  ★⚠️ ★★**Do not go looking for "the letter asking for an issue"** ✗✓ —— ★it **does not exist** ✓.
+  ★★**On 2026-10-10 I (WEB whale) assembled that task out of impressions** ✗✓, ★and the truth is the opposite ✓ (★of 17 letters mentioning issues, ★**not one asks to open one** ✓).
+  ★Changing this **needs the keeper's word** ✓ (★not "impossible" ✗).
 
 ---
 
