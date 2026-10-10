@@ -1,7 +1,7 @@
 {
   "name": "dsh-whale-post-cli",
   "version": "0.4.0",
-  "description": "零依赖命令行：hello／send／pump／quota／verify／nag／roster／types／selftest",
+  "description": "零依赖命令行：hello／send／pump／quota／verify／nag／roster／types／selftest · Zero-dependency CLI: hello / send / pump / quota / verify / nag / roster / types / selftest",
   "keywords": [
     "dsh",
     "dsh-plugin",
