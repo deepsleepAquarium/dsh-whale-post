@@ -93,6 +93,15 @@ Before a release, the docs say "**the latest on npm is the previous version / th
 **Where to look**: `README` / `docs/INSTALL` / `packages/cli/README` (one Chinese and one English copy each) plus
 the "(**in preparation**)" note in the `## v<this version>` heading of the `CHANGELOG`.
 
+**And while you are there, re-check** the **"tools (count)"** line in `docs/HANDOFF`
+(how many criteria `racetest` / `xcheck` / `doccheck` / `pkgcheck` / `compat` / `check:imports` each report).
+
+**Why re-check it here** (from an actual run on 2026-10-11): those are **hard-coded numbers**, and
+**no criterion guards them** —— `doccheck` compares Chinese against English structure and `pkgcheck` compares
+package metadata; **neither looks at that line** ⇒ it can only drift out of date. And reading a tool through an
+old number makes you judge it wrongly. So it belongs to the **release** pass rather than to the self-test:
+it is **a snapshot inside a long-lived document**, not a constraint on the code.
+
 ## Step 5: run step 0 once more after those edits
 
 **Because step 4 touches documentation** ⇒ `doccheck` and `pkgcheck` can both be affected (especially: **change both languages together**).
