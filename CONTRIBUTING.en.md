@@ -22,6 +22,14 @@
 
 1. **Run the self-test**: `npx dsh-whale-post-cli selftest` —— **look only at the exit code**, not at the Chinese in the output.
 2. **Negative test**: break any one line and the self-test must turn red; if it does not turn red, the criteria are not doing their job.
+   ⓘ **This one is not a formality** —— **it earned its keep on 2026-10-11**: a criterion had just been added to the
+   handoff document ("the criterion count written there must equal the baseline total"), so following this very rule
+   we changed `367` to `366` —— and the criterion **did print `FAIL`, while the exit code stayed 0**. Investigating
+   showed **it was not the new code's fault**: in `selftest-all`'s closing `process.exit(failed ? 1 : 0)`, `failed`
+   counts **only the seven packages** ⇒ the `process.exitCode` set by `static` ("no `ctx.whale` property access in
+   the sources") **was overwritten by that closing line** —— meaning **it had always been that way: it shouted, and
+   CI could not hear it**. So a negative test catches **not the new code's mistakes but the old code's**. An unread
+   guard is worse than no guard: it hands out **false confidence**.
 3. **Load-level verification**: do **one real launch**, and the log must contain no load errors.
    **`--dump-config` does not count as verification** —— it only composes the config tree and **never runs `apply()`**. We really did fall into this (2026-10-10):
    all six packages showed **six neat layers** in `--dump-config`, and one real launch had **all six `failed to apply`**
