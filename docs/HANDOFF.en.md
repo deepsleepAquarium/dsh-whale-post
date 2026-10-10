@@ -13,7 +13,7 @@
 |---|---|
 | **all seven on npm** | **`0.4.0`** (`bus` / `roster` / `types` / `deliver` / `gate` / `verify` / `cli`) |
 | **tags** | **`v0.1.0` / `v0.2.0` / `v0.3.0` / `v0.4.0`** (**pin `v0.4.0`**) |
-| **criteria** | **359** (`npm run selftest` **11 items**) |
+| **criteria** | **360** (`npm run selftest` **11 items**) |
 | **tools** | `racetest`(11) / `xcheck`(6) / `doccheck`(3) / `pkgcheck`(15) / `compat`(5) / `check:imports` (scans 26 files) / `check:install` (7 steps, real install + boot) |
 | **the pre-commit gate** | **install it first**: `npm run hooks:install` (local configuration —— **a fresh clone will not have it**); once installed, `git commit` runs `selftest` automatically, **bypassing requires an explicit `--no-verify`** |
 

@@ -275,6 +275,23 @@ for (const p of ALL) {
 check('⑭ 包内 README 写的"默认值"与代码 `DEFAULTS` **一致** （对不上的才报）',
   defDrift.length === 0, defDrift.length ? defDrift.join('、') : `比了 ${defChecked} 个键，全一致`)
 
+// ⑮ **`package.json` 的版本，CHANGELOG 里必须有一节** （2026-10-10 加，第 129 轮）
+//   为什么：`CONTRIBUTING` 写着「**每一版都要写更新说明**」，而 **没有任何判据盯着它** ——
+//     跟当初 `dsh.bundle.patch` 那条一模一样（"规矩写在文档里，而没人守"）。
+//   ⚠️ 它的**另一面**已经有人守了：⑬ 检查"文档说的 npm 版本 == `package.json`"——
+//     所以**升版本号**这件事本身不会悄悄溜过去；**会溜的是"升了版本而没写说明"**。
+//   ⓘ 它只认**标题形式**的版本节（`## v1.2.3`），中英各一份都要有。
+//     （中英结构对等由 `doccheck` 守 ⇒ 这里两侧都查一遍是"顺手"，防的是"只写了一侧"。）
+const clMissing = []
+for (const f of ['CHANGELOG.md', 'CHANGELOG.en.md']) {
+  let text = ''
+  try { text = readFileSync(join(repo, f), 'utf8') } catch { clMissing.push(`${f}（读不到）`); continue }
+  if (!new RegExp('^##\\s*v?' + mineVer.replace(/\./g, '\\.') + '\\b', 'm').test(text)) clMissing.push(f)
+}
+check('⑮ `package.json` 的版本在 CHANGELOG 里**有一节** （"每一版都要写更新说明"）',
+  clMissing.length === 0, clMissing.length ? clMissing.join('、') + ' 里没有 v' + mineVer + ' 那一节' : `v${mineVer} 中英各一节`)
+
+
 
 // ⑫ **仓库领先 npm 多少** （2026-10-10 加 —— 这是**报告**，不是错误）
 //   **为什么要它**：第 65 轮我**临时用 `git log` 去数**"tag 之后有几个提交、有没有改过代码" ——
