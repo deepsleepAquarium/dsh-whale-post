@@ -17,7 +17,8 @@
     "pkgcheck": "node scripts/pkgcheck.mjs",
     "compat": "node scripts/compat.mjs",
     "precommit": "node scripts/precommit.mjs",
-    "hooks:install": "git config core.hooksPath hooks"
+    "hooks:install": "git config core.hooksPath hooks",
+    "check:install": "node scripts/check-install.mjs"
   },
   "workspaces": [
     "packages/*"
