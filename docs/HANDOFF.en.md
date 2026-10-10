@@ -30,14 +30,14 @@ node scripts/selftest-all.mjs && node scripts/racetest.mjs && node scripts/pkgch
 ### A. **Waits on nobody** (doable at any time)
 
 * **Connect a real device** (the last step of **§3** in the original's 《跨设备邮局-1.0局域网实现清单》):
-  install a WebDAV server + a share + a low-privilege account ⇒ point the remote root at a real address
-  —— **a one-line config change** (`--remote` or `WHALE_POST_REMOTE_ROOT`).
-  **The parts already exist**: `scripts/fake-phone.mjs` (five actions) + `send --remote` (deliver) + `pickup` (collect + mirror receipts).
+ install a WebDAV server + a share + a low-privilege account ⇒ point the remote root at a real address
+ —— **a one-line config change** (`--remote` or `WHALE_POST_REMOTE_ROOT`).
+ **The parts already exist**: `scripts/fake-phone.mjs` (five actions) + `send --remote` (deliver) + `pickup` (collect + mirror receipts).
 * **Actually use `quiet`** (`hello --quiet 22:00-09:00` —— **the machinery is complete**: the `hello` envelope can
-  carry `recv` (offline-only / can be woken), `onlineCapPerDay` (self-declared ceiling) and `quiet` (do-not-disturb
-  window), and **`bus.hello()` accepts all three**; and **"who should declare it" already has an answer: the courier
-  declares it itself** (design doc, appendix 3 —— the roster carries identity, `hello` carries habits),
-  ⇒ **to actually use it, just fill those three fields in our own `hello`**).
+ carry `recv` (offline-only / can be woken), `onlineCapPerDay` (self-declared ceiling) and `quiet` (do-not-disturb
+ window), and **`bus.hello()` accepts all three**; and **"who should declare it" already has an answer: the courier
+ declares it itself** (design doc, appendix 3 —— the roster carries identity, `hello` carries habits),
+ ⇒ **to actually use it, just fill those three fields in our own `hello`**).
 
 **(The former item here, "add a reconciliation command for the ledger", was finished on 2026-10-11** ⇒ moved out
 of "next steps": `whale-post reconcile --as <who> [--days N] [--remote <root>]` —— `gate` gained `recount()` and
@@ -55,14 +55,14 @@ side are not on this machine** ⇒ by default only the local root is counted; pa
 
 * **"Two-person review"** (the fourth item of §1 of the original —— **needs either qq or ghost**, **neither is in this session**).
 * **About `issues`**: **issues and discussions are open here** (`has_issues: true`, `has_discussions: true`),
-  with **number 1** sitting there as a welcome thread (it asks "what should the interface design / defaults /
-  security model change?") —— **please open one**.
-  **It was turned off once**: on 2026-10-05 the decision was "**public repositories keep issues/discussions
-  turned off**"; on 2026-10-10 the keeper changed his mind ("**we need to take in what people say**"),
-  so they were opened and that first one was filed.
-  ⚠️ **Do not go looking for "the letter asking for an issue"** —— it **does not exist**:
-  on 2026-10-10 I (WEB whale) assembled that task out of impressions, and **the truth is the opposite**
-  (17 letters mention issues; **not one asks to open one**).
+ with **number 1** sitting there as a welcome thread (it asks "what should the interface design / defaults /
+ security model change?") —— **please open one**.
+ **It was turned off once**: on 2026-10-05 the decision was "**public repositories keep issues/discussions
+ turned off**"; on 2026-10-10 the keeper changed his mind ("**we need to take in what people say**"),
+ so they were opened and that first one was filed.
+ ⚠️ **Do not go looking for "the letter asking for an issue"** —— it **does not exist**:
+ on 2026-10-10 I (WEB whale) assembled that task out of impressions, and **the truth is the opposite**
+ (17 letters mention issues; **not one asks to open one**).
 
 ---
 
@@ -86,7 +86,7 @@ side are not on this machine** ⇒ by default only the local root is counted; pa
 ## 5. Where tonight's books are
 
 * **two more records live outside this repository** (an append-only operations log and a line-by-line self-check map) ——
-  **they are not in this repo**, so **no paths are given here**;
+ **they are not in this repo**, so **no paths are given here**;
 * **`git log`** —— **the messages say "why"** (not "which line changed").
 
 Written by **WEB鲸** (2026-10-10 08:3x)

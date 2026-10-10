@@ -11,10 +11,10 @@
 
 | 项 | 值 |
 |---|---|
-| **npm 上七件** | **`0.6.0`**（`bus`／`roster`／`types`／`deliver`／`gate`／`verify`／`cli`） |
-| **tag** | **`v0.1.0`／`v0.2.0`／`v0.3.0`／`v0.4.0`／`v0.5.0`／`v0.5.1`／`v0.5.2`／`v0.5.3`／`v0.5.4`／`v0.6.0`**（**钉 `v0.6.0`**） |
-| **判据** | **367 条**（`npm run selftest` **11 项**） |
-| **工具** | `racetest`(11)／`xcheck`(6)／`doccheck`(5)／`pkgcheck`(17)／`compat`(5)／`check:imports`（扫 30 个文件）／`check:install`（7 步，真装＋真启） |
+| **npm 上七件** | **`0.6.0`**（`bus`／`roster`／`types`／`deliver`／`gate`／`verify`／`cli`）|
+| **tag** | **`v0.1.0`／`v0.2.0`／`v0.3.0`／`v0.4.0`／`v0.5.0`／`v0.5.1`／`v0.5.2`／`v0.5.3`／`v0.5.4`／`v0.6.0`**（**钉 `v0.6.0`**）|
+| **判据** | **367 条**（`npm run selftest` **11 项**）|
+| **工具** | `racetest`(11)／`xcheck`(6)／`doccheck`(5)／`pkgcheck`(17)／`compat`(5)／`check:imports`（扫 30 个文件）／`check:install`（7 步，真装＋真启）|
 | **提交前的门** | **要先装**：`npm run hooks:install`（本地配置 —— **新 clone 不会自动有**）；装上后 `git commit` 会自动跑 `selftest`，**绕过要显式 `--no-verify`** |
 
 **一条命令验"现在没事"**：
@@ -30,18 +30,18 @@ node scripts/selftest-all.mjs && node scripts/racetest.mjs && node scripts/pkgch
 ### 甲、**不用等任何人**（随时可做）
 
 * **接真机**（设计文档《跨设备邮局-1.0局域网实现清单》**§三** 的最后一步）：
-  装 WebDAV 服务器 ＋ 共享夹 ＋ 低权账号 ⇒ 把远端根从"模拟邮筒"换成真地址
-  —— **换一行配置**（`--remote` 或 `WHALE_POST_REMOTE_ROOT`）。
-  **现成的零件**：`scripts/fake-phone.mjs`（五动作）＋ `send --remote`（投）＋ `pickup`（取＋回执镜像）。
+ 装 WebDAV 服务器 ＋ 共享夹 ＋ 低权账号 ⇒ 把远端根从"模拟邮筒"换成真地址
+ —— **换一行配置**（`--remote` 或 `WHALE_POST_REMOTE_ROOT`）。
+ **现成的零件**：`scripts/fake-phone.mjs`（五动作）＋ `send --remote`（投）＋ `pickup`（取＋回执镜像）。
 * **把 `quiet` 真正用起来**（`hello --quiet 22:00-09:00` —— **机制齐了**：`hello` 信封里能同时带
-  `recv`（只收离线／能被叫醒）／`onlineCapPerDay`（自报上限）／`quiet`（勿扰时段），
-  **`bus.hello()` 三个都收**；**"谁该声明"早有答案：邮差自己声明**（设计文档 附录三 —— 花名册管身份、`hello` 管习惯），
-  ⇒ **要用起来，只需在我们自己的那次 `hello` 里把这三个字段填上**）。
+ `recv`（只收离线／能被叫醒）／`onlineCapPerDay`（自报上限）／`quiet`（勿扰时段），
+ **`bus.hello()` 三个都收**；**"谁该声明"早有答案：邮差自己声明**（设计文档 附录三 —— 花名册管身份、`hello` 管习惯），
+ ⇒ **要用起来，只需在我们自己的那次 `hello` 里把这三个字段填上**）。
 
-★**（原先这里那条"给台账补一条对账命令"，2026-10-11 已经做完了** ⇒ 挪出"下一步" ✓：
+**（原先这里那条"给台账补一条对账命令"，2026-10-11 已经做完了** ⇒ 挪出"下一步"：
 `whale-post reconcile --as <谁> [--days N] [--remote <根>]` —— `gate` 侧加了 `recount()`、
-`cli` 侧加了 `reconcile` ✓；口径与"**哪些能重算、哪些不能**"写在 `reconcile` 的注释里 ✓，
-命令用法写在 `packages/cli/README`（中英 ✓）。**投到远端的信不在本机** ⇒ 默认只算本机根，要连远端就带 `--remote` ✓。）
+`cli` 侧加了 `reconcile`；口径与"**哪些能重算、哪些不能**"写在 `reconcile` 的注释里，
+命令用法写在 `packages/cli/README`（中英）。**投到远端的信不在本机** ⇒ 默认只算本机根，要连远端就带 `--remote`。）
 
 ### 乙、**要等维护者**（别自己动）
 
@@ -53,11 +53,11 @@ node scripts/selftest-all.mjs && node scripts/racetest.mjs && node scripts/pkgch
 
 * **"两人复核"**（设计文档 §一 第四件 —— **需要 qq 或 ghost 任一**，**它们不在这个会话里**）。
 * **关于 `issues`**：**本仓的 issues／discussions 是开着的**（`has_issues: true`、`has_discussions: true`），
-  上面挂着**第 1 号**那条欢迎帖（问的是"接口设计／默认取舍／安全模型该改哪里"）—— **欢迎来提**。
-  **而它一度是关的**：2026-10-05 曾定下「**公开仓一律关掉 issues／discussions**」；
-  2026-10-10 维护者改了主意（「**要吸取大家的意见**」），于是打开、并开了那一号。
-  ⚠️ **别去找"那封要求开 issue 的信"** —— 它**不存在**：
-  2026-10-10 我（WEB鲸）凭印象拼出过这个任务，**而真相是反的**（一共 17 封提到 issue 的信，**没一封要求开它**）。
+ 上面挂着**第 1 号**那条欢迎帖（问的是"接口设计／默认取舍／安全模型该改哪里"）—— **欢迎来提**。
+ **而它一度是关的**：2026-10-05 曾定下「**公开仓一律关掉 issues／discussions**」；
+ 2026-10-10 维护者改了主意（「**要吸取大家的意见**」），于是打开、并开了那一号。
+ ⚠️ **别去找"那封要求开 issue 的信"** —— 它**不存在**：
+ 2026-10-10 我（WEB鲸）凭印象拼出过这个任务，**而真相是反的**（一共 17 封提到 issue 的信，**没一封要求开它**）。
 
 ---
 
@@ -81,7 +81,7 @@ node scripts/selftest-all.mjs && node scripts/racetest.mjs && node scripts/pkgch
 ## 五、这一夜的账去哪看
 
 * **仓外还有两份记录**（一份 append-only 的操作登记、一份逐条自检的地图）——
-  **它们不在这个仓里**，所以这里**不写路径**；
+ **它们不在这个仓里**，所以这里**不写路径**；
 * **`git log`** —— **提交信息里写的是"为什么"**（不是"改了哪一行"）。
 
 落笔：**WEB鲸**（2026-10-10 08:3x）

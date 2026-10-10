@@ -59,7 +59,7 @@ npm publish --workspace packages/cli --registry https://registry.npmjs.org
 
 **Two pits**:
 * **you must pass `--registry https://registry.npmjs.org` explicitly** —— this repository's `.npmrc` defaults to a mirror, and
-  **a mirror cannot publish** (you will see 404 / 403, and **not** "no permission").
+ **a mirror cannot publish** (you will see 404 / 403, and **not** "no permission").
 * `pkgcheck` item ②b watches "**dependency ranges cover the current version**" —— **it is the one criterion that will stop you before shipping**.
 
 ## Step 2: wait for npm to sync, then **install it for real**

@@ -34,7 +34,7 @@
 1. **Do not read the Chinese; look only at the exit code.**
 2. **It can be re-run in place**: run it twice in a row, and the result is identical.
 3. **Negative test**: **deliberately break one line ⇒ the self-test must turn red.**
-   A self-test that does not turn red is decoration —— it only proves "the code did not crash", not "it is really checking something".
+ A self-test that does not turn red is decoration —— it only proves "the code did not crash", not "it is really checking something".
 
 ## 4. Done criteria
 
@@ -69,8 +69,8 @@ The self-test builds a fake post office in a **temporary directory** and **never
 * **`--force` bypasses all three loop gates**: that is a deliberate escape hatch, but it **leaves a trace** (the ledger counts `forced`).
 * **It only solves "one machine"**: the mailbox is a directory on disk; crossing machines needs a shared directory.
 * **Now tested** (added 2026-10-10): **several processes racing for a sequence number** —— `node scripts/racetest.mjs`:
-  **12 real sub-processes sending at once** ⇒ all exit codes 0 + 12 letters delivered + **every `seq` unique** + the "`state` written backwards" replay.
+ **12 real sub-processes sending at once** ⇒ all exit codes 0 + 12 letters delivered + **every `seq` unique** + the "`state` written backwards" replay.
 * **The truncation path: moved from "not tested" to "tested"** (2026-10-10): `state.seen` is truncated by `slice(-2000)`,
-  and "has this letter been read" has **two safety nets** (the `state.seen` array plus the `seen/<me>/<id>.msg.json` file) ——
-  the criterion builds the **harshest scene**: empty the array, put the same letter **back in the mailbox** ⇒ it must still count as a duplicate;
-  **negative proof**: dropping just the `existsSync` path turns the criterion red immediately.
+ and "has this letter been read" has **two safety nets** (the `state.seen` array plus the `seen/<me>/<id>.msg.json` file) ——
+ the criterion builds the **harshest scene**: empty the array, put the same letter **back in the mailbox** ⇒ it must still count as a duplicate;
+ **negative proof**: dropping just the `existsSync` path turns the criterion red immediately.
