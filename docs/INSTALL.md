@@ -7,12 +7,33 @@
 * **Node ≥ 20**。本仓**零运行时依赖**（只用 `node:` 内置模块）。
 
 ## 一、装
-```bash
-# 发布后从 registry 装
-dsh plugin --profile <profile> add dsh-whale-post
 
-# 本地开发：必须用 link:（改源码即生效）
-dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post
+> **⚠️ 装的是一个个包，不是仓库根。** 2026-10-10 实测三种写法：
+>
+> | 写法 | 结果 |
+> |---|---|
+> | `add dsh-whale-post` | **失败** —— npm 上**没有**这个名字的包（`E404`）。七个包各叫 `dsh-whale-post-<件名>`。 |
+> | `add link:<本仓>`（指仓库根） | **装得上，但一个插件都不生效** —— 它把仓库根当成一个名叫 `dsh-whale-post` 的包装了进去，而**根不是插件**（根 `package.json` 是 `private`、也没有 `dsh.bundle.patch`）。实测那个 profile 的 `dsh.profile.bundles` 里**只有 `@deepseek-ai/dsh-base`，没有任何 whale 件**。 |
+> | `add link:<本仓>/packages/<件名>` | **正确。** 六件插件逐个装；CLI 是入口工具，也照这样装。实测真启退出码 0。 |
+
+```bash
+# 从 npm 装（已发布，版本见下面"三、装上了没有"）：六件插件逐个装
+dsh plugin --profile <profile> add dsh-whale-post-bus
+dsh plugin --profile <profile> add dsh-whale-post-roster
+dsh plugin --profile <profile> add dsh-whale-post-types
+dsh plugin --profile <profile> add dsh-whale-post-deliver
+dsh plugin --profile <profile> add dsh-whale-post-gate
+dsh plugin --profile <profile> add dsh-whale-post-verify
+dsh plugin --profile <profile> add dsh-whale-post-cli      # 入口工具（命令行）
+
+# 本地开发：必须用 link:（改源码即生效），而且必须逐件指到 packages/<件名>
+dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post/packages/bus
+dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post/packages/roster
+dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post/packages/types
+dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post/packages/deliver
+dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post/packages/gate
+dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post/packages/verify
+dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post/packages/cli
 ```
 **两条老实话（我们用血换的）**：
 1. `file:` 装本地包＝**复制快照** ⇒ 你改源码**不生效**；要改就 `link:`（或目录联接）。

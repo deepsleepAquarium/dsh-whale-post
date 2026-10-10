@@ -7,12 +7,33 @@
 * **Node ≥ 20**. This repository has **zero runtime dependencies** (it only uses `node:` built-in modules).
 
 ## 1. Installing
-```bash
-# install from the registry once published
-dsh plugin --profile <profile> add dsh-whale-post
 
-# local development: you must use link: (source edits take effect immediately)
-dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post
+> **⚠️ What you install is individual packages, not the repository root.** Measured on 2026-10-10, three variants:
+>
+> | Command | Result |
+> |---|---|
+> | `add dsh-whale-post` | **Fails** — there is **no** package by that name on npm (`E404`). The seven packages are each called `dsh-whale-post-<part>`. |
+> | `add link:<this repo>` (the repository root) | **Installs, but not one plugin takes effect** — it treats the root as a package named `dsh-whale-post`, and **the root is not a plugin** (its `package.json` is `private` and it has no `dsh.bundle.patch`). Measured: that profile's `dsh.profile.bundles` contained **only `@deepseek-ai/dsh-base`, no whale entry at all**. |
+> | `add link:<this repo>/packages/<part>` | **Correct.** Install the six plugins one by one; the CLI is an entry-point tool and is installed the same way. Measured: a real boot exits 0. |
+
+```bash
+# from npm (all published; version in "3. Did it install?" below): the six plugins, one by one
+dsh plugin --profile <profile> add dsh-whale-post-bus
+dsh plugin --profile <profile> add dsh-whale-post-roster
+dsh plugin --profile <profile> add dsh-whale-post-types
+dsh plugin --profile <profile> add dsh-whale-post-deliver
+dsh plugin --profile <profile> add dsh-whale-post-gate
+dsh plugin --profile <profile> add dsh-whale-post-verify
+dsh plugin --profile <profile> add dsh-whale-post-cli      # entry-point tool (command line)
+
+# local development: you must use link: (source edits take effect immediately), and you must point at each packages/<part>
+dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post/packages/bus
+dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post/packages/roster
+dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post/packages/types
+dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post/packages/deliver
+dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post/packages/gate
+dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post/packages/verify
+dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post/packages/cli
 ```
 **Two honest truths (we bought them with blood)**:
 1. Installing a local package with `file:` = **copying a snapshot** ⇒ your source edits **do not take effect**; if you want to change the code, use `link:` (or a directory junction).
