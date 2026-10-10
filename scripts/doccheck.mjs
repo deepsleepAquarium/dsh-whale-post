@@ -23,6 +23,8 @@
 import { readdirSync, statSync, readFileSync } from 'node:fs'
 import { join, dirname, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
+//   ★★**计数口径只此一份** ✗✓：★`doccheck`（比中英）与★`check-doc-shape`（比改写前后）共用它 ✓
+import { profile } from './doc-shape.mjs'
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..')
 const rel = (p) => relative(repo, p).replace(/\\/g, '/')
@@ -46,37 +48,7 @@ function walk(dir, out = []) {
   return out
 }
 
-/** ★一份文档的结构快照 ✓ */
-function profile(text) {
-  const lines = text.split(/\r?\n/)
-  //   ★★★先**剥掉代码块** ✗✓ —— 否则代码里的 `# 注释` 会被当标题（★我第一版就误报过：★
-  //     "标题数 21 vs 23"，★查了半天才发现多出来的是 shell 注释 ✓）、★`* ` 会被当条目 ✓。
-  //   ⓘ ★围栏**本身**要单独数（★那是"代码块数对等"这条判据要的 ✓）⇒ 先数、再剥 ✓。
-  const fences = (text.match(/^```/gm) ?? []).length
-  const body = []
-  let inFence = false
-  for (const l of lines) {
-    if (/^```/.test(l)) { inFence = !inFence; continue }
-    if (!inFence) body.push(l)
-  }
-  const headings = body.filter((l) => /^#{1,6} /.test(l)).map((l) => l.replace(/^#{1,6} /, '').replace(/^[0-9]+[.、]\s*/, '').trim())
-  const byLevel = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 }
-  for (const l of body) { const m = /^(#{1,6}) /.exec(l); if (m) byLevel[m[1].length] += 1 }
-  const bullets = body.filter((l) => /^\* /.test(l)).length
-  let tables = 0
-  let inTable = false
-  const tableWidths = []
-  let cur = []
-  for (const l of body) {
-    const isRow = l.trimStart().startsWith('|')
-    if (isRow) { if (!inTable) { inTable = true; tables += 1; cur = [] } cur.push((l.replace(/\\\|/g, 'X').match(/\|/g) ?? []).length) }
-    else if (inTable) { inTable = false; tableWidths.push(new Set(cur).size === 1 ? cur[0] : -1) }
-  }
-  if (inTable) tableWidths.push(new Set(cur).size === 1 ? cur[0] : -1)
-  const tableRows = body.filter((l) => l.trimStart().startsWith('|')).length
-  const links = (body.join('\n').match(/\]\([^)]*\)/g) ?? []).length
-  return { lines: lines.length, headings, byLevel, bullets, tables, tableRows, tableWidths, fences, links }
-}
+//   ★本地那份 `profile()` 已抽到 `./doc-shape.mjs` ✓（★共用，★不再各写一份 ✗）
 
 const checks = []
 const check = (name, ok, extra = '') => checks.push({ name, ok: !!ok, extra: String(extra) })
