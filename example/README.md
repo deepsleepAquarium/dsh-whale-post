@@ -32,9 +32,9 @@
         quota:
           onOver: reject                         # reject 拒发 ＋ 退出码非 0 ／ price 照发但计费
           types:
-            direct:    { label: 'direct',    limit: 100 }
+            direct:    { label: 'direct',    limit: 120 }
             broadcast: { label: 'broadcast', limit: 45 }
-            club:      { label: 'club',      limit: 40 }
+            club:      { label: 'club',      limit: 60 }
             offline:   { label: '离线',      limit: 80, perSend: true }   # 离线件按发信次数计
 
     - id: whale-verify
