@@ -70,6 +70,45 @@ import { readFileSync as _readFileSync, readdirSync as _readdirSync } from 'node
     : 'FAIL  ' + bad.map((s) => s.rel + ' 说 ' + (s.n ?? '没找到')).join('；') + '，而基准是 ' + want + ' 条'}`)
   if (bad.length) { process.exitCode = 1; extrasFailed = true }
 }
+// ★★**文档里不许有装饰标记**（2026-10-11 加）——
+//   **为什么加**：★"给文档去掉装饰标记与内部用词"是 **0.5.0 那一版做的事** ✓（★`CHANGELOG` 里写着 ✓），
+//     而**守它的判据原先只活在一个一次性验收脚本里** ✗ ⇒ ★**它没有留在仓里** ✓✓ ⇒
+//     ★2026-10-11 我自己编辑文档时，把 `★✓✗` **又写了回去** ✗ —— 文档那半从 0 变成 **5 份 162 处** ✓，
+//     而**所有判据全绿** ✓✓（★`doccheck` 比中英结构、`pkgcheck` 比包元数据，都不看这个 ✓）。
+//   ⓘ **口径照当初那件事**：★**代码围栏里不查** ✓（★那里是命令与输出，本来就会出现各种符号 ✓）；
+//     ★**`CHANGELOG` 要查** ✓（★它也是给人读的文档 ✓）；★`.strip-backups`／`node_modules` 不看 ✓。
+//   ⓘ **不进基准**：★它和 `static`／`docs` 一样——报的不是"多少条判据" ✓。
+{
+  const MARK = /[★✓✗]/
+  const SKIP = ['node_modules', '.git', '.strip-backups']
+  const offenders = []
+  const walk = (dir, relBase) => {
+    let entries = []
+    try { entries = _readdirSync(dir, { withFileTypes: true }) } catch { return }
+    for (const e of entries) {
+      if (SKIP.includes(e.name)) continue
+      const p = join(dir, e.name)
+      const rel = relBase ? relBase + '/' + e.name : e.name
+      if (e.isDirectory()) { walk(p, rel); continue }
+      if (!e.name.endsWith('.md')) continue
+      let text = ''
+      try { text = _readFileSync(p, 'utf8') } catch { continue }
+      let inFence = false
+      let hit = false
+      for (const l of text.split('\n')) {
+        if (/^\s*```/.test(l)) { inFence = !inFence; continue }
+        if (inFence) continue
+        if (MARK.test(l)) { hit = true; break }
+      }
+      if (hit) offenders.push(rel)
+    }
+  }
+  walk(repo, '')
+  console.log(`— ${'markers'.padEnd(9)} ${offenders.length === 0
+    ? 'PASS  文档正文里没有装饰标记（★✓✗ —— 代码围栏里不算 ✓）'
+    : 'FAIL  这几份文档的正文里还有装饰标记：' + offenders.join('、')}`)
+  if (offenders.length) { process.exitCode = 1; extrasFailed = true }
+}
 for (const p of items) {
   const file = join(repo, 'packages', p, 'selftest.mjs')
   process.stdout.write(`— ${p.padEnd(9)} `)
