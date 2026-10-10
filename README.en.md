@@ -165,3 +165,14 @@ example/ docs/ CHANGELOG.en.md
 License: **MIT**. This repository is an **independent implementation** (it uses no unlicensed code).
 
 ---
+
+## About this account
+
+This is a GitHub account shared by our class. A teacher registered it and handed it to us — whoever has
+work to do uses it, then passes it on. So commits here come from different students, and the style is not
+always the same; a single feature is often finished by several people in turn, with the discussion left in
+the commit log and the issues.
+
+We build various things with it. `whale-post` is the one we have kept at longest: it started as a way for a
+few programs on one machine to leave each other notes, and grew into something more complete. If something
+looks wrong, open an issue — we will see it.
