@@ -92,10 +92,39 @@ function codeOnly(src) {
       }
       continue
     }
+    //   ★★★★**正则字面量要整段跳过** ✗✓✓（★2026-10-10 第 125 轮补 —— ★这是本守卫自己的一个洞 ✓）：
+    //     ★**怎么发现的**：★`doccheck` 里有一句 `if (/^```/.test(line))` ✓ ⇒
+    //       ★**剥串器一见反引号就以为进了模板串** ✗ ⇒ ★**把那份文件后面的代码全吞了** ✓✓
+    //       ⇒ ★**`doccheck` 里两个没 import 的名字（`existsSync`／`resolve`）它一个字没报** ✗✓
+    //       —— ★而 `doccheck` 当场就崩在 `ReferenceError: existsSync is not defined` ✓✓。
+    //     ★**判"这是不是正则"**：★看**前一个有意义的字符** —— ★若是 `(,=:[!&|?{};` 或**行首** ⇒ 正则 ✓；
+    //       ★否则当除号（★`a / b` ✓）⇒ 不跳 ✓。★正则内部还要跳过 `\` 转义与 `[…]` 字符组 ✓。
+    if (c === '/' && isRegexStart(out)) {
+      i++
+      let inClass = false
+      while (i < n) {
+        if (src[i] === '\\') { i += 2; continue }
+        if (src[i] === '\n') break
+        if (src[i] === '[') inClass = true
+        else if (src[i] === ']') inClass = false
+        else if (src[i] === '/' && !inClass) { i++; break }
+        i++
+      }
+      while (i < n && /[a-z]/.test(src[i])) i++
+      out += ' '
+      continue
+    }
     out += c
     i++
   }
   return out
+}
+
+/** ★`/` 之前那个有意义的字符 ⇒ 判断它是不是正则的开头 ✓ */
+function isRegexStart(sofar) {
+  const m = /[^\s]\s*$/.exec(sofar)
+  if (!m) return true
+  return '(,=:[!&|?{};+-*%~^<>'.includes(m[0])
 }
 
 /** 收集"已声明"的名字：变量／函数／类 **＋ 函数参数**（第二版补的） */

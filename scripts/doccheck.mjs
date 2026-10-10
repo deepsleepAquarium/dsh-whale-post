@@ -20,8 +20,8 @@
  * ⚠️ 配不上对的单份文档**不算错** （比如 `example/README.md` 可能本来就没有英文版）——
  *   只有"**一边有一边没有**"才报。
  */
-import { readdirSync, statSync, readFileSync } from 'node:fs'
-import { join, dirname, relative } from 'node:path'
+import { readdirSync, statSync, readFileSync, existsSync } from 'node:fs'
+import { join, dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 //   **计数口径只此一份**：`doccheck`（比中英）与`check-doc-shape`（比改写前后）共用它 
 import { profile } from './doc-shape.mjs'
@@ -133,6 +133,38 @@ for (const p of all) {
 }
 check('④ 文档里"我们自己的命令"用到的开关，**代码里都认** （只查代码块里的自家命令）',
   deadFlags.length === 0, deadFlags.length ? [...new Set(deadFlags)].join('、') : '没有认不出的开关')
+
+// ⑤ **文档里的相对链接，目标文件必须真的在** （2026-10-10 加，第 125 轮）
+//   为什么：断链也是"**悄悄坏**"的那一类 —— **没人去点，就没人会知道**；
+//     而读者点到 404 时，那份文档在他眼里就不可信了。
+//   怎么查：只看 `](…)` 里的**相对路径**（**跳过** `http(s):`／`mailto:`／`#锚点` ✓），
+//     去掉 `#锚点` 与 `?查询` 之后，按**那份文档所在目录**解析 ⇒ 必须存在。
+//   ⓘ 它不查外部网址：那要联网、而且**别人的站会挂**（那是别人的事，不是我们文档的错）。
+const brokenLinks = []
+const docFiles = []
+const collectDocs = (d) => {
+  for (const e of readdirSync(d, { withFileTypes: true })) {
+    if (e.name === 'node_modules' || e.name === '.git' || e.name === '.strip-backups') continue
+    const p = join(d, e.name)
+    if (e.isDirectory()) { collectDocs(p); continue }
+    if (e.name.endsWith('.md')) docFiles.push(p)
+  }
+}
+collectDocs(repo)
+let linksChecked = 0
+for (const p of docFiles) {
+  for (const m of readFileSync(p, 'utf8').matchAll(/\]\(([^)\s]+)\)/g)) {
+    const t = m[1]
+    if (/^(https?:|mailto:|#)/.test(t)) continue
+    const clean = t.split('#')[0].split('?')[0]
+    if (!clean) continue
+    linksChecked++
+    if (!existsSync(resolve(dirname(p), decodeURIComponent(clean)))) brokenLinks.push(`${rel(p)} → ${t}`)
+  }
+}
+check('⑤ 文档里的**相对链接**，目标文件真的在 （断链是悄悄坏的那一类）',
+  brokenLinks.length === 0, brokenLinks.length ? brokenLinks.join('、') : `${linksChecked} 条相对链接全都在`)
+
 
 
 // ④、**判据条数**那条：**写了又撤了** （2026-10-10 15:1x）——
