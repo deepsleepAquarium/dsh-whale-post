@@ -93,9 +93,24 @@ Before a release, the docs say "**the latest on npm is the previous version / th
 **Search for them first; do not just follow a list** (changed 2026-10-11):
 
 ```bash
-# search the whole repository for the current version (excluding CHANGELOG —— that is history, leave it alone)
-grep -rn "$(node -p 'require("./package.json").version')" --include='*.md' . | grep -v CHANGELOG
+# step one: read the current version (the same in any shell)
+node -p "require('./package.json').version"
+
+# step two: search the repository with it (replace <version>; CHANGELOG is excluded —— it is history)
+git grep -n <version> -- '*.md' ':(exclude)CHANGELOG*'
 ```
+
+**Why two steps**: the one-liner needs nested quotes, and **shells disagree about those** —— on 2026-10-11 it
+turned out that form **only worked in PowerShell** and **fell apart in bash**. Two steps behave the same
+everywhere, and "following the checklist makes it worse" is the one thing this checklist must never do.
+
+**Every hit deserves a look**: the results are **not only claims** ("the latest on npm is this version" ——
+those **must** change) but also **example commands** (`npx -y dsh-whale-post-cli@<version> …` —— those must
+change too, **or readers copy an old version**). On 2026-10-11 that search returned **32 lines**, and most of
+them were examples.
+
+**Why `git grep` and not `grep`**: **`grep` is not guaranteed to exist** —— `where grep` came back empty on this
+machine; `git grep` **ships with git**, so it is always there.
 
 **Every place that makes a claim about "what is on npm right now" has to change**, and **every hit deserves a look**.
 
