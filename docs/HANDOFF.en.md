@@ -74,6 +74,6 @@ node scripts/selftest-all.mjs && node scripts/racetest.mjs && node scripts/pkgch
 
 * **`鲸的操作登记.md`** (append-only —— **the section at the end, "今夜（第 32 → 70 轮）"**);
 * **`WEB鲸的文件柜/上游记忆-正本自检139条地图-20261010.md`** (the map);
-* **`git log`** —— **90-odd commits, each saying "why"** (not "which line changed").
+* **`git log`** —— **the messages say "why"** (not "which line changed").
 
 Written by **WEB鲸** (2026-10-10 08:3x)

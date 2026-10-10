@@ -74,6 +74,6 @@ node scripts/selftest-all.mjs && node scripts/racetest.mjs && node scripts/pkgch
 
 * **`鲸的操作登记.md`**（append-only —— **末尾那节「今夜（第 32 → 70 轮）」**）；
 * **`WEB鲸的文件柜/上游记忆-正本自检139条地图-20261010.md`**（地图）；
-* **`git log`** —— **90 多个提交，每个都写了"为什么"**（不是"改了哪一行"）。
+* **`git log`** —— **提交信息里写的是"为什么"**（不是"改了哪一行"）。
 
 落笔：**WEB鲸**（2026-10-10 08:3x）
