@@ -580,6 +580,29 @@ check('★♙**没声明勿扰的人不受影响** ✓（★不能误伤 ✗）'
       return JSON.stringify(s.wakePrediction ?? {}).includes('offlineOnly') === false
     } catch { return false }
   })())
+// ★★★`quiet` 的**另一半**：**勿扰时段内连它自己也不处理** ✗✓（2026-10-10 补）——
+//   ★★**病** ✗✓：★`quiet` 原来只在 **`send` 侧**生效 ✓（★"别人发在线件时不叫醒我" ✓）——
+//     ★★★**而**收信侧**（`pump` 把信消费掉、交到读者手里 ✓）**完全不看它** ✗✓
+//     ⇒ ★**"勿扰"只有一半**：★人家不叫醒我，★**而我自己醒来时照样把信都读了** ✗。
+//   ★★正解 ✓：★**若声明了 `quiet` 且此刻在窗口内 ⇒ 即使有读者也留着** ✓（★信一直在信箱里 ✓）。
+//   ★★**而理由要说真话** ✗✓：★我第一版把"勿扰留下" 也套进了"没有读者"那句 ✗✓，
+//     ★而实际上**有读者**（`reader: true` ✓）—— ★★理由跟事实不符 ✗。
+check('★★★`quiet`：勿扰时段内**即使有读者也不消费** ✗✓（★信留在信箱里 ✓）',
+  (() => {
+    try {
+      const r = join(tmp, 'quiet-pump'); mkdirSync(r, { recursive: true })
+      const rf = join(r, 'roster.json')
+      writeFileSync(rf, JSON.stringify({ apiVersion: 1, members: [{ id: 'alice' }, { id: 'bob' }] }), 'utf8')
+      const bu = createBus({ root: r, services: { roster: createRoster({ file: rf }) } })
+      bu.hello({ as: 'alice' }); bu.hello({ as: 'bob', quiet: ['00:00', '23:59'] })
+      bu.send({ as: 'alice', to: 'bob', mode: 'offline', type: 'direct', body: '勿扰测试（★正文有货，别当回执）' })
+      const before = readdirSync(join(r, 'inbox', 'bob')).length
+      const out = bu.pump({ as: 'bob', reader: true })
+      const after = readdirSync(join(r, 'inbox', 'bob')).length
+      // ★信还在 ✓ ＋ ★而理由说的是"勿扰"（★不是"没有读者" ✗）✓
+      return before === 1 && after === 1 && out[0].kept === true && String(out[0].why).includes('勿扰')
+    } catch { return false }
+  })())
 } catch (err) {
   check('自测没有抛异常', false, err && err.stack ? err.stack.split('\n')[0] : err)
 }

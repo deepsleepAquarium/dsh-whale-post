@@ -681,11 +681,22 @@ export function createBus(config = {}) {
       try { const s = typeof sessionOf === 'function' ? sessionOf(as) : undefined; return !!(s && s.live) } catch { return false }
     }
     const canRead = reader === true || hasInject
+    // ★★★**勿扰时段：`quiet` 的"另一半"** ✗✓（2026-10-10 补）——
+    //   ★★**病** ✗✓：★`quiet` 原来只在 **`send` 侧**生效 ✓（★"别人发在线件时不叫醒我" ✓）——
+    //     ★★★**而**收信侧**（`pump` 把信消费掉、交到读者手里 ✓）**完全不看它**** ✗✓
+    //     ⇒ ★**"勿扰"只有一半**：★**人家不叫醒我，可我自己醒来时照样把信都读了** ✓✓。
+    //   ★**正解** ✗✓：★★**若我声明了 `quiet` 且**此刻就在窗口内** ⇒ 即使有读者，也**留着** ✓ ——
+    //     ★**理由跟 `keep` 一样** ✓：★**信一直在信箱里** ✓（★"**只会晚到，不会不到**" ✓），
+    //     ★★★**而"勿扰"的意思本来就是"**这会儿连我自己也不处理**"** ✓✓。
+    //   ⚠️ ★**它不是"拒收"** ✗ —— ★**只是"这一轮不读"** ✓；★窗口一过，★`pump` 照旧读 ✓。
+    //   ⚠️ ★**`keep: false` 仍然优先** ✗（★显式命令"我就是要现在读" ⇒ ★**它说了算** ✓）。
+    const quietNow = (() => { try { return inQuietHours(as) } catch { return false } })()
     const keepThis = (env) => {
       if (keep === true) return true
-      if (keep === false) return false
+      if (keep === false) return false                    // ★显式"现在就读" ⇒ 它说了算 ✓（★勿扰也不拦 ✓）
       if (typeof keep === 'function') return !!keep(env)
-      return !canRead                                   // ★默认：没有读者 ⇒ 不消费
+      if (quietNow) return true                           // ★★勿扰时段 ⇒ 留着（★"这会儿连我自己也不处理" ✓）
+      return !canRead                                     // ★默认：没有读者 ⇒ 不消费
     }
     const dir = paths().inbox(as)
     const files = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.msg.json')).sort() : []
@@ -747,8 +758,14 @@ export function createBus(config = {}) {
       if (keepThis(env)) {
         out.push({
           ...row, kept: true,
+          //   ★★**理由要**说真话**** ✗✓（2026-10-10 修 —— ★★而这是**我自己刚写的代码在说错话** ✓）：
+          //     ★**病** ✗：★我把"勿扰时段把信留下"也套进了"**没有读者**"那一句 ✓ ⇒
+          //       ★★★**而实际上**有读者**（`reader: true` ✓）—— ★**理由跟事实不符** ✗✓。
+          //     ★**四种"留着"各有各的理由** ✗✓：★`keep: true`（★只看不消费 ✓）／
+          //       ★**勿扰时段**（★"这会儿连我自己也不处理" ✓）／★`keep` 函数说留 ✓／★**真的没有读者** ✓。
           why: keep === true ? 'keep=true：只看不消费'
-            : `★没有读者（没给 inject、也没声明 reader${liveNow() ? '；**有活体会话也不算**：会话活着不等于信交到了读者手里' : ''}）⇒ 不投也不消费，原样留在信箱里`,
+            : quietNow ? `★**勿扰时段**（★它自己用 \`quiet\` 声明的 ⇒ **这会儿连它自己也不处理**）⇒ 不投也不消费，原样留在信箱里（★窗口一过照读 ✓）`
+              : `★没有读者（没给 inject、也没声明 reader${liveNow() ? '；**有活体会话也不算**：会话活着不等于信交到了读者手里' : ''}）⇒ 不投也不消费，原样留在信箱里`,
         })
         continue
       }
