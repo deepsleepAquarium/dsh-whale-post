@@ -1,6 +1,6 @@
 {
   "name": "dsh-whale-post-gate",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "配额与计费闸 ＋ 回环闸（示例②的挂点） · Quota and billing gate + loop gate (example (2)'s socket)",
   "keywords": [
     "dsh",

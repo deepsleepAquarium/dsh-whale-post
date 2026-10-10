@@ -7,6 +7,42 @@
 
 ---
 
+## v0.5.0 —— 2026-10-10 (**released**)
+
+> **Two things: `quiet` got its other half (the receiving side), and the decorative marks are gone from the output text.**
+
+### **Behaviour changed: inside a quiet window, the mailbox does not process its own mail either**
+
+**The bug**: `quiet` used to work only on the `send` side ("do not wake me when someone sends an
+online letter") —— while the **receiving side** (`pump` consuming letters and handing them to a
+reader) **never looked at it** ⇒ **"do not disturb" was only half there**: nobody woke me, but when
+I woke up myself I read everything anyway.
+
+**The fix**: if you declared `quiet` and we are inside that window ⇒ **keep it, even when a reader is
+present**. Same reason as `keep`: **the letter stays in the mailbox** ("a letter only arrives late,
+never not at all"); and **"do not disturb" means "not even I process it right now"**.
+
+* **`keep: false` still wins** —— an explicit "I want to read now" decides;
+* **it is not a refusal** —— just "not this round"; once the window passes, `pump` reads as usual;
+* the four kinds of "keep it" now **each state their own reason** (`keep: true` / quiet window /
+  the `keep` function says keep / there really is no reader) —— the first version filed the quiet
+  case under "no reader", while there **was** a reader ⇒ the stated reason did not match the facts.
+
+### **Text only: no more decorative marks in the output**
+
+Command output (refusal reasons, hints, the notes in `--help`) used to carry marks like `★` `✓` `✗`,
+plus internal-only words. They are all gone now.
+
+**Why this deserves its own entry**: this is text **printed for users**. And changing it **does not
+change behaviour** —— every string literal in the code was compared byte for byte before and after.
+
+### **Criteria and documentation**
+
+* Criteria **353 → 360** — seven were added after v0.4.0: **the truncation path moved from untested to tested** / **"which npm version the docs state"** / **quiet-window behaviour** / **documented defaults match the code's `DEFAULTS`** / **the version has a CHANGELOG section** / **every flag our own documented commands use exists in the code** / **no broken relative links**;
+* the sample numbers in the combination example and in `gate`’s field table are now aligned
+  with the code defaults (`gate`'s four buckets: 120 / 45 / 60 / 80);
+* `packages/*/description` gained one English line (the first thing an English reader sees in npm search).
+
 ## v0.4.0 —— 2026-10-10 (**released** —— all seven are on npm)
 
 > **This version contains exactly one thing, and it is the half that was missing from the plan**: **the "deliver" half of S6**.
