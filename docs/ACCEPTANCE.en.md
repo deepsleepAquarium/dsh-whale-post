@@ -5,7 +5,7 @@
 > This document is about one thing only: **how to prove that a plugin "really runs"**.
 > It was bought with a real incident —— that one looked like this: **every syntax check passed, every module-level self-test passed, and yet one undefined constant made all 7 entry points crash on the same line and kept the service down for over ten hours.**
 
-## 1. Five criteria shared by the seven plugins
+## 1. Five criteria shared by all seven packages (six plugins + `cli`, which is an **entry tool**, not a plugin)
 
 | Criterion | How | What failing looks like |
 |---|---|---|
