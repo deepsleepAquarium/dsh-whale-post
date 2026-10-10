@@ -38,6 +38,15 @@ node scripts/selftest-all.mjs && node scripts/racetest.mjs && node scripts/pkgch
   window), and **`bus.hello()` accepts all three**; and **"who should declare it" already has an answer: the courier
   declares it itself** (design doc, appendix 3 —— the roster carries identity, `hello` carries habits),
   ⇒ **to actually use it, just fill those three fields in our own `hello`**).
+* **Add a "reconciliation" command for the ledger** (design doc, appendix 2 · **the second half of S6h ⑤** —— the
+  first half is done, **this half is not**): **recompute a ledger from the filesystem** (scan `seen/` plus the
+  markers already counted), so the ledger can be *checked* rather than only trusted.
+  Today: `gate`'s ledger is "**a base file + increment files**" (`state/quota-<as>.json` +
+  `state/quota-<as>.d/*.json`) with the rule "**the count may be low, never high**" (a crash may under-count ⇒
+  in the sender's favour, **never double-count**) —— and **nothing can recompute it**: `rebuild` / `recount` /
+  `recompute` / 对账 appear **0 times** in the whole repository, and the CLI has no such subcommand.
+  Why it matters: it is what the design doc calls "**the foundation of 'the ledger is optional'**" —— without a
+  recomputation the ledger can only be believed, never verified.
 
 ### B. **Waits on the keeper** (do not act on your own)
 
