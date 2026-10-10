@@ -113,6 +113,24 @@ process.stdout.write(`— ${'pkgcheck'.padEnd(9)} `)
   console.log(`${pr.status === 0 ? 'PASS' : 'FAIL'}  ${pall.length ? pall[pall.length - 1] : ''}${pfails.length ? '   ← ' + pfails.length + ' 处不合格' : ''}`)
 }
 
+// ★★★"用了但没 import"（`check-imports`）✗✓ —— ★**静态检查，一天能跑几百遍** ✓
+//   ★为什么单列一步 ✗：★它抓的既不是"某件事对不对"、也不是"跨包一致吗" ✓，而是
+//   ★★**"这个文件里用到的名字，是不是真的有出处"** ✓ —— ★**`node --check` 照不出来** ✓。
+//   ★★**为什么值得进这道门** ✗✓（2026-10-10）：★这一条**一天撞了四次** ✓ ——
+//     ★`gate/index.js` 的 `readdirSync`／★`bus/selftest.mjs` 的 `copyFileSync`／
+//     ★`scripts/check-install.mjs` 的 `mkdirSync` ＋ `copyFileSync` ＋ `tmpdir` ✓。
+//     ★★★**每一次都是"语法检查通过、一跑就 `ReferenceError`"** ✓✓ —— ★而它们本该在**写的时候**就被拦住 ✓。
+//   ★★为什么不进基准 ✗（★跟 `static` 一样 ✓）：★它报的是"**扫了几个文件**"，★不是"多少条判据" ✓。
+process.stdout.write(`— ${'imports'.padEnd(9)} `)
+{
+  const ir = spawnSync(process.execPath, [join(repo, 'scripts', 'check-imports.mjs')], { stdio: only ? 'inherit' : 'pipe', encoding: 'utf8' })
+  const iout = only ? '' : String(ir.stdout ?? '')
+  const isum = (iout.match(/扫了 \d+ 个文件/) ?? [])[0] ?? ''
+  const ifails = (iout.match(/^  ★/gm) ?? [])
+  results.push({ p: 'imports', code: ir.status, summary: '' })
+  console.log(`${ir.status === 0 ? 'PASS' : 'FAIL'}  ${isum}${ifails.length ? '   ← ' + ifails.length + ' 个文件有缺' : ''}`)
+}
+
 console.log('')
 const bad3 = results.filter((r) => r.code !== 0)
 //   ★★汇总里也要**点名"崩了"的那几件** ✗✓（★否则"有件没过"看起来像"判据红了" ✓）——

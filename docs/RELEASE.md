@@ -12,7 +12,7 @@
 
 ```bash
 ★★另：**提交前的门要先装** ✗✓：`npm run hooks:install` ✓（★本地配置，★**新 clone 不会自动有** ✓）—— ★装上后，每次 `git commit` 会自动跑 `selftest`，非 0 就拒绝提交 ✓。
-npm run selftest     # 10 项：加载级 ＋ 静态判据 ＋ 跨包一致 ＋ 中英对等 ＋ 包元数据
+npm run selftest     # 11 项：加载级 ＋ 静态判据 ＋ 跨包一致 ＋ 中英对等 ＋ 包元数据 ＋ 导入自检
 npm run racetest     # 11 条：并发发号 ＋ 并发记账
 npm run doccheck     # 中英文档对等
 npm run pkgcheck     # 包元数据（★发布这件事的坑全在这里）

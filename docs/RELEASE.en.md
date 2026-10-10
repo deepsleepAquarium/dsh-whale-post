@@ -12,7 +12,7 @@
 
 ```bash
 ★★Also: **the pre-commit gate has to be installed first** ✗✓: `npm run hooks:install` ✓ (★local configuration, ★**a fresh clone will not have it automatically** ✓) —— ★once installed, every `git commit` runs `selftest` automatically and a non-zero exit refuses the commit ✓.
-npm run selftest     # 10 items: load-level + static criteria + cross-package + doc parity + package metadata
+npm run selftest     # 11 items: load-level + static criteria + cross-package + doc parity + package metadata + import hygiene
 npm run racetest     # 11 criteria: concurrent sequence claiming + concurrent accounting
 npm run doccheck     # Chinese/English doc parity
 npm run pkgcheck     # package metadata (★every publishing pit lives here)

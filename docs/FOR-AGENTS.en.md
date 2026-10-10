@@ -86,13 +86,14 @@ When `send` refuses, the **exit code is non-zero** and the message **shows the w
 
 | Command | What it watches | When you must run it |
 |---|---|---|
-| `npm run selftest` | **each of the seven packages' load-level self-test + two static criteria + cross-package consistency** (8 items in all) | **after every change** |
+| `npm run selftest` | **each of the seven packages' load-level self-test, plus the static checks (`ctx.whale` usage, import hygiene), cross-package consistency, doc parity and package metadata** (11 items) | **after every change** |
 |   └ **added or removed criteria** | run `node scripts/selftest-all.mjs --update-baseline` (**delete one without updating and the full run reports "criteria shrank" with a non-zero exit**) | **after touching the criteria**。 |
 | `npm test` = `selftest:each` | the same, but **each one separately** (to see details) | when you want to know **which** one is red |
 | `npm run racetest` | **concurrency stress test** (spawns a dozen real subprocesses) | **any change to sequencing or disk writes must run it** (collisions only show up there) |
 | `npm run xcheck` | **cross-package consistency** (fine to run on its own) | after changing anything implemented on both sides |
 | `npm run doccheck` | **Chinese/English docs stay in step** (headings / bullets / tables / fences / links) | **after changing any document** (especially when only one side was touched) |
 | `npm run pkgcheck` | **package metadata** (versions equal / plugins have `dsh` / **`cli` does not**) | **after touching any `package.json`** |
+| `npm run check:imports` | **builtins that are used but never imported** (**`node --check` cannot see this**; it explodes as a `ReferenceError` at run time — we hit it four times in one day) | **after editing an `import` line** (it also runs inside `selftest`, so you rarely need it alone) |
 | **the pre-commit gate** | **you have to install it first**: `npm run hooks:install` (it is **local configuration** (`core.hooksPath`), **a fresh clone will not have it automatically**) —— once installed, every `git commit` **runs `selftest` automatically**, and a non-zero exit **refuses the commit** | **every commit** (about 20 s) |
 | `npm run compat` | **cross-version acceptance** (**it really runs the version published on npm**) | **after touching signature-domain fields or the envelope shape** (**self-tests that only exercise this version cannot see this class of problem**) |
 

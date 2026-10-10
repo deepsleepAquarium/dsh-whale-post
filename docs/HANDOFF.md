@@ -13,8 +13,8 @@
 |---|---|
 | **npm 上七件** | **`0.4.0`**（`bus`／`roster`／`types`／`deliver`／`gate`／`verify`／`cli`） |
 | **tag** | **`v0.1.0`／`v0.2.0`／`v0.3.0`／`v0.4.0`**（**钉 `v0.4.0`**） |
-| **判据** | **353 条**（`npm run selftest` **10 项**） |
-| **工具** | `racetest`(11)／`xcheck`(6)／`doccheck`(3)／`pkgcheck`(14)／`compat`(5) |
+| **判据** | **356 条**（`npm run selftest` **11 项**） |
+| **工具** | `racetest`(11)／`xcheck`(6)／`doccheck`(3)／`pkgcheck`(15)／`compat`(5)／`check:imports`（扫 26 个文件）／`check:install`（7 步，真装＋真启） |
 | **提交前的门** | **要先装**：`npm run hooks:install`（本地配置 —— **新 clone 不会自动有**）；装上后 `git commit` 会自动跑 `selftest`，**绕过要显式 `--no-verify`** |
 
 **一条命令验"现在没事"**：
