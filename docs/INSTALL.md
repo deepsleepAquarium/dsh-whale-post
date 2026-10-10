@@ -103,6 +103,9 @@ node packages/cli/index.js selftest # ★只看退出码：0 = 过；非 0 = 不
 node packages/cli/index.js send --as alice --to bob --subject 'hello' --body 'first letter'
 node packages/cli/index.js pump --as bob # 把 bob 的信箱读一遍（★消费掉）
 ```
+> ★注意这三条里的 `send` 与 `pump` **没有 `--root`** ✓ ⇒ ★它们用**默认信箱根 `./.whale-mail`**（★就在你当前目录下 ✓）。
+> ★★而它**已在 `.gitignore` 里** ✓ —— ★所以你在仓库里照这几条跑，**不会多出未跟踪文件** ✓。
+> ★（★实测：把 `roster.json` 放进 `.whale-mail/` 后，加这一条之前 `git status` 会报 `?? .whale-mail/` ✓）
 **三条硬规矩**：① **只看退出码**（不匹配中文）；② **能原地重复跑**（两次结果一致）；③ **负向测试**：**故意改坏一行 ⇒ 自测必须变红**（不红＝自测是摆设）。
 
 **本仓自带的跑法**（还没装也能验）：`node scripts/selftest-all.mjs` ⇒ **退出码 0 ＝ 七件全过**；单件跑 `node packages/<件名>/selftest.mjs`。

@@ -5,6 +5,9 @@ dist/
 package-lock.json
 pnpm-lock.yaml
 
+# ★默认信箱根（★不写 --root 时 CLI 用它 ✓）
+.whale-mail/
+
 # 运行期数据（信箱、状态、日志 —— 绝不要提交）
 state/
 inbox/

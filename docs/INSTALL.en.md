@@ -105,6 +105,10 @@ node packages/cli/index.js selftest # ★look only at the exit code: 0 = pass; n
 node packages/cli/index.js send --as alice --to bob --subject 'hello' --body 'first letter'
 node packages/cli/index.js pump --as bob # read through bob's mailbox once (★this consumes the letters)
 ```
+> Note that in those three commands `send` and `pump` have **no `--root`** ⇒ they use the **default mailbox root `./.whale-mail`**
+> (right under your current directory). That path **is already in `.gitignore`**, so running these inside the repository
+> **will not leave untracked files behind**.
+> (Measured: with `roster.json` inside `.whale-mail/`, `git status` reported `?? .whale-mail/` before this line existed.)
 **Three hard rules**: ① **look only at the exit code** (do not match on the Chinese text); ② **it can be re-run in place** (two runs give the same result); ③ **negative test**: **deliberately break one line ⇒ the self-test must turn red** (not turning red = the self-test is decoration).
 
 **The runner that ships with this repository** (you can verify it before installing anything): `node scripts/selftest-all.mjs` ⇒ **exit code 0 = all six passed**; to run a single piece, `node packages/<package-name>/selftest.mjs`.
