@@ -43,7 +43,14 @@
 * ★`cli` 52 → **54** ✓ (★a remote member ⇒ written remotely and zero copies locally ✓ / ★without `--remote-only` ⇒ **still local** ✓); ★**353 criteria** in all ✓.
 * ★**Still not done** ✗: ★**connecting a real device** (★WebDAV + a share + pointing the remote root at a real address ✓) —— ★**that needs those five words from the keeper** ✓
   (★§4 of the original ✓); ★the fake phone in this version is **played by a local directory**, ★**not a real phone** ✓.
-* ★**Still incompatible** ✗: ★a letter sent by `0.4.0` **bounces** on `0.3.0` ✓ (★the signature domain gained `recv` / `quiet` ✓ —— see "Read first (2)" ✓).
+* ★★★**Measured: the two published versions run against each other** ✗✓ (★when releasing `0.4.0`, 2026-10-10 ✓):
+  · ★`0.3.0` sends ⇒ `0.4.0` receives: **works** ✓;
+  · ★★`0.4.0` sends ⇒ `0.3.0` receives: **also works** ✓✓ —— ★**ordinary letters are interoperable** ✓.
+  ★★**Why** ✗✓: ★`recv` / `quiet` are **optional fields** ✓ (★without a declaration they **never enter the envelope** ✓),
+  ★and `0.3.0` **already contained them** ✓ (★they were committed in rounds 60 / 61, ★and the tag was made afterwards ✓).
+  ⚠️ ★**My first version said "a letter sent by `0.4.0` bounces on `0.3.0`"** ✗✓ —— ★**and the measurement says it works** ✓.
+    ★★**That was a conclusion written without verifying it** ✓ —— ★exactly the shape I kept tripping over tonight ✗.
+  ★But **receipts** (★which carry `peerStateAtSend` ✓) **do bounce** on the old version ✓ —— ★that one **still holds** ✓ (★see "Read first (2)" ✓).
 
 ## v0.3.0 —— 2026-10-10 (★**released** ✓ —— all seven are on npm ✓)
 
