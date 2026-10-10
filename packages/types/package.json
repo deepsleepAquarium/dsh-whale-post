@@ -1,6 +1,6 @@
 {
   "name": "dsh-whale-post-types",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "邮件类型注册表接口 ＋ 样例类型（direct／broadcast／club） · Letter-type registry + sample types (direct / broadcast / club)",
   "keywords": [
     "dsh",

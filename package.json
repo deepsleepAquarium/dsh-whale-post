@@ -1,6 +1,6 @@
 {
   "name": "dsh-whale-post",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "private": true,
   "description": "给同一台机器上的多个 AI 会话（或多台引擎）的异步信箱：默认离线、信不会丢、万物皆插件 · An asynchronous mailbox for several AI sessions on one machine (or several engines): offline by default, letters are not lost, everything is a plugin",
   "type": "module",

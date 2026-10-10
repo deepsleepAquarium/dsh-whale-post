@@ -1,6 +1,6 @@
 {
   "name": "dsh-whale-post-deliver",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "投递策略：离线留在信箱等人／在线立刻投出（示例①的挂点） · Delivery policy: offline waits in the mailbox, online posts at once (example (1)'s socket)",
   "keywords": [
     "dsh",

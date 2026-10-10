@@ -31,14 +31,14 @@ mkdir whale-mail && cd whale-mail
 printf '%s' '{"apiVersion":1,"members":[{"id":"alice"},{"id":"bob"}],"groups":{"all":["alice","bob"]}}' > roster.json
 
 # 1) Handshake (an ONLINE letter without one is refused; an OFFLINE letter never looks at it)
-npx -y dsh-whale-post-cli@0.5.1 hello --as alice --root .
-npx -y dsh-whale-post-cli@0.5.1 hello --as bob   --root .
+npx -y dsh-whale-post-cli@0.5.2 hello --as alice --root .
+npx -y dsh-whale-post-cli@0.5.2 hello --as bob   --root .
 
 # 2) Send one (offline by default ⇒ it lands in their mailbox and wakes nobody)
-npx -y dsh-whale-post-cli@0.5.1 send --as alice --to bob --subject 'hi' --body 'first letter' --root .
+npx -y dsh-whale-post-cli@0.5.2 send --as alice --to bob --subject 'hi' --body 'first letter' --root .
 
 # 3) Receive ("deliver it" or "leave it" is decided right here)
-npx -y dsh-whale-post-cli@0.5.1 pump --as bob --root .
+npx -y dsh-whale-post-cli@0.5.2 pump --as bob --root .
 ```
 
 **What you should see** (below is **really what it printed**):
@@ -61,7 +61,7 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post
 npm install                          # run once inside the repo (links the packages into node_modules; without it the CLI cannot find its siblings)
 node packages/cli/index.js selftest  # check the exit code
 # The rest is identical to the npx lines above —— just replace
-#   `npx -y dsh-whale-post-cli@0.5.1` with `node packages/cli/index.js`
+#   `npx -y dsh-whale-post-cli@0.5.2` with `node packages/cli/index.js`
 #   (and remember to create roster.json first, exactly the same)
 ```
 
@@ -114,11 +114,11 @@ These four together are **a working post office** —— sending, receiving, peo
   **and the negative test proves it**: remove only the `existsSync` branch ⇒ **the criterion goes red immediately**.
 * **Cross-package consistency** (added 2026-10-10): `node scripts/xcheck.mjs` —— **six items** (digest / signature domain / **MAC** / legacy fields / day boundary / "the name says what it is");
   it watches **"is one thing computed in two places still equal"** (we hit that shape twice).
-* **Which version to pin**: **`0.5.1` is published on npm** (that is what the `npx` lines above install,
+* **Which version to pin**: **`0.5.2` is published on npm** (that is what the `npx` lines above install,
   **and it was really installed and exercised per step 2 of [`docs/RELEASE.en.md`](docs/RELEASE.en.md)**).
-  ⓘ npm's registry has a **sync delay of a few minutes** ⇒ right after a release `@0.5.1` may not resolve yet
+  ⓘ npm's registry has a **sync delay of a few minutes** ⇒ right after a release `@0.5.2` may not resolve yet
   —— **if it does not, use `@0.3.0`** (it is on npm too, and it really works).
-* **Which tag to pin**: pin **`v0.5.1`** (**`0.1.x` has all six plugins failing to load in a real engine**);
+* **Which tag to pin**: pin **`v0.5.2`** (**`0.1.x` has all six plugins failing to load in a real engine**);
   the interfaces carry `apiVersion`, and **types can be extended at any time** (adding a type does not require touching the core).
   What changed in each version, and why ⇒ see [`CHANGELOG.en.md`](CHANGELOG.en.md).
 * **The install path was exercised on a real engine once** —— **and that drill caught a fatal bug (fixed)**:

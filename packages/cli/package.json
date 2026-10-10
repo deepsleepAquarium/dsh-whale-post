@@ -1,6 +1,6 @@
 {
   "name": "dsh-whale-post-cli",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "零依赖命令行：hello／send／pump／quota／verify／nag／roster／types／selftest · Zero-dependency CLI: hello / send / pump / quota / verify / nag / roster / types / selftest",
   "keywords": [
     "dsh",
@@ -32,12 +32,12 @@
     "selftest": "node selftest.mjs"
   },
   "dependencies": {
-    "dsh-whale-post-bus": "^0.5.1",
-    "dsh-whale-post-roster": "^0.5.1",
-    "dsh-whale-post-types": "^0.5.1",
-    "dsh-whale-post-deliver": "^0.5.1",
-    "dsh-whale-post-gate": "^0.5.1",
-    "dsh-whale-post-verify": "^0.5.1"
+    "dsh-whale-post-bus": "^0.5.2",
+    "dsh-whale-post-roster": "^0.5.2",
+    "dsh-whale-post-types": "^0.5.2",
+    "dsh-whale-post-deliver": "^0.5.2",
+    "dsh-whale-post-gate": "^0.5.2",
+    "dsh-whale-post-verify": "^0.5.2"
   },
   "repository": {
     "type": "git",

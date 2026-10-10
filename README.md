@@ -31,14 +31,14 @@ mkdir whale-mail && cd whale-mail
 printf '%s' '{"apiVersion":1,"members":[{"id":"alice"},{"id":"bob"}],"groups":{"all":["alice","bob"]}}' > roster.json
 
 # 1) 握手（在线件没握过手会拒发；离线件不看握手 ）
-npx -y dsh-whale-post-cli@0.5.1 hello --as alice --root .
-npx -y dsh-whale-post-cli@0.5.1 hello --as bob   --root .
+npx -y dsh-whale-post-cli@0.5.2 hello --as alice --root .
+npx -y dsh-whale-post-cli@0.5.2 hello --as bob   --root .
 
 # 2) 发一封（默认离线 ⇒ 信落在对方信箱里，不叫醒任何人 ）
-npx -y dsh-whale-post-cli@0.5.1 send --as alice --to bob --subject 'hi' --body 'first letter' --root .
+npx -y dsh-whale-post-cli@0.5.2 send --as alice --to bob --subject 'hi' --body 'first letter' --root .
 
 # 3) 收信（投出去／留下来，都由这一句决定 ）
-npx -y dsh-whale-post-cli@0.5.1 pump --as bob --root .
+npx -y dsh-whale-post-cli@0.5.2 pump --as bob --root .
 ```
 
 **跑完你会看到**（下面是**真跑出来的**输出）：
@@ -60,7 +60,7 @@ OK   …-alice-0001-….msg.json :: [离线] alice → bob：《hi》
 dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post
 npm install                          # 仓内要先装一次（把六个插件链进 node_modules；否则 CLI 找不到兄弟件）
 node packages/cli/index.js selftest  # 看退出码
-# 其余命令与上面 npx 那几行完全一样，把 `npx -y dsh-whale-post-cli@0.5.1` 换成
+# 其余命令与上面 npx 那几行完全一样，把 `npx -y dsh-whale-post-cli@0.5.2` 换成
 #   `node packages/cli/index.js` 即可（记得同样先备 roster.json ）
 ```
 
@@ -111,11 +111,11 @@ node packages/cli/index.js selftest  # 看退出码
 * **跨包一致性**（2026-10-10 加）：`node scripts/xcheck.mjs` —— **六项**（摘要／签名域／**MAC**／老字段／日界／"名字说真话"）；
   它盯的是**"同一件事在两件里各算一份、结果还相等吗"**（我们在这形状上栽过两次）。
 * 每件都过三关：**能加载 ＋ 能跑 ＋ 跑错会红**（**光跑自测不算，必须真启一遍** ⇒ 验收规格见 [`docs/ACCEPTANCE.md`](docs/ACCEPTANCE.md)）。
-* **版本口径**：**`0.5.1` 已发上 npm**（上面那几行 `npx` 装的就是它，**已按
+* **版本口径**：**`0.5.2` 已发上 npm**（上面那几行 `npx` 装的就是它，**已按
   [`docs/RELEASE.md`](docs/RELEASE.md) 第 2 步真装验收过**）。
-  ⓘ npm 的 registry 有**几分钟同步延迟** ⇒ 刚发完那一会儿可能还装不到 `@0.5.1`
+  ⓘ npm 的 registry 有**几分钟同步延迟** ⇒ 刚发完那一会儿可能还装不到 `@0.5.2`
   —— **装不到就先用 `@0.3.0`**（它也在 npm 上、也真能跑）。
-* **要钉哪个 tag**：钉 **`v0.5.1`**（**`0.1.x` 装进真引擎会六个插件全部加载不上**）；
+* **要钉哪个 tag**：钉 **`v0.5.2`**（**`0.1.x` 装进真引擎会六个插件全部加载不上**）；
   接口带 `apiVersion`，**类型可以随时扩充**（加类型不用动核心）。逐版改了什么、为什么 ⇒ 见 [`CHANGELOG.md`](CHANGELOG.md)。
 * **装法已在真引擎上实测过** —— **而那次实测抓到一个致命 bug（已修）**：
   六件**全部 `failed to apply`**（`apply()` 里读了 `ctx.whale` 属性，而真 Cordis 里读它要先 `inject`）；

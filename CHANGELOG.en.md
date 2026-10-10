@@ -7,6 +7,22 @@
 
 ---
 
+## v0.5.2 —— 2026-10-11 (**released**)
+
+> **Fixing one wrong sentence that was sitting on the npm page.**
+
+### **What was wrong**
+
+The `cli` English page said "the latest on npm is now `0.4.0`" —— while npm already had `0.5.1`.
+That file was written at 23:29 by the step that added the English twins, and the version-number list
+used for the `0.5.0` / `0.5.1` releases had been written earlier: **it listed `packages/cli/README.md`
+but not its English twin**, so the twin was missed.
+
+### **The fix**
+
+* The version claim in that English page now reads `0.5.2` (matching the Chinese side);
+* **and the English twin is now part of the release checklist**, so this cannot repeat;
+* documentation only, **no behaviour changed** ⇒ patch number.
 ## v0.5.1 —— 2026-10-11 (**released**)
 
 > **One line of change: make the English version reachable from the npm page.**
