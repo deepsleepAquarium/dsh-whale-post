@@ -1,0 +1,8 @@
+# The bundle patch. `dsh.bundle.patch` in ./package.json points here, which is what makes this
+# directory installable with `dsh plugin add`.
+#
+# The indentation matters: the entries belong under `- insert:`, two spaces deeper than it.
+# Getting this wrong is a YAML error, not a plugin error — see docs/INSTALL.md §2.
+- insert:
+    - id: plugin-skeleton
+      name: dsh-whale-post-plugin-skeleton

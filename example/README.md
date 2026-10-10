@@ -80,6 +80,18 @@ node packages/cli/index.js send --as alice --to bob --mode online --live bob \
   --subject '要你动手' --body '在线件：立刻投进你的会话' --root ./tmp-mail
 ```
 
+## 五、想写一个新插件？照拄 `plugin-skeleton/`
+
+**`example/plugin-skeleton/`** 是一个**最小可装可跑**的插件，四个文件：
+`package.json`（怎么声明 `dsh.bundle`）、`cordis.patch.yml`（怎么装上）、
+`index.js`（`apply()` 该长什么样）、`selftest.mjs`（加载级自测怎么写）。
+
+```bash
+node example/plugin-skeleton/selftest.mjs      # => 7/7（它自己已经验过）
+```
+
+**改它的时候最容易踩的一条**：**`apply()` 里只能 `ctx.provide`** ——
+**别读也别写 `ctx.whale`**（真引擎里会抛 `without inject`，**而 `--dump-config` 看不出来**）。
 ## 四、各件自测
 
 ```bash

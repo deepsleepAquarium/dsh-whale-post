@@ -290,6 +290,27 @@ Three rules (do not mix them up):
 13. **Offline by default**: waking the other side requires an **explicit** `online` — do not let "online by default" flood someone else's session.
 14. **Before handing in**: a **load-level self-test** + `selftest` turning green + **one real launch to check the log for load errors** — passing syntax and passing module-level self-tests **do not count** (this is exactly how we went down: 7 entry points all crashed on the same line).
 
+### Copy the skeleton instead of assembling one
+
+**`example/plugin-skeleton/`** is a **minimal plugin that installs and runs**, four files:
+
+| File | What it answers |
+|---|---|
+| `package.json` | **how to declare `dsh.bundle`** (plus the `keywords` line, which is what the shops harvest) |
+| `cordis.patch.yml` | **how to make `dsh plugin add` install it** (bad indentation is a YAML error, not a plugin error) |
+| `index.js` | **what `apply(ctx, config)` should look like** (it does nothing but `ctx.provide`) |
+| `selftest.mjs` | **how to write the load-level self-test** (it plants `ctx.whale` as a trap, so touching it goes red) |
+
+**It has been checked itself**: `node example/plugin-skeleton/selftest.mjs` gives `7/7`, and linking it into a throwaway profile **boots with exit code 0 and no load errors in the log**.
+
+### The one thing that bites when you change it (it bit us)
+
+**`apply()` may only register a service**: `ctx.provide('whale.xxx', x)`.
+**Never read or write the `ctx.whale` property** — in a real Cordis engine reading it needs `inject`
+first and throws `cannot get property "whale" without inject`, **after which the whole plugin tree
+fails to load**; and `--dump-config` **cannot see it** (it builds the config tree and **never runs
+`apply()`**). **Need another service ⇒ `ctx.get('whale.xxx')` at call time, not while applying.**
+
 ## 6. Common failures
 | Symptom | Most likely cause | What to do |
 |---|---|---|

@@ -284,6 +284,27 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* 把这段文字送进那�
 13. **默认离线**：要叫醒对方必须**显式** `online` —— 别让"默认在线"把别人的会话冲了。
 14. **交件前**：**加载级自测** ＋ `selftest` 变绿 ＋ **真启一遍看日志无加载错** —— 语法过、模块级自测过，**都不算**（我们就是这么栽的：7 个入口全崩在同一行）。
 
+### 照抄一份骨架（比自己拼快）
+
+**`example/plugin-skeleton/`** 是一个**最小可装可跑**的插件，四个文件：
+
+| 文件 | 它回答什么 |
+|---|---|
+| `package.json` | **怎么声明 `dsh.bundle`**（＋ 那三行 `keywords`，商店靠它们收） |
+| `cordis.patch.yml` | **怎么让 `dsh plugin add` 装上**（缩进错了就是 YAML 错，不是插件错） |
+| `index.js` | **`apply(ctx, config)` 该长什么样**（只做 `ctx.provide`） |
+| `selftest.mjs` | **加载级自测怎么写**（把 `ctx.whale` 之类埋成陷阱，写它就会红） |
+
+**它自己是验过的**：`node example/plugin-skeleton/selftest.mjs` ⇒ `7/7`；把它 `link:` 进一个一次性 profile ⇒ **真启退出码 0、日志无加载错**。
+
+### 改的时候最容易踩的那条（我们踩过）
+
+**`apply()` 里只能注册服务**：`ctx.provide('whale.xxx', x)`。
+**别读也别写 `ctx.whale` 属性** —— 真 Cordis 里读它要先 `inject`，没声明就抛
+`cannot get property "whale" without inject`，**然后整棵插件树加载不上**；
+而 `--dump-config` **看不出来**（它只组配置树、**不跑 `apply()`**）。
+**要别的服务 ⇒ 调用时 `ctx.get('whale.xxx')`，别在 apply 时取。**
+
 ## 六、常见故障
 | 症状 | 多半是 | 处置 |
 |---|---|---|

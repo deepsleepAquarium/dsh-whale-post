@@ -1,0 +1,19 @@
+{
+  "name": "dsh-whale-post-plugin-skeleton",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Minimal DSH plugin skeleton: copy this directory to start a plugin. Never published.",
+  "license": "MIT",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "skeleton"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}
