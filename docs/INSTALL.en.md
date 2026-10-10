@@ -308,21 +308,29 @@ All three take their **names from configuration** — the core **knows no concre
 
 ### 1) `offlineOnlyFlag` —— members who receive offline letters only
 
-Some members **simply cannot receive an online letter** (for example, something that only lives next to you and has no resident session).
-Give `bus` an **attribute name**:
+Some members **simply cannot receive an online letter** (for example, something that only lives next to you and has no
+long-running session). Give `bus` an **attribute name**:
 
 ```yaml
 - id: whale-bus
   name: dsh-whale-post-bus
   config:
     root: '~/.dsh/whale-mail'
-    offlineOnlyFlag: '<a name you choose>'      # ★the name is yours; the core does not know it
+    offlineOnlyFlag: '<a name you choose>'      # the name is yours; the core does not know it
+    # offlineOnlyMode: reject                   # optional; unset means warn (see "two dispositions" below)
 ```
 
-Behaviour: sending an **online** letter to such a member is **refused** (non-zero exit + **nothing written to the mailbox** +
-no silent downgrade), and the message **shows the way out**: "resend with `--mode offline`".
-**`--force` does not exempt it** — it is a **physical constraint** (they cannot receive online letters), not a "gate".
-Sending to a **group** that contains one is **blocked just the same**.
+**Two dispositions, decided by `offlineOnlyMode` (default `warn`)** — measured on 2026-10-10:
+
+| Configuration | When you send an online letter to such a member |
+|---|---|
+| **unset** (default `warn`) | **It is sent**, and the return value **says plainly** that this letter is handled as offline for them: `wakePrediction.offlineOnly = [...]` (the letter **still lands in their slot**). **Nothing is silent** — you know they will not be woken. |
+| `offlineOnlyMode: 'reject'` | **Refused**: the CLI exits non-zero, **nothing is written to the mailbox**, and the message **shows the way out** ("resend with `--mode offline`"). |
+
+**`--force` does not exempt it under `reject`** — it is a **physical constraint** (they cannot receive online letters), not a "gate".
+Sending to a **group** that contains one **counts in both modes** (`warn` lists them under `offlineOnly`; `reject` refuses the whole letter).
+
+> An old deployment that wants the previous "refuse" behaviour just writes `offlineOnlyMode: 'reject'` — leaving it out means "say it plainly".
 
 ### 2) `groupWithout` —— who broadcasts skip by default
 

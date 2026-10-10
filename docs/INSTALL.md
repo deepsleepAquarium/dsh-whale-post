@@ -310,11 +310,20 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* 把这段文字送进那�
   config:
     root: '~/.dsh/whale-mail'
     offlineOnlyFlag: '<你自己起的属性名>'      # ★名字随你起；核心不认识它
+    # offlineOnlyMode: reject                  # ★可选；不写就是 warn（见下面"两种处置"）
 ```
 
-行为：对带该属性的成员**发在线 ⇒ 拒发**（退出码非 0 ＋ **不落信箱** ＋ 不许静默降级）文案**带出路**：
-"请用 `--mode offline` 重发"。**`--force` 不豁免** —— 那是**物理约束**（它收不到在线件），不是"闸"。
-发给一个**组**、组里有它 ⇒ **一样拦得住**。
+**两种处置，由 `offlineOnlyMode` 决定（默认 `warn`）** —— 2026-10-10 实测：
+
+| 配置 | 对它发在线时 |
+|---|---|
+| **不写**（默认 `warn`） | **照发**，并在返回值里**明示**"这封对它是按离线处理的"：`wakePrediction.offlineOnly = [...]`（信**照落它那一格**）。**不静默** —— 你知道它不会被叫醒。 |
+| `offlineOnlyMode: 'reject'` | **拒发**：CLI 退出码非 0、**不落信箱**、文案**带出路**（"请用 `--mode offline` 重发"）。 |
+
+**`--force` 在 `reject` 下也不豁免** —— 那是**物理约束**（它收不到在线件），不是"闸"。
+发给一个**组**、组里有它 ⇒ **两种模式下都算得进去**（`warn` 会把它列进 `offlineOnly`，`reject` 会拦下整封）。
+
+> 老部署如果想保持"拒发"的旧行为，写 `offlineOnlyMode: 'reject'` 即可 —— 不写则是明示。
 
 ### 2）`groupWithout` —— 群发默认不到谁
 
