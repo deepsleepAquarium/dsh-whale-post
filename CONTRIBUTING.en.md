@@ -12,6 +12,9 @@
   **Before tagging `1.0.0`, meet three conditions**: ① the interfaces are settled (no new methods, no semantic changes)
   ② every known boundary is **written down in the documentation**
   ③ **the "untested" items are either tested, or still explicitly marked untested** (never let `1.0.0` paper over something unverified).
+  **And once one is filled in, go back and fix every place that still says "not tested"** —— the same
+  fact tends to be copied in four places (`README` / `ACCEPTANCE` / `HANDOFF` / the package `README`),
+  and **one place left behind is one place that lies**.
 * **Every version needs a changelog entry** —— write it into `CHANGELOG.md` (and `CHANGELOG.en.md`),
   **saying "why", not "which line changed"**.
 

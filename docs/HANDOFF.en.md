@@ -34,7 +34,6 @@ node scripts/selftest-all.mjs && node scripts/racetest.mjs && node scripts/pkgch
   —— **a one-line config change** (`--remote` or `WHALE_POST_REMOTE_ROOT`).
   **The parts already exist**: `scripts/fake-phone.mjs` (five actions) + `send --remote` (deliver) + `pickup` (collect + mirror receipts).
 * **Actually use `quiet`** (`hello --quiet 22:00-09:00` —— **it can be declared, but "who in the tank should declare it" is still empty**).
-* **The truncation path once the `seen` state array grows long** (listed under "still untested" in the `README` —— **only hand-crafted so far**).
 
 ### B. **Waits on the keeper** (do not act on your own)
 

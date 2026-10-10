@@ -34,7 +34,6 @@ node scripts/selftest-all.mjs && node scripts/racetest.mjs && node scripts/pkgch
   —— **换一行配置**（`--remote` 或 `WHALE_POST_REMOTE_ROOT`）。
   **现成的零件**：`scripts/fake-phone.mjs`（五动作）＋ `send --remote`（投）＋ `pickup`（取＋回执镜像）。
 * **把 `quiet` 真正用起来**（`hello --quiet 22:00-09:00` —— **已能声明，而"缸内谁该声明"还是空的**）。
-* **`seen` 状态数组涨得很长之后的截断路径**（`README` 的「仍未测」里挂着 —— **只手工造过**）。
 
 ### 乙、**要等主人**（别自己动）
 
