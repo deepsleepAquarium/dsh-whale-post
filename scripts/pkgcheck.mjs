@@ -161,6 +161,29 @@ check('⑨ ★`exports` 指向的文件**真的存在** ✗（★指向空气是
 const strays = readdirSync(repo).filter((f) => /^t-.*\.(mjs|cjs|js)$/.test(f))
 check('⑩ ★仓库根目录没有散落的临时探针 ✗（`t-*.mjs` ✓ —— ★我自己犯过 ✓）', strays.length === 0, strays.join('、'))
 
+// ★★★⑬ **文档说的"npm 上是哪个版本"必须与 `package.json` 一致** ✗✓（2026-10-10 加）——
+//   ★★**病** ✗✓：★`README`／`INSTALL`／`cli/README` 里都有一句「**npm 上最新是 `<版本>`**」✓ ——
+//     ★★★**而它是**发版时手工改对的** ✗ ⇒ ★**下次再发版，它就会**过期**** ✓
+//     ⇒ ★**用户照它去装 ⇒ 装到**上一个版本**** ✗（★还以为自己装的是最新 ✓）。
+//   ★★**为什么这条该判红** ✗✓（★而第 ⑫ 条不判红 ✓）：★第 ⑫ 条说的是"**仓库领先于 npm**" ✓ ——
+//     ★那是**正常状态** ✓；★而这条说的是"**文档指向了一个错的版本**" ✓ —— ★★★**那是**错**，不是**状态**** ✓✓。
+//   ★**查法** ✗：★在四份文档里找"npm 上最新是 `X.Y.Z`"这一句 ✓ ⇒ ★**X.Y.Z 必须等于 `package.json`** ✓。
+//     ★**中英各一份** ✓（★`README` 中英 ＋ `docs/INSTALL` 中英 ＋ `packages/cli/README` ✓）。
+const verDocs = ['README.md', 'README.en.md', 'docs/INSTALL.md', 'docs/INSTALL.en.md', 'packages/cli/README.md']
+const mineVer = JSON.parse(readFileSync(join(repo, 'package.json'), 'utf8')).version
+const verMismatch = []
+for (const f of verDocs) {
+  const p = join(repo, f)
+  if (!existsSync(p)) continue
+  const text = readFileSync(p, 'utf8')
+  //   ★抓"npm 上最新…`X.Y.Z`"这一句里的版本号 ✓（★中英两种说法都认 ✓）
+  for (const m of text.matchAll(/(?:npm \u4e0a\u6700\u65b0[\u5df2\u7ecf]*\u662f|the latest on npm is(?: now)?|已\u53d1\u4e0a npm|is published on npm|\u672c\u4ed3\u5e93[\u5df2\u4e5f]*\u7ecf?\u662f|this checkout is(?: already)?|\u9489 \*\*`?v?|pin \*\*`?v?)\s*`?v?(\d+\.\d+\.\d+)`?/g)) {
+    if (m[1] !== mineVer) verMismatch.push(`${f} 说 ${m[1]}（★实际 ${mineVer}）`)
+  }
+}
+check('⑬ ★★文档说的"npm 上是哪个版本"**与 `package.json` 一致** ✗（★否则用户装到上一个版本 ✓）',
+  verMismatch.length === 0, verMismatch.length ? verMismatch.join('、') : `五份文档都是 ${mineVer} ✓`)
+
 // ★★★⑫ **仓库领先 npm 多少** ✗✓（2026-10-10 加 —— ★★这是**报告**，不是错误 ✓）
 //   ★★**为什么要它** ✗✓：★第 65 轮我**临时用 `git log` 去数**"tag 之后有几个提交、有没有改过代码" ✓ ——
 //     ★★而那种"临时数一下"的东西**下次还得再数** ✗（★同"把临时探针固化成工具"那条纪律 ✓）。

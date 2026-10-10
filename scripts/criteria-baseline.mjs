@@ -26,7 +26,7 @@ export const BASELINE = {
   cli: 54,
   xcheck: 6,
   doccheck: 3,
-  pkgcheck: 14,
+  pkgcheck: 15,
 }
 
 /** ★总数（★只用来打一行"共 N 条"，★判据还是逐件比 ✓） */
