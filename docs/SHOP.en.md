@@ -79,7 +79,7 @@ I searched all **14329** entries (the build stamped `builtAt: 2026-10-10T07:30:1
 
 **And the PR volunteers the closest existing entry itself**: `GengDaPeng/dsh-agent-message`
 (**also cross-session messaging + offline delivery + receipts**) — **better we say it than a reviewer finds it**;
-**the PR also states what ours adds**: **letters carry a signature and a digest** / **recipients come from a roster file** /
+**the PR also states what ours adds**: **letters carry a signature and a digest** / **recipients are resolved through the roster interface** (the `roster` package reads the list; the core only asks the interface and knows no names) /
 **per-day quota buckets and quiet hours** / **fail-closed on unregistered fields**.
 **If any of the three is judged covered, we will drop that one** (**no argument**).
 
