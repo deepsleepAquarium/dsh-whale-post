@@ -3,7 +3,7 @@
 > 中文: [HANDOFF.md](HANDOFF.md)
 >
 > **Who this file is for**: **the next person to pick this up (or the next "me")** ——
-> **because **context gets compacted and sessions get reset** ⇒ **"I remember" does not survive**, **only what is written down does**.
+> because **context gets compacted and sessions get reset** ⇒ **"I remember" does not survive**, **only what is written down does**.
 
 ---
 

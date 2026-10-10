@@ -391,7 +391,7 @@ the three in-service profiles (`desktop` / `qqbot` / `web`) **never changed mtim
   **the `npx` line would 404 ⇒ anyone following the README would "install it and nothing runs"** —— **exactly the shape of the pit from the previous version**.
 * **A real pre-release acceptance run: `npm pack` the tarballs, install them in a clean directory, run them** (2026-10-10) ——
   **Why this step is unavoidable**: "the self-tests are green" does **not** mean "someone else can install it and run it" ——
-  **and the difference between those two things lives precisely in the**metadata** (not in the code).
+  **and the difference between those two things lives precisely in the metadata** (not in the code).
   **What was done**: `npm pack` the seven tarballs (with `--pack-destination` ⇒ **not a single `.tgz` left in the repository**)
   ⇒ `npm install` those seven tarballs in a **temporary empty directory** ⇒ run the CLI's `selftest`.
   **Result**: install **9.5 s / exit code 0** (`added 7 packages`) ⇒ `selftest` **exit code 0 / 25 of 25 passed** ——
