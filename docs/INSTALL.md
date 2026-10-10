@@ -35,9 +35,9 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post/packages/gat
 dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post/packages/verify
 dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post/packages/cli
 ```
-**两条老实话（我们用血换的）**：
+**两条容易踩的实话**：
 1. `file:` 装本地包＝**复制快照** ⇒ 你改源码**不生效**；要改就 `link:`（或目录联接）。
-2. 运行中的引擎**按 URL 缓存 ESM** ⇒ **改完代码必须重启引擎**（改一行也重启，否则你测的是旧码）。
+2. 运行中的引擎**按 URL 缓存 ESM** ⇒ **改完代码必须重启引擎**（改一行也重启，否则测的还是旧码）。
 
 > **想验一遍"照上面装完到底能不能跑"**：`npm run check:install` —— 它会建一个**一次性 profile**、
 > 逐件装、真启一次、再把那个 profile 删掉（约 50 秒；**不碰你现有的 profile**）。
@@ -75,7 +75,7 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post/packages/cli
     - id: whale-bus
       name: dsh-whale-post-bus
       config:
-        root: '~/.dsh/whale-mail'      # 信箱根，自定；★不写则代码默认 ./.whale-mail（当前目录）
+        root: '~/.dsh/whale-mail'      # 信箱根，自定；不写则代码默认 ./.whale-mail（当前目录）
         apiVersion: 1
 
     - id: whale-roster-json
@@ -89,21 +89,21 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post/packages/cli
         types: [direct, broadcast, club]        # 示例类型；你自己的类型自己注册
 
     - id: whale-deliver
-      name: dsh-whale-post-deliver              # 示例①：离线邮局（★接真引擎的探针在这一件 ✓）
+      name: dsh-whale-post-deliver              # 示例①：离线邮局（接真引擎的探针在这一件 ）
 
     - id: whale-gate
       name: dsh-whale-post-gate                 # 示例②：配额与计费闸
       config:
-        quota:                                  # ★gate 读的是 config.quota.*
+        quota:                                  # gate 读的是 config.quota.*
           onOver: reject                        # reject 拒发（退出码非 0）／price 照发但计费
           types:
             direct: { label: 'direct', limit: 120 }
-            offline: { label: '离线', limit: 80, perSend: true }   # ★离线件按发信次数计
+            offline: { label: '离线', limit: 80, perSend: true }   # 离线件按发信次数计
 
     - id: whale-verify
-      name: dsh-whale-post-verify               # ★安全校验（验签 ＋ 白名单）
+      name: dsh-whale-post-verify               # 安全校验（验签 ＋ 白名单）
       config:
-        enabled: false                          # ★默认禁用；要开就写 true（禁用期间会提示你开启，连提三天后不再提）
+        enabled: false                          # 默认禁用；要开就写 true（禁用期间会提示你开启，连提三天后不再提）
 ```
 **接线要点**：六个插件之间**只靠接口**（`ctx.whale.*`）⇒ **书写顺序无关**；核心**不认识任何名字与类型** —— 你换掉名单实现、改掉类型表，核心一行都不用动。
 **每条 quota 数值都是示例** ⇒ 按自己的量级改；`limit: 0` 之类的极端值会立刻把闸拉死。
@@ -112,7 +112,7 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post/packages/cli
 ```json
 { "apiVersion": 1,
  "members": [ { "id": "alice", "label": "Alice" },
- { "id": "bob", "label": "Bob" } ] }
+  { "id": "bob", "label": "Bob" } ] }
 ```
 `id` 是投递用的**信箱目录名**（`<root>/inbox/<id>/`）；**列表内容不进代码**。
 
@@ -125,13 +125,13 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post/packages/cli
 > 想在仓内开发／改源码 ⇒ 用**仓内路径**跑（`node packages/cli/index.js …`）。
 > ⓘ **`0.1.x` 别用** —— 那一版装进真引擎会**六个插件全部加载不上**（详见 `CHANGELOG` 的"必读：升级须知"）。
 ```bash
-node packages/cli/index.js selftest # ★只看退出码：0 = 过；非 0 = 不过（别看中文）
+node packages/cli/index.js selftest # 只看退出码：0 = 过；非 0 = 不过（别看中文）
 node packages/cli/index.js send --as alice --to bob --subject 'hello' --body 'first letter'
-node packages/cli/index.js pump --as bob # 把 bob 的信箱读一遍（★消费掉）
+node packages/cli/index.js pump --as bob # 把 bob 的信箱读一遍（消费掉）
 ```
-> ★注意这三条里的 `send` 与 `pump` **没有 `--root`** ✓ ⇒ ★它们用**默认信箱根 `./.whale-mail`**（★就在你当前目录下 ✓）。
-> ★★而它**已在 `.gitignore` 里** ✓ —— ★所以你在仓库里照这几条跑，**不会多出未跟踪文件** ✓。
-> ★（★实测：把 `roster.json` 放进 `.whale-mail/` 后，加这一条之前 `git status` 会报 `?? .whale-mail/` ✓）
+> 注意这三条里的 `send` 与 `pump` **没有 `--root`** ⇒ 它们用**默认信箱根 `./.whale-mail`**（就在你当前目录下）。
+> 而它**已在 `.gitignore` 里** —— 所以你在仓库里照这几条跑，**不会多出未跟踪文件**。
+> （实测：把 `roster.json` 放进 `.whale-mail/` 后，加这一条之前 `git status` 会报 `?? .whale-mail/`）
 **三条硬规矩**：① **只看退出码**（不匹配中文）；② **能原地重复跑**（两次结果一致）；③ **负向测试**：**故意改坏一行 ⇒ 自测必须变红**（不红＝自测是摆设）。
 
 **本仓自带的跑法**（还没装也能验）：`node scripts/selftest-all.mjs` ⇒ **退出码 0 ＝ 七件全过**；单件跑 `node packages/<件名>/selftest.mjs`。
@@ -222,8 +222,8 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* 把这段文字送进那�
 | | `requireHello` | `true` | **三态**：默认 ⇒ **照发 ＋ 明示"降级为离线"**（返回值 `wakePrediction.willWait`）；`false` ⇒ 不检查；**`'reject'` ⇒ 旧的"拒发"**。**离线件根本不看握手** |
 | | `helloMaxAgeMs` | `24 小时` | 握手多旧算过期 |
 | | `defaultType` | `'direct'` | 配 `null` ⇒ **没写类型的信直接拒发**（不替调用方猜） |
-| | `offlineOnlyFlag` ＋ `offlineOnlyMode` | 不配／`'warn'` | **三态**：不配 ⇒ 不启用；配属性名 ⇒ **照发 ＋ 明示**（`wakePrediction.offlineOnly` —— 正本判据 58-62：**不再拒发**）；`offlineOnlyMode: 'reject'` ⇒ **旧的拒发** |
-| | `dormantFlag` | 不配 | 对**被明确标成休眠**的成员**当场拒发**（信**不进它的信箱**；`--force` 不豁免）。**不许自己猜休眠**（不按"多久没 hello"判 —— 缸里口径："**明确的 dormant 才退，不猜**"） |
+| | `offlineOnlyFlag` ＋ `offlineOnlyMode` | 不配／`'warn'` | **三态**：不配 ⇒ 不启用；配属性名 ⇒ **照发 ＋ 明示**（`wakePrediction.offlineOnly` —— 设计文档判据 58-62：**不再拒发**）；`offlineOnlyMode: 'reject'` ⇒ **旧的拒发** |
+| | `dormantFlag` | 不配 | 对**被明确标成休眠**的成员**当场拒发**（信**不进它的信箱**；`--force` 不豁免）。**不许自己猜休眠**（不按"多久没 hello"判 —— 班级里口径："**明确的 dormant 才退，不猜**"） |
 | `roster` | `file` | `<root>/roster.json` | 名单文件 |
 | | `groupWithout` | 不配 | **群发默认剔掉**带此属性的成员（见 §七） |
 | | `sample` | `false` | `true` ⇒ 文件不存在时用内置样例（只为试跑） |
@@ -268,21 +268,21 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* 把这段文字送进那�
 | 看"要不要开验签" | `npx dsh-whale-post-cli nag` |
 | 接进真引擎 | `deliver` 的 **`sessionOf`** |
 
-## 五、写插件的规范（照着写，别踩我们的坑）
+## 五、写插件的规范（照着写，避开常见问题）
 1. **只认接口，不认名字**：不许在核心代码里硬编码**任何**成员名／类型标识／内部路径（名单与类型一律注册进来）。
 2. 形状：`export const name = '...'` ＋ `export function apply(ctx, config = {})`。
 3. **顶层零 I/O、零副作用**：模块被 `import` 的那一刻不许读盘、不许发信、不许起定时器（一切放进 `apply`）。
 4. **不要用 `inject`**（未满足时会**静默挂起**，你连日志都看不到）⇒ 改成**运行时取服务**：`ctx.get('whale.bus')`。
 5. **服务缺席不炸**：取不到就记一笔、**下个 tick 再试**（插件加载早于服务注册是常态）。
-6. **日志做"状态变化才记一笔"**：否则一个 tick 一行、日志刷成瀑布（我们真刷过）。
+6. **日志做"状态变化才记一笔"**：否则一个 tick 一行、日志刷成瀑布（实测刷屏过）。
 7. **异常自己吞**：绝不把异常抛回引擎（一个抛不出去的错能带走整台引擎）。
 8. **一切可配**：根目录／间隔／署名／路径全部走 `config`，代码里不写死。
 9. **带 `apiVersion`**：类型标识与信封格式都留版本位（"随时可扩充"是硬需求）。
 10. **落盘原子**：写临时文件 ＋ `rename`（半截文件＝一次假死）。
-11. **签名要覆盖全部语义字段**：漏签一个字段（比如 `mode`／优先级）＝ 别人能悄悄改写它（我们就是靠"`mode` 也进签名"堵住的）。
+11. **签名要覆盖全部语义字段**：漏签一个字段（比如 `mode`／优先级）＝ 别人能悄悄改写它（这里就是靠"`mode` 也进签名"堵住的）。
 12. **幂等**：同一封信只消费一次（按消息 id 去重）；重放不许重复投递。
 13. **默认离线**：要叫醒对方必须**显式** `online` —— 别让"默认在线"把别人的会话冲了。
-14. **交件前**：**加载级自测** ＋ `selftest` 变绿 ＋ **真启一遍看日志无加载错** —— 语法过、模块级自测过，**都不算**（我们就是这么栽的：7 个入口全崩在同一行）。
+14. **交件前**：**加载级自测** ＋ `selftest` 变绿 ＋ **真启一遍看日志无加载错** —— 语法过、模块级自测过，**都不算**（实测踩过：7 个入口全崩在同一行）。
 
 ### 照抄一份骨架（比自己拼快）
 
@@ -295,9 +295,9 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* 把这段文字送进那�
 | `index.js` | **`apply(ctx, config)` 该长什么样**（只做 `ctx.provide`） |
 | `selftest.mjs` | **加载级自测怎么写**（把 `ctx.whale` 之类埋成陷阱，写它就会红） |
 
-**它自己是验过的**：`node example/plugin-skeleton/selftest.mjs` ⇒ `7/7`；把它 `link:` 进一个一次性 profile ⇒ **真启退出码 0、日志无加载错**。
+**它自身是验过的**：`node example/plugin-skeleton/selftest.mjs` ⇒ `7/7`；把它 `link:` 进一个一次性 profile ⇒ **真启退出码 0、日志无加载错**。
 
-### 改的时候最容易踩的那条（我们踩过）
+### 改的时候最容易踩的那条
 
 **`apply()` 里只能注册服务**：`ctx.provide('whale.xxx', x)`。
 **别读也别写 `ctx.whale` 属性** —— 真 Cordis 里读它要先 `inject`，没声明就抛
@@ -309,9 +309,9 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* 把这段文字送进那�
 | 症状 | 多半是 | 处置 |
 |---|---|---|
 | 插件装了但"没反应" | 用了 `inject` ／ 顶层就取服务 | 改运行时取服务 ＋ 每 tick 重试 |
-| **装了、`--dump-config` 也看得到层，但一真启就 `failed to apply`** | `apply()` 里**读了 `ctx.whale` 属性**（真 Cordis 里读它要先 `inject` ⇒ 抛 `cannot get property "whale" without inject`）；`--dump-config` 只组配置树、**不跑 `apply()`**，所以看不出来 | 只写 `ctx.provide('whale.xxx', x)` ＋ 运行时 `ctx.get('whale.xxx')`，**别碰 `ctx.whale` 属性**；验的时候**必须真启一遍**，`--dump-config` 不算（2026-10-10 六件全栽在这） |
+| **装了、`--dump-config` 也看得到层，但一真启就 `failed to apply`** | `apply()` 里**读了 `ctx.whale` 属性**（真 Cordis 里读它要先 `inject` ⇒ 抛 `cannot get property "whale" without inject`）；`--dump-config` 只组配置树、**不跑 `apply()`**，所以看不出来 | 只写 `ctx.provide('whale.xxx', x)` ＋ 运行时 `ctx.get('whale.xxx')`，**别碰 `ctx.whale` 属性**；验的时候**必须真启一遍**，`--dump-config` 不算（2026-10-10 六件全踩在这里） |
 | 改了代码没变化 | ESM 按 URL 缓存 ／ `file:` 装的是快照 | 重启引擎 ＋ 改 `link:` 装 |
-| 引擎起不来、日志一行 `ReferenceError` | 常量没定义（我们真干过） | 跑加载级自测＋负向测试 |
+| 引擎起不来、日志一行 `ReferenceError` | 常量没定义（实测发生过） | 跑加载级自测＋负向测试 |
 | 收件人"没收到" | 对方**没有活体会话** | 正常：信**留在信箱里等人**，**不会丢** |
 | 日志 4 秒一行 | 日志没做状态变化判断 | 见规范第 6 条 |
 
@@ -330,8 +330,8 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* 把这段文字送进那�
   name: dsh-whale-post-bus
   config:
     root: '~/.dsh/whale-mail'
-    offlineOnlyFlag: '<你自己起的属性名>'      # ★名字随你起；核心不认识它
-    # offlineOnlyMode: reject                  # ★可选；不写就是 warn（见下面"两种处置"）
+    offlineOnlyFlag: '<你自己起的属性名>'      # 名字随你起；核心不认识它
+    # offlineOnlyMode: reject                  # 可选；不写就是 warn（见下面"两种处置"）
 ```
 
 **两种处置，由 `offlineOnlyMode` 决定（默认 `warn`）** —— 2026-10-10 实测：
@@ -353,7 +353,7 @@ sessionOf(id) => ({ live: true, inject: (text) => { /* 把这段文字送进那�
   name: dsh-whale-post-roster
   config:
     file: '~/.dsh/whale-mail/roster.json'
-    groupWithout: '<你自己起的属性名>'          # ★群发时默认剔掉带此属性的成员
+    groupWithout: '<你自己起的属性名>'          # 群发时默认剔掉带此属性的成员
 ```
 
 行为：**群发**（`--to all`、以及按组发）默认**剔掉**带该属性的成员；

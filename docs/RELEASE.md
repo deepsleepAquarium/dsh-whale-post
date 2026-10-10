@@ -11,13 +11,13 @@
 ## 第 0 步：先跑四样，**全绿才发**
 
 ```bash
-★★另：**提交前的门要先装** ✗✓：`npm run hooks:install` ✓（★本地配置，★**新 clone 不会自动有** ✓）—— ★装上后，每次 `git commit` 会自动跑 `selftest`，非 0 就拒绝提交 ✓。
+另：**提交前的门要先装** ：`npm run hooks:install` （本地配置，**新 clone 不会自动有** ）—— 装上后，每次 `git commit` 会自动跑 `selftest`，非 0 就拒绝提交 。
 npm run selftest     # 11 项：加载级 ＋ 静态判据 ＋ 跨包一致 ＋ 中英对等 ＋ 包元数据 ＋ 导入自检
 npm run racetest     # 11 条：并发发号 ＋ 并发记账
 npm run doccheck     # 中英文档对等
-npm run pkgcheck     # 包元数据（★发布这件事的坑全在这里）
-★★另：`selftest` 会把**判据条数**跟 `scripts/criteria-baseline.mjs` 比 ✓ —— ★★**只许变多、不许悄悄变少** ✗（★删一条而不更新基准 ⇒ 非 0 退出 ✓）。
-npm run compat       # ★★跨版本：真跑 npm 上已发布的那一版（★要联网，约 40 秒）
+npm run pkgcheck     # 包元数据（发布这件事的坑全在这里）
+另：`selftest` 会把**判据条数**跟 `scripts/criteria-baseline.mjs` 比  —— **只许变多、不许悄悄变少** （删一条而不更新基准 ⇒ 非 0 退出 ）。
+npm run compat       # 跨版本：真跑 npm 上已发布的那一版（要联网，约 40 秒）
 ```
 
 **再加一步不能省**：**真启一遍**（`npm run selftest` 全绿 **不等于**引擎能加载 ——
@@ -26,8 +26,8 @@ npm run compat       # ★★跨版本：真跑 npm 上已发布的那一版（�
 ## 第 1 步：**先发六个插件**，再发 `cli`
 
 ```bash
-# ★顺序要紧：cli 的 dependencies 钉着兄弟包的 ^<本版> ⇒
-#   ★★先发 cli，它会去要**还不存在**的版本 ⇒ 装的人当场失败
+# 顺序要紧：cli 的 dependencies 钉着兄弟包的 ^<本版> ⇒
+#   先发 cli，它会去要**还不存在**的版本 ⇒ 装的人当场失败
 for p in bus roster types deliver gate verify; do
   npm publish --workspace "packages/$p" --registry https://registry.npmjs.org
 done
@@ -42,11 +42,11 @@ npm publish --workspace packages/cli --registry https://registry.npmjs.org
 ## 第 2 步：等 npm 同步，再**真装一遍**
 
 ```bash
-# ★npm 的 registry 同步要几分钟 ⇒ 不要刚发完就装
+# npm 的 registry 同步要几分钟 ⇒ 不要刚发完就装
 mkdir /tmp/verify && cd /tmp/verify
 npm init -y
 npm i dsh-whale-post-cli@<本版>
-npx dsh-whale-post-cli selftest    # ★只看退出码：0 ＝ 通过
+npx dsh-whale-post-cli selftest    # 只看退出码：0 ＝ 通过
 ```
 
 **为什么非做不可**："自测全绿"**不等于**"别人装得上、跑得起来" ——
@@ -79,11 +79,11 @@ git push origin v<本版>
 ## 第 6 步：发完之后，拿**两个已发布版**对跑一次
 
 ```bash
-# ★★"仓库版 vs 旧版"跟"**两个发布版**"**不是一回事** ✗ —— npx 路径、依赖解析、包里的文件都可能不同 ✓
+# "仓库版 vs 旧版"跟"**两个发布版**"**不是一回事**  —— npx 路径、依赖解析、包里的文件都可能不同 
 npx -y dsh-whale-post-cli@<新版> send --as a --to b --body ... --root <临时根>
-npx -y dsh-whale-post-cli@<旧版> pump --as b --root <临时根>   # ★这个方向该**退**（★新字段进不了老版的签名域 ✗）
+npx -y dsh-whale-post-cli@<旧版> pump --as b --root <临时根>   # 这个方向该**退**（新字段进不了老版的签名域 ）
 npx -y dsh-whale-post-cli@<旧版> send --as b --to a --body ... --root <临时根>
-npx -y dsh-whale-post-cli@<新版> pump --as a --root <临时根>   # ★这个方向该**通** ✓
+npx -y dsh-whale-post-cli@<新版> pump --as a --root <临时根>   # 这个方向该**通** 
 ```
 
 **为什么要单独做**：`npm run compat` 跑的是**仓库版 vs 上一个发布版**；

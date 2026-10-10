@@ -80,7 +80,7 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post/packages/cli
     - id: whale-bus
       name: dsh-whale-post-bus
       config:
-        root: '~/.dsh/whale-mail'      # your choice; ★code default is ./.whale-mail (current dir)
+        root: '~/.dsh/whale-mail'      # your choice; code default is ./.whale-mail (current dir)
         apiVersion: 1
 
     - id: whale-roster-json
@@ -94,21 +94,21 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post/packages/cli
         types: [direct, broadcast, club]        # example types; register your own types yourself
 
     - id: whale-deliver
-      name: dsh-whale-post-deliver              # example ①: offline post office (★the live-session probe lives here ✓)
+      name: dsh-whale-post-deliver              # example ①: offline post office (the live-session probe lives here )
 
     - id: whale-gate
       name: dsh-whale-post-gate                 # example ②: quota and billing gate
       config:
-        quota:                                  # ★the gate reads config.quota.*
+        quota:                                  # the gate reads config.quota.*
           onOver: reject                        # reject = refuse to send (non-zero exit) ／ price = send anyway, bill it
           types:
             direct: { label: 'direct', limit: 120 }
-            offline: { label: 'offline', limit: 80, perSend: true }   # ★offline is counted per send
+            offline: { label: 'offline', limit: 80, perSend: true }   # offline is counted per send
 
     - id: whale-verify
-      name: dsh-whale-post-verify               # ★security check (envelope signature + allow-list)
+      name: dsh-whale-post-verify               # security check (envelope signature + allow-list)
       config:
-        enabled: false                          # ★disabled by default; set true to enable (while disabled it nags you, for three days)
+        enabled: false                          # disabled by default; set true to enable (while disabled it nags you, for three days)
 ```
 **Wiring points**: the six plugins rely on each other **only through interfaces** (`ctx.whale.*`) ⇒ **the order in which they are written does not matter**; the core **does not know any names or types** — you can replace the roster implementation or change the type table without touching a single line of the core.
 **Every quota number above is an example** ⇒ scale it to your own volume; extreme values (like `limit: 0`) will slam the gate shut immediately.
@@ -130,9 +130,9 @@ dsh plugin --profile <profile> add link:/abs/path/to/dsh-whale-post/packages/cli
 > to develop inside the repository (or change the source) ⇒ run from the repo path (`node packages/cli/index.js …`).
 > ⓘ **Do not use `0.1.x`** — with it, all six plugins fail to load in a real engine (see the "read this before upgrading" section of `CHANGELOG`).
 ```bash
-node packages/cli/index.js selftest # ★look only at the exit code: 0 = pass; non-zero = fail (do not read the Chinese)
+node packages/cli/index.js selftest # look only at the exit code: 0 = pass; non-zero = fail (do not read the Chinese)
 node packages/cli/index.js send --as alice --to bob --subject 'hello' --body 'first letter'
-node packages/cli/index.js pump --as bob # read through bob's mailbox once (★this consumes the letters)
+node packages/cli/index.js pump --as bob # read through bob's mailbox once (this consumes the letters)
 ```
 > Note that in those three commands `send` and `pump` have **no `--root`** ⇒ they use the **default mailbox root `./.whale-mail`**
 > (right under your current directory). That path **is already in `.gitignore`**, so running these inside the repository
@@ -229,7 +229,7 @@ Three rules (do not mix them up):
 | | `helloMaxAgeMs` | `24 hours` | how old a handshake may be |
 | | `defaultType` | `'direct'` | set it to `null` ⇒ **a letter with no type is refused** (we do not guess for the caller) |
 | | `offlineOnlyFlag` + `offlineOnlyMode` | unset / `'warn'` | **three states**: unset ⇒ off; an attribute name ⇒ **send anyway + say so** (`wakePrediction.offlineOnly` — criteria 58-62: **no more refusal**); `offlineOnlyMode: 'reject'` ⇒ **the old refusal** |
-| | `dormantFlag` | unset | a member **explicitly marked dormant** is **refused on the spot** (the letter **never enters their mailbox**; `--force` does not exempt it). **Never guess dormancy yourself** (not from "how long since their last hello" — the rule from the tank: "**only an explicit `dormant` bounces; do not guess**") |
+| | `dormantFlag` | unset | a member **explicitly marked dormant** is **refused on the spot** (the letter **never enters their mailbox**; `--force` does not exempt it). **Never guess dormancy yourself** (not from "how long since their last hello" — the rule from the class: "**only an explicit `dormant` bounces; do not guess**") |
 | `roster` | `file` | `<root>/roster.json` | the roster file |
 | | `groupWithout` | unset | **broadcasts drop** members carrying this attribute by default (see §7) |
 | | `sample` | `false` | `true` ⇒ fall back to the built-in sample when the file is missing (for a quick try only) |
@@ -360,7 +360,7 @@ Sending to a **group** that contains one **counts in both modes** (`warn` lists 
   name: dsh-whale-post-roster
   config:
     file: '~/.dsh/whale-mail/roster.json'
-    groupWithout: '<a name you choose>'          # ★broadcasts drop members carrying this attribute by default
+    groupWithout: '<a name you choose>'          # broadcasts drop members carrying this attribute by default
 ```
 
 Behaviour: a **broadcast** (`--to all`, and sending to a group) **drops** members carrying that attribute by default;
