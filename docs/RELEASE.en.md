@@ -8,6 +8,28 @@
 
 ---
 
+## Before step 0 (part two): **first ask whether the published artifacts changed** —— if none did, **do not ship**
+
+**Look at this first**; it decides *whether* to ship, not *which* number:
+
+```bash
+# replace <previous> with the previous tag
+git diff --stat <previous>..HEAD -- 'packages/*/index.js' 'packages/*/README*.md' 'packages/*/LICENSE' \
+  'packages/*/cordis.patch.yml' 'packages/*/package.json'
+```
+
+* **Output** ⇒ the published artifacts changed ⇒ **ship** (then pick the number with the table below);
+* **Empty** ⇒ everything changed belongs to the repository itself (`scripts/`, `docs/`, `CONTRIBUTING`,
+  `CHANGELOG`, the root `README`) ⇒ **do not ship** —— those files **do not travel inside the packages**, and
+  shipping anyway just hands users an empty update.
+
+**Why this question exists** (from an actual run on 2026-10-11): that night shipped six versions in a row, and
+after midnight added two guards to the self-test and edited several documents ⇒ **came within a step of shipping
+again**; one look showed that **not a single package artifact had moved** —— so nothing was shipped.
+**"Whether to ship" and "which number" are two questions, and the order matters.**
+
+---
+
 ## Before step 0: **decide the version number first** (the step most easily skipped —— and skipping it ships the wrong number)
 
 **Ask one question**: **did the interface or the behaviour change this time?**
