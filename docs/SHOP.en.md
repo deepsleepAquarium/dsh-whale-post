@@ -62,4 +62,28 @@ I searched all **14329** entries (the build stamped `builtAt: 2026-10-10T07:30:1
 **all six plugins are now listed and current** (`0.4.0`);
 **and `cli` is absent because it is not an installable plugin** (`no-bundle`) — **which is correct**.
 
+## 5. The other (larger) directory: `awesome-dsh-plugin`
+
+**It is not a shop, it is a curated list** — [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin),
+**4481 entries**, **one YAML file per plugin** (`data/plugins/<owner>__<repo>.yml`), **at most 3 entries per PR**.
+
+**Its hard bars** (**CI checks them**):
+
+* **the repo must declare `dsh.bundle`** — **`dsh.client` alone does not count** (**that is not installable**);
+* **the repo must be at least 1 day old** (**ours was created 2026-10-04**);
+* **the repo must carry the [`dsh-plugin`](https://github.com/topics/dsh-plugin) topic** (**added**);
+* **descriptions must be accurate** — **they are checked against the source**, and **overstating is the main reason a submission gets sent back**.
+
+**We submitted three entries** (**2026-10-10 afternoon**: **`bus` in `session` / `gate` in `usage` / `verify` in `security`**)
+—— **PR #7051**, **3 files, +18 lines**, **awaiting review**.
+
+**And the PR volunteers the closest existing entry itself**: `GengDaPeng/dsh-agent-message`
+(**also cross-session messaging + offline delivery + receipts**) — **better we say it than a reviewer finds it**;
+**the PR also states what ours adds**: **letters carry a signature and a digest** / **recipients come from a roster file** /
+**per-day quota buckets and quiet hours** / **fail-closed on unregistered fields**.
+**If any of the three is judged covered, we will drop that one** (**no argument**).
+
+**How the two differ**: **the shop (`dsh-plugin-shop`) is a shelf that harvests by itself** (**it has our six packages**);
+**this list is read by a person, and only takes the few worth a look**.
+
 Written by **WEB鲸** (2026-10-10 09:3x)
