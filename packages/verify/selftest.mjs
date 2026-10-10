@@ -44,7 +44,7 @@ try {
   check('接口：ctx.provide("whale.verify") 挂上了', provided['whale.verify'] === v)
   check('接口：verify／nag／status／enable／disable 齐全', ['verify', 'nag', 'status', 'enable', 'disable'].every((m) => typeof v[m] === 'function'))
   check('接口：apiVersion 是数字', Number.isInteger(apiVersion))
-  check('接口：签名域与 bus 一致（★mode 在里面）', FIELD_ORDER.includes('mode') && FIELD_ORDER.includes('re'))
+  check('接口：签名域与 bus 一致（mode 在里面）', FIELD_ORDER.includes('mode') && FIELD_ORDER.includes('re'))
 
   // 造钥匙
   const keysDir = join(tmp, 'keys')
@@ -56,35 +56,35 @@ try {
   const t0 = Date.parse('2026-10-10T10:00:00+08:00')
   const off = (now) => mk({ enabled: false, now })
   const s0 = off(t0).status()
-  check('★三态：默认（enabled 不写）就是**禁用**', mk({ enabled: undefined }).status().enabled === false)
+  check('三态：默认（enabled 不写）就是**禁用**', mk({ enabled: undefined }).status().enabled === false)
   check('三态：禁用时 status 如实显示 enabled=false', s0.enabled === false)
   const r0 = off(t0).verify(letter())
-  check('★三态：禁用时 verify 放行，但带 skipped:true（不假装验过）', r0.ok === true && r0.skipped === true, JSON.stringify(r0))
+  check('三态：禁用时 verify 放行，但带 skipped:true（不假装验过）', r0.ok === true && r0.skipped === true, JSON.stringify(r0))
 
   const d1 = off(t0)
   const n1 = d1.nag()
-  check('★提示：未开启时 nag() 返回文案', typeof n1 === 'string' && n1.includes('禁用中'), String(n1).slice(0, 40))
+  check('提示：未开启时 nag() 返回文案', typeof n1 === 'string' && n1.includes('禁用中'), String(n1).slice(0, 40))
   check('提示：文案里建议开启并说明原因', String(n1).includes('建议开启') && String(n1).includes('欺骗'))
-  check('★提示：同一天再调 ⇒ null（一天至多一次）', off(t0).nag() === null || (() => { const x = off(t0); x.nag(); return x.nag() === null })())
+  check('提示：同一天再调 ⇒ null（一天至多一次）', off(t0).nag() === null || (() => { const x = off(t0); x.nag(); return x.nag() === null })())
   const n2 = off(t0 + DAY).nag()
-  check('★提示：第 2 天返回一次', typeof n2 === 'string')
+  check('提示：第 2 天返回一次', typeof n2 === 'string')
   const n3 = off(t0 + 2 * DAY).nag()
-  check('★提示：第 3 天返回一次', typeof n3 === 'string')
+  check('提示：第 3 天返回一次', typeof n3 === 'string')
   const n4 = off(t0 + 3 * DAY).nag()
-  check('★★提示：第 4 天起 ⇒ null（★视为执意，不再提）', n4 === null, String(n4))
+  check('提示：第 4 天起 ⇒ null（视为执意，不再提）', n4 === null, String(n4))
   const n5 = off(t0 + 9 * DAY).nag()
-  check('★提示：第 10 天仍 null（不再复发）', n5 === null)
+  check('提示：第 10 天仍 null（不再复发）', n5 === null)
   const st4 = off(t0 + 3 * DAY).status()
-  check('★提示：不再提示 ≠ 关掉安全 —— status 仍如实显示 false', st4.enabled === false && st4.dayIndex >= 3, JSON.stringify(st4))
+  check('提示：不再提示 ≠ 关掉安全 —— status 仍如实显示 false', st4.enabled === false && st4.dayIndex >= 3, JSON.stringify(st4))
 
   const en = mk({ enabled: true, now: t0 })
-  check('★三态：开启后 nag() 恒 null', en.nag() === null && en.nag() === null)
-  check('★三态：status 显示 enabled=true', en.status().enabled === true)
+  check('三态：开启后 nag() 恒 null', en.nag() === null && en.nag() === null)
+  check('三态：status 显示 enabled=true', en.status().enabled === true)
   const offThenOn = off(t0 + 4 * DAY)
   offThenOn.nag()
   offThenOn.enable()
-  check('★三态：第 4 天后手动开启 ⇒ 立刻不再提示且 enabled=true', offThenOn.nag() === null && offThenOn.status().enabled === true)
-  check('★三态：开启时刻留痕 enabledAt', typeof offThenOn.status().enabledAt === 'string' && offThenOn.status().enabledAt.length > 10)
+  check('三态：第 4 天后手动开启 ⇒ 立刻不再提示且 enabled=true', offThenOn.nag() === null && offThenOn.status().enabled === true)
+  check('三态：开启时刻留痕 enabledAt', typeof offThenOn.status().enabledAt === 'string' && offThenOn.status().enabledAt.length > 10)
 
   // ── ③ 验签 fail-closed ──────────────────────────────────────────────
   const on = mk({ enabled: true, now: t0 })
@@ -93,7 +93,7 @@ try {
   check('验签：正文改一个字节 ⇒ 不过', on.verify({ ...good, body: 'hellp' }).ok === false)
   check('验签：签名改一个字 ⇒ 不过', on.verify({ ...good, mac: good.mac.slice(0, -1) + '0' }).ok === false)
   check('验签：去掉 mac ⇒ 不过', on.verify({ ...good, mac: undefined }).ok === false)
-  check('★验签：出现未登记字段 ⇒ 不过（加字段忘了进签名域＝可被随便改）', on.verify({ ...good, extra: 'x' }).ok === false)
+  check('验签：出现未登记字段 ⇒ 不过（加字段忘了进签名域＝可被随便改）', on.verify({ ...good, extra: 'x' }).ok === false)
   check('验签：缺必填字段 ⇒ 不过', on.verify({ ...good, from: undefined }).ok === false)
   check('验签：收件人不在白名单 ⇒ 不过', mk({ enabled: true, now: t0, allow: ['carol'] }).verify(good).ok === false)
   check('验签：白名单里有发件人 ⇒ 过', mk({ enabled: true, now: t0, allow: ['alice'] }).verify(good).ok === true)
@@ -102,14 +102,14 @@ try {
   // 冒名：拿 bob 的钥匙签"发件人＝alice" ⇒ 必须不过（每设备钥匙的核心价值）
   const forged = letter({ from: 'alice' }, KEY_B)
   const rForge = on.verify(forged)
-  check('★★冒名：用别人的钥匙签我的名字 ⇒ 必须不过', rForge.ok === false, JSON.stringify(rForge))
+  check('冒名：用别人的钥匙签我的名字 ⇒ 必须不过', rForge.ok === false, JSON.stringify(rForge))
   // 而 bob 用 bob 的钥匙签自己 ⇒ 过
   check('冒名对照：bob 用 bob 的钥匙签自己 ⇒ 过', on.verify(letter({ from: 'bob' }, KEY_B, 'bob')).ok === true)
 
   // 没有专用钥 ⇒ 回落共享钥
   writeFileSync(join(tmp, 'signing.key'), 'c'.repeat(64) + '\n', 'utf8')
   const noDedicated = createVerify({ root: tmp, enabled: true, now: t0, keysDir: join(tmp, 'nokeys'), keyFile: join(tmp, 'signing.key') })
-  check('回落：没有专用钥时用共享钥（★老信老成员一字不改）', noDedicated.verify(letter({}, 'c'.repeat(64), 'carol')).ok === true)
+  check('回落：没有专用钥时用共享钥（老信老成员一字不改）', noDedicated.verify(letter({}, 'c'.repeat(64), 'carol')).ok === true)
   check('回落对照：共享钥签的人，专用钥目录里没有 ⇒ 仍过', noDedicated.verify(letter({}, 'c'.repeat(64), 'carol')).ok === true)
 
   // 集成测试抓出的真 bug（2026-10-10 凌晨）：开启安全**之后连 `hello` 都被判不过** 
@@ -117,10 +117,10 @@ try {
   //   这几条判据钉住"与 bus.verify 同口径"：只有 kind==='msg' 才查 seq／sha256 与正文摘要。
   const helloEnv = { v: 1, kind: 'hello', id: 'h-1', from: 'alice', to: 'bob' }
   helloEnv.mac = mac(helloEnv, KEY_A)
-  check('★hello 信封（无 seq／sha256）⇒ 开启安全时也验得过', on.verify(helloEnv).ok === true, JSON.stringify(on.verify(helloEnv)))
+  check('hello 信封（无 seq／sha256）⇒ 开启安全时也验得过', on.verify(helloEnv).ok === true, JSON.stringify(on.verify(helloEnv)))
   const ackEnv = { v: 1, kind: 'ack', id: 'a-1', from: 'bob', to: 'alice' }
   ackEnv.mac = mac(ackEnv, KEY_B)
-  check('★ack 信封（无正文）⇒ 同上（口径与 bus 一致）', on.verify(ackEnv).ok === true, JSON.stringify(on.verify(ackEnv)))
+  check('ack 信封（无正文）⇒ 同上（口径与 bus 一致）', on.verify(ackEnv).ok === true, JSON.stringify(on.verify(ackEnv)))
   check('对照：msg 信封缺 sha256 ⇒ 仍判不过（该严的还是要严）', on.verify({ ...good, sha256: undefined }).ok === false)
   check('对照：hello 信封签名被改 ⇒ 仍判不过（不是"什么都不查"）', on.verify({ ...helloEnv, mac: helloEnv.mac.slice(0, -1) + '0' }).ok === false)
 
@@ -135,9 +135,9 @@ try {
   // 用空 keysDir ⇒ 强制回落到共享钥（<xroot>/signing.key，由 bus 首用时生成）
   const vX = createVerify({ root: xroot, enabled: true, keysDir: join(xroot, '没有这个目录') })
   const rx = vX.verify(realHello)
-  check('★★与 bus 互验：真 bus 造的 hello 信封 ⇒ verify 包认得出（同一把共享钥）', rx.ok === true, JSON.stringify(rx))
+  check('与 bus 互验：真 bus 造的 hello 信封 ⇒ verify 包认得出（同一把共享钥）', rx.ok === true, JSON.stringify(rx))
   const realMsg = busX.seal({ v: 1, kind: 'msg', id: 'real-1', from: 'alice', to: 'bob', seq: 1, subject: 's', body: 'hi', sha256: busX.digest('hi'), sentAtMs: Date.now() })
-  check('★★与 bus 互验：真 bus 签的 msg 信封 ⇒ verify 包也认得出', vX.verify(realMsg).ok === true, JSON.stringify(vX.verify(realMsg)))
+  check('与 bus 互验：真 bus 签的 msg 信封 ⇒ verify 包也认得出', vX.verify(realMsg).ok === true, JSON.stringify(vX.verify(realMsg)))
   check('互验对照：把一个字节改掉 ⇒ 两边都判不过', vX.verify({ ...realMsg, body: 'hi!' }).ok === false)
 
   // ── ④ 防泄露 ＋ 坏输入不炸 ──────────────────────────────────────────
@@ -164,7 +164,7 @@ try {
   const ref = {}
   const vf = createVerify({ root: tmp, enabled: true, keysDir: join(tmp, 'keys'), bus: { fields: () => ref.bus?.FIELD_ORDER } })
   ref.bus = { FIELD_ORDER: [...FIELD_ORDER, 'brandNewFieldFromBus'] }     // 模拟"bus 那边加了字段"
-  check('★★一套真相：接了 `bus` ⇒ 用**它**那份（★新字段不再被判"未登记" ✓）',
+  check('一套真相：接了 `bus` ⇒ 用**它**那份（新字段不再被判"未登记"）',
     (() => {
       const r = vf.verify({ v: 1, kind: 'msg', id: 'x1', from: 'a', to: 'b', seq: 1, body: 'b', sentAtMs: Date.now(), brandNewFieldFromBus: 'ok' })
       return !(r.ok === false && /未登记字段/.test(String(r.why)))
@@ -172,12 +172,12 @@ try {
   // "当前生效那份"用**函数**问 （2026-10-10）——
   //   为什么不是暴露数组：那会是**实例化那一刻的快照**，而 `bus` 往往**之后**才建好 
   //     ⇒ "看着像当前生效的，其实是旧的" （这个坑我在同一轮里栽了两次）。
-  check('★★一套真相：`fields()` 是**当场问**的结果（★接了 bus ⇒ 就是 bus 那份 ✓）',
+  check('一套真相：`fields()` 是**当场问**的结果（接了 bus ⇒ 就是 bus 那份）',
     JSON.stringify(vf.fields()) === JSON.stringify(ref.bus.FIELD_ORDER),
     `fields=${vf.fields().length} bus=${ref.bus.FIELD_ORDER.length}`)
-  check('★一套真相：`FALLBACK_FIELD_ORDER` 名字说真话（★它是**兜底**那份，不是"当前生效" ✓）',
+  check('一套真相：`FALLBACK_FIELD_ORDER` 名字说真话（它是**兜底**那份，不是"当前生效"）',
     FALLBACK_FIELD_ORDER.length < ref.bus.FIELD_ORDER.length && !FALLBACK_FIELD_ORDER.includes('brandNewFieldFromBus'))
-  check('★一套真相：**没接** bus ⇒ 用本包兜底那份（★不含 bus 的新字段 ⇒ 退回原行为 ✓）',
+  check('一套真相：**没接** bus ⇒ 用本包兜底那份（不含 bus 的新字段 ⇒ 退回原行为）',
     (() => {
       const v2 = createVerify({ root: tmp, enabled: true, keysDir: join(tmp, 'keys') })
       //   ⓘ 这里**直接判表**，不判 `verify()` 的返回值 ——

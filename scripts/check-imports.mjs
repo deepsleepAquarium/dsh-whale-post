@@ -178,8 +178,8 @@ if (!files.length) {
 let bad = 0
 for (const f of files) {
   let missing
-  try { missing = checkFile(f) } catch (e) { console.log('  ★ ' + f + '：读不动（' + String(e.message).slice(0, 50) + '）'); bad++; continue }
-  if (missing.length) { bad++; console.log('  ★ ' + f + '：用了但没 import ⇒ ' + missing.join('、')) }
+  try { missing = checkFile(f) } catch (e) { console.log('  FAIL  ' + f + '：读不动（' + String(e.message).slice(0, 50) + '）'); bad++; continue }
+  if (missing.length) { bad++; console.log('  FAIL  ' + f + '：用了但没 import ⇒ ' + missing.join('、')) }
 }
-console.log('\n  扫了 ' + files.length + ' 个文件，' + (bad ? '★ ' + bad + ' 个有缺' : '✓ 全都没有"用了但没 import"'))
+console.log('\n  扫了 ' + files.length + ' 个文件，' + (bad ? '' + bad + ' 个有缺' : '全都没有"用了但没 import"'))
 process.exit(bad ? 1 : 0)

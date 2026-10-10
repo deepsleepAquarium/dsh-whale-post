@@ -27,10 +27,10 @@ const r = spawnSync(process.execPath, [join(repo, 'scripts', 'selftest-all.mjs')
 
 if (r.status !== 0) {
   console.log('')
-  console.log('★★提交被拦下 ✗ —— 上面有件没过（★或判据条数变少 ✓）。')
-  console.log('  ★★"报红还提交"跟"根本没跑"后果一模一样：★都是把没验过的东西当成验过了 ✓。')
-  console.log('  ⓘ ★真要跳过 ⇒ `git commit --no-verify` ✓（★绕过必须显式写 ✓）。')
+  console.log('提交被拦下 —— 上面有件没过（或判据条数变少）。')
+  console.log('  "报红还提交"跟"根本没跑"后果一模一样：都是把没验过的东西当成验过了。')
+  console.log('  ⓘ 真要跳过 ⇒ `git commit --no-verify` （绕过必须显式写）。')
   process.exit(r.status ?? 1)
 }
 console.log('')
-console.log('★提交前的门：全绿 ✓ 放行 ✓')
+console.log('提交前的门：全绿 放行 ')

@@ -90,7 +90,7 @@ function readPinned(r) {
 }
 function writePinned(r, pinned) {
   mkdirSync(join(r, 'state'), { recursive: true })
-  writeFileSync(pinnedFile(r), JSON.stringify({ note: '★"钉"＝把推断的休眠升格成明示（★人的决定，留痕 ✓）', pinned }, null, 2), 'utf8')
+  writeFileSync(pinnedFile(r), JSON.stringify({ note: '"钉"＝把推断的休眠升格成明示（人的决定，留痕）', pinned }, null, 2), 'utf8')
 }
 
 /**
@@ -238,11 +238,11 @@ function selftest() {
     //    而离线件**根本不叫醒任何人** ⇒ 拦它没有收益）
     let e1 = ''
     try { w.send({ as: 'alice', to: 'bob', mode: 'online', subject: '回执', body: '收到' }) } catch (e) { e1 = e.message }
-    check('回环闸①：纯回执拒发（★在线件）', /纯回执/.test(e1), e1)
+    check('回环闸①：纯回执拒发（在线件）', /纯回执/.test(e1), e1)
     //   同一条的"反面"：同一个纯回执换成**离线** ⇒ **照发** 
     let offlineAckOk = false
     try { w.send({ as: 'alice', to: 'bob', mode: 'offline', subject: '回执', body: '收到' }); offlineAckOk = true } catch { offlineAckOk = false }
-    check('★★离线豁免闸①：纯回执的**离线件照发**（主人 2026-10-06 令）', offlineAckOk)
+    check('离线豁免闸①：纯回执的**离线件照发**（维护者 2026-10-06 令）', offlineAckOk)
 
     // ⑦ 回环闸②：同一对 20 分钟内限封数（超出就拒）—— 同样要用在线件 
     //   注意：`recent` 现在**只记在线件** （2026-10-10 改：离线件豁免整套回环闸，
@@ -252,11 +252,11 @@ function selftest() {
     for (let i = 0; i < 4; i += 1) w.send({ as: 'alice', to: 'bob', mode: 'online', force: true, subject: `填满${i}`, body: `把叫醒记录填满：第 ${i} 封（正文有货，不是回执）` })
     let e2 = ''
     try { w.send({ as: 'alice', to: 'bob', mode: 'online', subject: '连发', body: '填满之后再发一封普通的（正文有货，不是回执）' }) } catch (e) { e2 = e.message }
-    check('回环闸②：同对限封数（超出就拒）（★在线件）', /同对回环/.test(e2), e2)
+    check('回环闸②：同对限封数（超出就拒）（在线件）', /同对回环/.test(e2), e2)
     //   同一条的"反面"：同一对再来**离线**件 ⇒ **照发** （豁免）
     let offlineMoreOk = false
     try { w.send({ as: 'alice', to: 'bob', mode: 'offline', subject: '离线', body: '同一对再来离线件（正文有货，不是回执）' }); offlineMoreOk = true } catch { offlineMoreOk = false }
-    check('★★离线豁免闸②：同对连发位置上的**离线件照发**（主人 2026-10-06 令）', offlineMoreOk)
+    check('离线豁免闸②：同对连发位置上的**离线件照发**（维护者 2026-10-06 令）', offlineMoreOk)
 
     // ⑧ 空正文 / 未注册类型 / 名额写错 ⇒ 一律拒发
     let e3 = ''; try { w.send({ as: 'bob', to: 'alice', subject: 'x', body: '   ' }) } catch (e) { e3 = e.message }
@@ -306,19 +306,19 @@ function main() {
   // --help／-h／help 一律当"打用法"（陌生人第一下就敲这个）
   if (!cmd || cmd === '--help' || cmd === '-h' || cmd === 'help') {
     console.log([
-      'whale-post <命令> [选项]        ★六件已发 npm：npx -y dsh-whale-post-cli <命令>（第七件 verify 在仓内，待发）',
+      'whale-post <命令> [选项]        六件已发 npm：npx -y dsh-whale-post-cli <命令>（第七件 verify 在仓内，待发）',
       '',
       '  hello   --as <谁>                  握手（没握过手不许发信）',
       '  send    --as <谁> --to <谁|组> --subject <题> --body <正文> [--mode online|offline] [--type <类型>] [--re <父信 id>] [--force] [--live a,b]',
       '  pump    --as <谁> [--keep]         收信（默认消费；没有读者时一封都不消费）',
       '  quota   --as <谁> [--days N]       查配额（离线件按"条"、不计单位）',
       '  verify  [--as <谁>] [--enable|--disable] [--allow a,b]',
-      '                                     看安全校验状态（★默认禁用；禁用中会提示开启，连提三天后不再提）',
-      '  nag                                看该不该提示（★未开启时每天至多一次；提满三天后不再提）',
+      '                                     看安全校验状态（默认禁用；禁用中会提示开启，连提三天后不再提）',
+      '  nag                                看该不该提示（未开启时每天至多一次；提满三天后不再提）',
       '  roster  / types / key              看名单 / 看类型 / 看密钥指纹',
-      '  selftest                           自测（★只看退出码：0 过 / 非 0 不过）',
+      '  selftest                           自测（只看退出码：0 过 / 非 0 不过）',
       '',
-      '通用：--root <目录>（★默认 ./.whale-mail，或环境变量 WHALE_POST_ROOT）   --roster <名单 json>',
+      '通用：--root <目录>（默认 ./.whale-mail，或环境变量 WHALE_POST_ROOT）   --roster <名单 json>',
     ].join('\n'))
     return 0
   }
@@ -391,7 +391,7 @@ function main() {
         ? r.targets.filter((t) => services.roster.flag(t, remoteFlag))
         : []
       if (toRemote.length) {
-        if (!existsSync(remote)) die(2, `远端根不存在：${remote}（★要指到"信箱根"那一层 ✓）`)
+        if (!existsSync(remote)) die(2, `远端根不存在：${remote}（要指到"信箱根"那一层）`)
         let moved = 0
         for (const t of toRemote) {
           const srcP = join(bus.paths().inbox(t), `${r.id}.msg.json`)
@@ -403,7 +403,7 @@ function main() {
           unlinkSync(srcP)
           moved += 1
         }
-        if (moved) console.log(`★投到远端：${toRemote.join('、')} ⇒ ${join(remote, 'inbox')}（★**本机不留第二份** ✗ —— ★两份会各说各话 ✓）`)
+        if (moved) console.log(`投到远端：${toRemote.join('、')} ⇒ ${join(remote, 'inbox')}（**本机不留第二份** —— 两份会各说各话）`)
       }
       const modeTxt = r.mode === 'offline' ? '离线（落在对方信箱，不唤醒）' : '在线（立即投进对方的会话）'
       const verdictTxt = r.verdict === 'delivered' ? 'delivered（投出去了）'
@@ -411,7 +411,7 @@ function main() {
       console.log(`已投递 ${r.id} → ${r.targets.join(',')}（seq ${r.seq}）【${modeTxt}】`)
       // 没投给谁，也要说出来 —— 部分收件人被明确标成休眠时，核心把它带回来了（不许静默）
       if (Array.isArray(r.skippedDormant) && r.skippedDormant.length) {
-        console.log(`★没投：${r.skippedDormant.join('、')} 被明确标成休眠 ⇒ 信没进它们的信箱（换人或先让它们醒）`)
+        console.log(`没投：${r.skippedDormant.join('、')} 被明确标成休眠 ⇒ 信没进它们的信箱（换人或先让它们醒）`)
       }
       console.log(`投递策略：${verdictTxt}`)
       //   "**明示**"必须打到**发信人眼前** （2026-10-10 补）——
@@ -420,10 +420,10 @@ function main() {
       //     所以这里把它说出来：哪儿个人是**按离线寄达**的、哪几个是**没握手**的。
       const wp = r.wakePrediction ?? {}
       if (Array.isArray(wp.offlineOnly) && wp.offlineOnly.length) {
-        console.log(`★对 ${wp.offlineOnly.join('、')} **按离线寄达**（★它们自己声明只收离线 ⇒ 这封不会叫醒它们）—— ★不是故障，信已在它们的信箱里 ✓`)
+        console.log(`对 ${wp.offlineOnly.join('、')} **按离线寄达**（它们自己声明只收离线 ⇒ 这封不会叫醒它们）—— 不是故障，信已在它们的信箱里 `)
       }
       if (Array.isArray(wp.willWait) && wp.willWait.length) {
-        console.log(`★对 ${wp.willWait.join('、')} **没叫醒**（★没有新鲜握手 ⇒ 降级为离线寄达）—— ★信已留箱等人来收 ✓`)
+        console.log(`对 ${wp.willWait.join('、')} **没叫醒**（没有新鲜握手 ⇒ 降级为离线寄达）—— 信已留箱等人来收 `)
       }
       const bucket = r.mode === 'offline' ? 'offline' : r.type
       const b = services.gate?.report({ as }).buckets.find((x) => x.bucket === bucket)
@@ -438,7 +438,7 @@ function main() {
       if (rs.length === 0) console.log('（信箱是空的）')
       for (const r of rs) {
         console.log(`${r.ok ? 'OK  ' : '退信'} ${r.file}${r.ok ? ' :: ' + r.handled : ' :: ' + r.why}`)
-        if (r.ok && r.kept) console.log(`    ↳ ★未消费（${r.why}）`)
+        if (r.ok && r.kept) console.log(`    ↳ 未消费（${r.why}）`)
         if (r.ok && r.body) console.log(r.body.split('\n').map((l) => '    | ' + l).join('\n'))
       }
       return 0
@@ -460,10 +460,10 @@ function main() {
       // 动邮筒之前先探活 （S12）—— 不通就**当场判死**，别让同步 fs 在 SMB 掉线时挂几十秒 
       //   ⚠️**必须在任何一次碰远端盘的调用之前** —— 连 `existsSync` 本身都会挂 
       if (!remoteAlive(remote)) {
-        die(2, `远端根现在够不着（${remote}）—— ★**SMB 掉线时同步 fs 会挂住几十秒** ✗，所以这里先探活再动盘。`
-          + '等网络回来再跑；★这一次**一个文件都没动** ✓')
+        die(2, `远端根现在够不着（${remote}）—— **SMB 掉线时同步 fs 会挂住几十秒**，所以这里先探活再动盘。`
+          + '等网络回来再跑；这一次**一个文件都没动** ')
       }
-      if (!existsSync(remote)) die(2, `远端根不存在：${remote}（★要指到"信箱根"那一层 ✓）`)
+      if (!existsSync(remote)) die(2, `远端根不存在：${remote}（要指到"信箱根"那一层）`)
       const onlyOffline = opt('only-offline')          // 不配 ⇒ 一个 hello 都不镜像 
       const rInbox = join(remote, 'inbox', as)
       const rSeenDir = join(remote, 'seen', as)
@@ -517,7 +517,7 @@ function main() {
       // ②③④ 搬信
       let took = 0, skipped = 0, bad = 0, swept = 0, converged = 0, bounced = 0
       const files = existsSync(rInbox) ? readdirSync(rInbox).filter((x) => x.endsWith('.msg.json')) : []
-      if (!existsSync(rInbox)) console.log(`ⓘ 远端没有这个收件箱：${rInbox}（★只做了 hello 镜像 ✓）`)
+      if (!existsSync(rInbox)) console.log(`ⓘ 远端没有这个收件箱：${rInbox}（只做了 hello 镜像）`)
       mkdirSync(rSeenDir, { recursive: true })          // 准备"消费凭证"那一格 
 
       // S11 取件那半边：把**明示休眠**者信箱里积压的信**退回** 
@@ -540,18 +540,18 @@ function main() {
         const id = (env && env.id) || f
         writeFileSync(join(dead, `${id}.因休眠退回.说明.txt`), [
           `退回原因：${why}`,
-          `原收件人：${w}　★此人无法收到邮件 ✓`,
+          `原收件人：${w}　此人无法收到邮件 `,
           `原发件人：${(env && env.from) || '(读不出)'}`,
           `信件 id：${id}`,
           `主题：${(env && env.subject) || '(无)'}`,
           `退回时刻：${new Date().toISOString()}`,
           '',
-          '★这封信**没有丢** ✗ —— 它躺在退信这儿等着被处理 ✓（重投／找收件人，由发件人或主人定 ✓）。',
-          '★它**没有进**收件人的信箱 ✓，所以也**不占发件人的配额** ✓。',
-          '★为什么退它：★收件人被**明示**标成休眠 ✓ —— ★"信不会有人来取，落进去就是永远堆着" ✓。',
+          '这封信**没有丢** —— 它躺在退信这儿等着被处理 （重投／找收件人，由发件人或维护者定）。',
+          '它**没有进**收件人的信箱，所以也**不占发件人的配额**。',
+          '为什么退它：收件人被**明示**标成休眠 —— "信不会有人来取，落进去就是永远堆着"。',
         ].join('\n'), 'utf8')
         bounced++
-        console.log(`退回   ${f} ⇒ 退信/（收件人「${w}」被明示标成休眠 ✓ —— ★信没丢 ✗）`)
+        console.log(`退回   ${f} ⇒ 退信/（收件人「${w}」被明示标成休眠 —— 信没丢）`)
         return true
       }
       // "明示休眠"的属性名**从命令行给** （`--dormant <属性名>` —— 核心与 CLI 都不认识具体名字）
@@ -577,7 +577,7 @@ function main() {
           for (const dir of [bus.paths().inbox(w), join(remote, 'inbox', w)]) {
             let fs2 = []
             try { fs2 = readdirSync(dir).filter((x) => x.endsWith('.msg.json')) } catch { continue }
-            for (const f of fs2) bounceOne(dir, w, f, '收件人被标为**休眠**（★此人无法收到邮件 ✓；主人 2026-10-06 令 ✓）')
+            for (const f of fs2) bounceOne(dir, w, f, '收件人被标为**休眠**（此人无法收到邮件；维护者 2026-10-06 令）')
           }
         }
         // 推断出来的：**只提示，不退** （退了就会"来回摆"）
@@ -585,8 +585,8 @@ function main() {
           if (services.declaredDormant(w)) continue
           const d = typeof services.deliver?.dormancyOf === 'function' ? services.deliver.dormancyOf(w) : null
           if (d && d.state === 'dormant' && String(d.source) === 'inferred') {
-            console.log(`ⓘ 看着像休眠（推断）：${w}（★已 ${d.days} 天没有积压变化 ✓）—— ★**不自动退** ✗：
-  退了积压就没了证据 ⇒ 下回又判活跃 ⇒ **来回摆** ✓。★确要退请先**钉**（把推断升格成明示 ✓）。`)
+            console.log(`ⓘ 看着像休眠（推断）：${w}（已 ${d.days} 天没有积压变化）—— **不自动退**：
+  退了积压就没了证据 ⇒ 下回又判活跃 ⇒ **来回摆**。确要退请先**钉**（把推断升格成明示）。`)
           }
         }
       }
@@ -607,9 +607,9 @@ function main() {
           //   这个收件箱是**我的**（`inbox/<as>/`）⇒ 在里面的半截就是"该收拾的"。
           let old = false
           try { old = Date.now() - statSync(join(rInbox, x)).mtimeMs > tmpStaleMs } catch { old = false }
-          if (!old) { console.log(`半截   ${x}（★不理它 ✓ —— 可能是别的进程正在搬 ✓）`); continue }
+          if (!old) { console.log(`半截   ${x}（不理它 —— 可能是别的进程正在搬）`); continue }
           mkdirSync(rTrash, { recursive: true })
-          try { renameSync(join(rInbox, x), join(rTrash, x)); swept++; console.log(`陈旧   ${x} ⇒ MOVE 进邮筒 垃圾/ ✓（★没删 ✗）`) } catch { /* 挪不动就算了 */ }
+          try { renameSync(join(rInbox, x), join(rTrash, x)); swept++; console.log(`陈旧   ${x} ⇒ MOVE 进邮筒 垃圾/ （没删）`) } catch { /* 挪不动就算了 */ }
         }
       }
       for (const f of files) {
@@ -620,7 +620,7 @@ function main() {
         //   ⇒ 把邮筒那份**补 MOVE** —— 且**不记账** （账在第一次导入时就记过了 ⇒ 再记就是双记）。
         //   ⚠️ 必须**排在幂等判断之前** （否则先被 `existsSync` 拦成"跳过" —— 我第一版就这么写的）。
         if (existsSync(join(mine, f)) && !remoteSeen.has(f)) {
-          try { renameSync(join(rInbox, f), join(rSeenDir, f)); converged++; console.log(`收敛   ${f} ⇒ 搬了一半：邮筒那份补 MOVE 进 seen/ ✓（★不记账 ✗）`) } catch { /* 挪不动下次再来 */ }
+          try { renameSync(join(rInbox, f), join(rSeenDir, f)); converged++; console.log(`收敛   ${f} ⇒ 搬了一半：邮筒那份补 MOVE 进 seen/ （不记账）`) } catch { /* 挪不动下次再来 */ }
           continue
         }
         // ③ 幂等认三处 
@@ -628,7 +628,7 @@ function main() {
         let env = null
         try { env = JSON.parse(readFileSync(join(rInbox, f), 'utf8')) } catch { bad++; console.log(`坏件   ${f}（读不出来 ⇒ 不搬）`); continue }
         const probs = bus.verify(env)
-        if (probs.length) { bad++; console.log(`不过   ${f} :: ${probs.join('；')}（★不搬、不消费、不删 —— 留在远端等人查 ✓）`); continue }
+        if (probs.length) { bad++; console.log(`不过   ${f} :: ${probs.join('；')}（不搬、不消费、不删 —— 留在远端等人查）`); continue }
         const tmp = join(mine, `.${f}.tmp`)
         // 搬信要**保住原始 mtime** （2026-10-10 按设计文档 S6h-③ 加）
         //   病：`writeFileSync` ＋ `renameSync` 会给它**现在**的 mtime ⇒
@@ -655,7 +655,7 @@ function main() {
       }
       console.log(`\n取回 ${took} 封，跳过 ${skipped} 封（已有），没搬 ${bad} 封，镜像 hello ${mirrored} 份，镜像回执 ${ackMirrored} 份` +
         (swept || converged || bounced ? `，清理陈旧半截 ${swept} 个，收敛补 MOVE ${converged} 封，休眠退回 ${bounced} 封` : ''))
-      console.log('★远端没搬走的都还在那儿 ✓；搬走的留在它的 seen/ 里当消费凭证 ✓；★记账记在**发件人**名下 ✓')
+      console.log('远端没搬走的都还在那儿；搬走的留在它的 seen/ 里当消费凭证；记账记在**发件人**名下 ')
       return bad > 0 && took === 0 ? 2 : 0
     }
     if (cmd === 'quota') {
@@ -673,13 +673,13 @@ function main() {
     if (cmd === 'verify') {
       const v = services.verify
       if (flag('enable')) { v.enable(); console.log('安全校验：已开启（信封验签 ＋ 白名单）'); return 0 }
-      if (flag('disable')) { v.disable(); console.log('安全校验：已关闭（★不是"安全"，是"已知不安全 ＋ 会提醒你"）'); return 0 }
+      if (flag('disable')) { v.disable(); console.log('安全校验：已关闭（不是"安全"，是"已知不安全 ＋ 会提醒你"）'); return 0 }
       const st = v.status()
       console.log(st.enabled
-        ? `安全校验：✓ 已开启${st.enabledAt ? '（' + st.enabledAt + '）' : ''}`
-        : '安全校验：★禁用中')
+        ? `安全校验：已开启${st.enabledAt ? '（' + st.enabledAt + '）' : ''}`
+        : '安全校验：禁用中')
       if (!st.enabled) {
-        console.log(`  提醒进度：第 ${st.dayIndex} / ${st.nagLimit} 天${st.willNag ? '（还会提醒）' : '（★已提满 ⇒ 不再提醒；但状态仍是禁用）'}`)
+        console.log(`  提醒进度：第 ${st.dayIndex} / ${st.nagLimit} 天${st.willNag ? '（还会提醒）' : '（已提满 ⇒ 不再提醒；但状态仍是禁用）'}`)
         console.log('  建议开启，以免未知 agent 对其他 agent 发起欺骗或攻击。')
         console.log('  开启：给 dsh-whale-post-verify 传 enabled: true，或本命令加 --enable')
       }
@@ -713,26 +713,26 @@ function main() {
         pinned[pinWho] = { why: String(why), by: String(by), atMs: Date.now() }
         writePinned(pinRoot, pinned)
         //   ⚠️ 模板字符串里**不能直接写反引号** —— 我第一版写了 `` `declared` `` ⇒ `missing ) after argument list` 
-        console.log(`已钉：${pinWho} 被标成**明示休眠** ✓（★从今往后 ` + '`dormancyOf`' + ` 会判 'declared' ✓）`)
-        console.log(`  ★谁钉的：${by}／★为什么：${why}／★什么时候：${new Date(pinned[pinWho].atMs).toISOString()}`)
-        console.log('  ⓘ ★钉了之后，`pickup --dormant <属性名>` 才会**退回**它的积压 ✓（★这是"一个人的决定" ✓）。')
+        console.log(`已钉：${pinWho} 被标成**明示休眠** （从今往后 ` + '`dormancyOf`' + ` 会判 'declared'）`)
+        console.log(`  谁钉的：${by}／为什么：${why}／什么时候：${new Date(pinned[pinWho].atMs).toISOString()}`)
+        console.log('  ⓘ 钉了之后，`pickup --dormant <属性名>` 才会**退回**它的积压 （这是"一个人的决定"）。')
         console.log(`  ⓘ 解钉：node packages/cli/index.js dormant --unpin ${pinWho} --root <根>`)
         return 0
       }
       if (unpinWho) {
-        if (!pinned[unpinWho]) { console.log(`ⓘ ${unpinWho} 本来就没钉着 ✓`); return 0 }
+        if (!pinned[unpinWho]) { console.log(`ⓘ ${unpinWho} 本来就没钉着 `); return 0 }
         const old = pinned[unpinWho]
         delete pinned[unpinWho]
         writePinned(pinRoot, pinned)
-        console.log(`已解钉：${unpinWho}（★原来是 ${old.by} 在 ${new Date(old.atMs).toISOString()} 因为「${old.why}」钉的 ✓）`)
+        console.log(`已解钉：${unpinWho}（原来是 ${old.by} 在 ${new Date(old.atMs).toISOString()} 因为「${old.why}」钉的）`)
         return 0
       }
       const ids = Object.keys(pinned)
-      if (ids.length === 0) { console.log('（一个都没钉 ✓ —— ★"钉"是**人的决定**，别让它自己长出来 ✗）'); return 0 }
+      if (ids.length === 0) { console.log('（一个都没钉 —— "钉"是**人的决定**，别让它自己长出来）'); return 0 }
       console.log(`钉着 ${ids.length} 个：`)
       for (const id of ids) {
         const p = pinned[id]
-        console.log(`  · ${id}　★${p.by} 于 ${new Date(p.atMs).toISOString()} 因为「${p.why}」`)
+        console.log(`  · ${id}　${p.by} 于 ${new Date(p.atMs).toISOString()} 因为「${p.why}」`)
       }
       return 0
     }

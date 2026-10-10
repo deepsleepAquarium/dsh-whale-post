@@ -42,7 +42,7 @@ const repo = join(here, '..')
  * **`COMPAT_OLD` 仍然可以指定** （比如想专门验某一版）。
  */
 function previousPublished() {
-  if (process.env.COMPAT_OLD) return { v: process.env.COMPAT_OLD, how: '★由 COMPAT_OLD 指定 ✓' }
+  if (process.env.COMPAT_OLD) return { v: process.env.COMPAT_OLD, how: '由 COMPAT_OLD 指定 ' }
   const mine = JSON.parse(readFileSync(join(repo, 'package.json'), 'utf8')).version
   try {
     const r = spawnSync('npm', ['view', 'dsh-whale-post-cli', 'versions', '--json', '--registry', 'https://registry.npmjs.org'],
@@ -53,10 +53,10 @@ function previousPublished() {
       return (A[0] - B[0]) || (A[1] - B[1]) || (A[2] - B[2])
     }
     const lower = all.filter((v) => cmp(v, mine) < 0 && !String(v).includes('-'))
-    if (lower.length) return { v: lower.sort(cmp)[lower.length - 1], how: `★npm 上比 ${mine} 小的最大者 ✓` }
-    return { v: '0.2.0', how: '★npm 上没有比本版更小的了 ⇒ 退回 0.2.0（★当基线用 ✓）' }
+    if (lower.length) return { v: lower.sort(cmp)[lower.length - 1], how: `npm 上比 ${mine} 小的最大者 ` }
+    return { v: '0.2.0', how: 'npm 上没有比本版更小的了 ⇒ 退回 0.2.0（当基线用）' }
   } catch {
-    return { v: '0.2.0', how: '★问不到 npm（★离线？）⇒ 退回 0.2.0 ✓' }
+    return { v: '0.2.0', how: '问不到 npm（离线？）⇒ 退回 0.2.0 ' }
   }
 }
 const PREV = previousPublished()
@@ -90,7 +90,7 @@ runNew(['hello', '--as', 'bob'])
 //   ⚠️ 注意：模板字符串里**不能再出现反引号** （我第一版就栽在这上面：
 //     `check(\`① …（\`hello\` 是本版认的）\`, …)` ⇒ **`SyntaxError: missing ) after argument list`**）——
 //     要提命令名就用普通引号括起来 （同一条坑今晚犯过第二次了）。
-check(`① 老版（${CLIVER}）写的握手，本版**认得出** ✗（★hello 是本版认的 ✓）`,
+check(`① 老版（${CLIVER}）写的握手，本版**认得出** （hello 是本版认的）`,
   existsSync(join(tmp, 'hello', 'alice.json')), `看 ${join(tmp, 'hello')}`)
 
 // ── ① 老版发 ⇒ 本版收（这一条**必须**通）
@@ -101,7 +101,7 @@ check('② 老版 send 退出码 0', sendOld.status === 0, `退出码 ${sendOld.
 //     正解：判 **`seen/<我>/` 里多了一份凭证** （那才是“我收过这封”的痕迹）。
 const seenBefore = seenOf('bob').length
 const pumpNew = runNew(['pump', '--as', 'bob'])
-check('★★★老版发的信 ⇒ **本版收得下** ✗✓（★拆得开、收得下 ✓ —— ★★**而“验得过”在 `bus` 自测里单独钉一条** ✓：★“算得出”≠“验得过” ✗）',
+check('老版发的信 ⇒ **本版收得下** （拆得开、收得下 —— **而“验得过”在 `bus` 自测里单独钉一条**：“算得出”≠“验得过”）',
   pumpNew.status === 0 && seenOf('bob').length > seenBefore,
   `pump 退出码 ${pumpNew.status}，消费凭证 ${seenBefore} → ${seenOf('bob').length}`)
 
@@ -117,7 +117,7 @@ check('③ 本版 `send` 退出码 0', sendNew.status === 0, `退出码 ${sendNe
 const oldSeenBefore = seenOf('alice').length
 const pumpOld = runOldVerbose(['pump', '--as', 'alice'])
 const reachedOld = seenOf('alice').length > oldSeenBefore
-console.log(`\nⓘ **报告**：本版发的信，老版（${CLIVER}）${reachedOld ? '**收得到** ✓（★两边签名域一致 ⇒ 普通信互通 ✓）' : '**收不到** ✗（★见 CHANGELOG「必读（二）」✓）'}`)
+console.log(`\nⓘ **报告**：本版发的信，老版（${CLIVER}）${reachedOld ? '**收得到** （两边签名域一致 ⇒ 普通信互通）' : '**收不到** （见 CHANGELOG「必读（二）」）'}`)
 if (!reachedOld) {
   const why = String(pumpOld.stdout ?? '').split(/\r?\n/).find((l) => l.includes('未登记') || l.includes('签名域') || l.includes('退信'))
   if (why) console.log(`   老版说的是：${why.trim().slice(0, 140)}`)
@@ -132,13 +132,13 @@ if (!reachedOld) {
 {
   const sawReceipt = seenOf('alice').length > oldSeenBefore
   const bounced = (() => { try { return readdirSync(join(tmp, '退信')).length > 0 } catch { return false } })()
-  check('★★★**"报告"有证据**: 说"收得到" ⇒ `seen/` 里有凭证；说"收不到" ⇒ `退信/` 里有退信（★不许瞎写 ✓）',
+  check('**"报告"有证据**: 说"收得到" ⇒ `seen/` 里有凭证；说"收不到" ⇒ `退信/` 里有退信（不许瞎写）',
     sawReceipt === reachedOld && (reachedOld || bounced),
     `reachedOld=${reachedOld} 凭证新增=${sawReceipt} 有退信=${bounced}`)
 }
 
 const pass = checks.filter((c) => c.ok).length
 for (const c of checks) console.log(`${c.ok ? 'PASS' : 'FAIL'}  ${c.name}${c.ok ? '' : '  :: ' + c.extra}`)
-console.log(`\n${pass}/${checks.length} 兼容   （★对跑的是 npm 上的 \`${CLIVER}\` ✓ —— ${PREV.how}；临时邮局：${tmp}）`)
+console.log(`\n${pass}/${checks.length} 兼容   （对跑的是 npm 上的 \`${CLIVER}\` —— ${PREV.how}；临时邮局：${tmp}）`)
 try { rmSync(tmp, { recursive: true, force: true }) } catch { /* 删不掉就留着 */ }
 process.exit(pass === checks.length ? 0 : 1)

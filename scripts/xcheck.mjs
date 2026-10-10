@@ -43,14 +43,14 @@ try {
   // ① 摘要：同一个输入，两边必须算出同一个值 
   const samples = ['', 'a', 'abc', '中文正文（含全角标点，。）', '\n\n  ', 'x'.repeat(1000), '😀🫧']
   const badDigest = samples.filter((s) => bus.digest(s) !== verify.digestOf(s))
-  check('① 摘要：`bus.digest` ≡ `verify.digestOf`（★多个样本）', badDigest.length === 0,
+  check('① 摘要：`bus.digest` ≡ `verify.digestOf`（多个样本）', badDigest.length === 0,
     badDigest.length ? `不等样本 ${badDigest.length} 个：${JSON.stringify(badDigest.slice(0, 2))}` : `${samples.length} 个样本全等`)
 
   // ② 签名域：接了 bus ⇒ 两边该是**同一份** 
   check('② 签名域：`bus.FIELD_ORDER` ≡ `verify.fields()`',
     JSON.stringify(bus.FIELD_ORDER) === JSON.stringify(verify.fields()),
     `bus=${bus.FIELD_ORDER.length} verify=${verify.fields().length}`)
-  check('② 签名域：兜底那份**名字说真话**（★不是"当前生效"那份 ✓）',
+  check('② 签名域：兜底那份**名字说真话**（不是"当前生效"那份）',
     !FALLBACK_FIELD_ORDER.includes('peerStateAtSend') || bus.FIELD_ORDER.length === FALLBACK_FIELD_ORDER.length,
     `fallback=${FALLBACK_FIELD_ORDER.length}`)
 
@@ -59,7 +59,7 @@ try {
   const sent = bus.send({ as: 'a', to: 'b', mode: 'offline', subject: 'xcheck', body: '跨包一致性检查用的一封（正文有货，别当回执）' })
   const wire = JSON.parse(readFileSync(join(tmp, 'inbox', 'b', `${sent.id}.msg.json`), 'utf8'))
   const vres = verify.verify(wire)
-  check('④ MAC：`bus.sign` 签的信 ⇒ `verify` **认**（★"一接就炸"那条 ✓）', vres.ok === true || vres.skipped === true,
+  check('④ MAC：`bus.sign` 签的信 ⇒ `verify` **认**（"一接就炸"那条）', vres.ok === true || vres.skipped === true,
     JSON.stringify(vres).slice(0, 120))
 
   // ⑤ 老字段：两边都该认 `auth` 

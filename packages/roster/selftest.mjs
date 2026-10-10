@@ -44,7 +44,7 @@ try {
     groups: { all: ['alice', 'carol'], club: ['alice', 'carol'] },
     flagB: ['carol'] }
   writeFileSync(file, JSON.stringify(withFlags), 'utf8')
-  check('成员：list 保留自带字段（★自定义属性不被吃掉）', roster.member('carol')?.flagA === true, JSON.stringify(roster.member('carol')))
+  check('成员：list 保留自带字段（自定义属性不被吃掉）', roster.member('carol')?.flagA === true, JSON.stringify(roster.member('carol')))
   check('成员：member() 取整条；不认识 ⇒ undefined', roster.member('alice')?.label === 'Alice' && roster.member('zed') === undefined)
   check('属性：成员字段写法 ⇒ true', roster.flag('carol', 'flagA') === true)
   check('属性：顶层名单式写法 ⇒ true', roster.flag('carol', 'flagB') === true)
@@ -62,9 +62,9 @@ try {
   const rOff = createRoster({ file, groupWithout: 'flagA' })
   check('群发：group() 默认剔掉 groupWithout 指定的属性', JSON.stringify(rOff.group('club')) === '["alice"]', JSON.stringify(rOff.group('club')))
   check('群发：broadcast() 剔掉同一批人', JSON.stringify(rOff.broadcast()) === '["alice"]', JSON.stringify(rOff.broadcast()))
-  check('★群发：点名不受影响（member 仍取得到它）', rOff.member('carol')?.id === 'carol' && rOff.has('carol'))
+  check('群发：点名不受影响（member 仍取得到它）', rOff.member('carol')?.id === 'carol' && rOff.has('carol'))
   check('群发：显式 opts.without 优先于配置', JSON.stringify(rOff.group('club', { without: 'flagA' })) === '["alice"]')
-  check('★群发：opts.without = null ⇒ **这一次不剔**（逃生门）',
+  check('群发：opts.without = null ⇒ **这一次不剔**（逃生门）',
     JSON.stringify(rOff.group('club', { without: null })) === '["alice","carol"]' && JSON.stringify(rOff.broadcast({ without: null })) === '["alice","carol"]')
   check('群发：没配 groupWithout ⇒ 原样（向后兼容）', JSON.stringify(roster.broadcast()) === '["alice","carol"]', JSON.stringify(roster.broadcast()))
 

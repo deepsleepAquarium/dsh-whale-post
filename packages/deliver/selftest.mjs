@@ -63,25 +63,25 @@ try {
     declaredDormant: (w) => declared === true && w === 'sleepy',
     oldestPendingMs: (w) => (oldestDays === null ? 0 : NOW - oldestDays * DAY),
   })
-  check('★休眠：明示位 ⇒ dormant ＋ source=declared（★是"声明"，不是"推断"）',
+  check('休眠：明示位 ⇒ dormant ＋ source=declared（是"声明"，不是"推断"）',
     (() => { const d = mkD(0, true).dormancyOf('sleepy'); return d.state === 'dormant' && d.source === 'declared' })())
-  check('★★休眠：无明示位、无积压 ⇒ **unknown**（★"我们不知道" ≠ "它休眠" ✗）',
+  check('休眠：无明示位、无积压 ⇒ **unknown**（"我们不知道" ≠ "它休眠"）',
     (() => { const d = mkD(null, false).dormancyOf('bob'); return d.state === 'unknown' && d.source === 'none' })())
-  check('★休眠：**没接探针** ⇒ 也如实报 unknown（不知道就说不知道）', createDeliver({}).dormancyOf('bob').state === 'unknown')
-  check('★休眠：积压 1 天（soft=3）⇒ awake ＋ source=inferred',
+  check('休眠：**没接探针** ⇒ 也如实报 unknown（不知道就说不知道）', createDeliver({}).dormancyOf('bob').state === 'unknown')
+  check('休眠：积压 1 天（soft=3）⇒ awake ＋ source=inferred',
     (() => { const d = mkD(1, false).dormancyOf('bob'); return d.state === 'awake' && d.source === 'inferred' })())
-  check('★休眠：积压 4 天（soft～hard）⇒ quiet',
+  check('休眠：积压 4 天（soft～hard）⇒ quiet',
     mkD(4, false).dormancyOf('bob').state === 'quiet')
-  check('★休眠：积压 9 天（≥hard=7）⇒ dormant',
+  check('休眠：积压 9 天（≥hard=7）⇒ dormant',
     mkD(9, false).dormancyOf('bob').state === 'dormant')
-  check('★休眠：阈值可配（soft=1／hard=2 ⇒ 积压 3 天就是 dormant）',
+  check('休眠：阈值可配（soft=1／hard=2 ⇒ 积压 3 天就是 dormant）',
     createDeliver({ dormantSoftDays: 1, dormantHardDays: 2, now: () => NOW, oldestPendingMs: () => NOW - 3 * DAY }).dormancyOf('bob').state === 'dormant')
-  check('★★休眠：明示位**优先于**推断（积压 0 天但被明确标了 ⇒ 仍是 dormant/declared）',
+  check('休眠：明示位**优先于**推断（积压 0 天但被明确标了 ⇒ 仍是 dormant/declared）',
     (() => { const d = mkD(null, true).dormancyOf('sleepy'); return d.state === 'dormant' && d.source === 'declared' })())
   // 明示休眠的收件人 ⇒ 退回（与核心同口径：--force 也不豁免）
-  check('★休眠：明示休眠的收件人 ⇒ rejected（退回）',
+  check('休眠：明示休眠的收件人 ⇒ rejected（退回）',
     mkD(0, true).deliver(letter({ to: 'sleepy', mode: 'online' }), { targets: ['sleepy'] }) === 'rejected')
-  check('★休眠：**只是安静**（inferred quiet）⇒ 不退回（★不许自己猜休眠 ✗）',
+  check('休眠：**只是安静**（inferred quiet）⇒ 不退回（不许自己猜休眠）',
     mkD(4, false).deliver(letter({ to: 'bob', mode: 'offline' }), { targets: ['bob'] }) === 'kept')
 } catch (err) {
   check('自测没有抛异常', false, err && err.stack ? err.stack.split('\n')[0] : err)

@@ -64,7 +64,7 @@ for (const p of all) {
   if (set.has(en)) pairs.push([p, join(repo, en)])
 }
 
-check(`① 找到 ${pairs.length} 对中英文档（★配不上对的不算错 ✓）`, pairs.length > 0, pairs.map(([a]) => rel(a)).join('、'))
+check(`① 找到 ${pairs.length} 对中英文档（配不上对的不算错）`, pairs.length > 0, pairs.map(([a]) => rel(a)).join('、'))
 
 const diffs = []
 for (const [cnPath, enPath] of pairs) {
@@ -80,12 +80,12 @@ for (const [cnPath, enPath] of pairs) {
   if (cn.tables !== en.tables) diffs.push(`${name}: 表格数 ${cn.tables} vs ${en.tables}`)
   //   围栏：**必须是偶数** （奇数 ⇒ 有一个没配上 ⇒ 后面全被当成代码块），且两边要相等 
   if (cn.fences % 2 !== 0 || en.fences % 2 !== 0) {
-    diffs.push(`${name}: 代码围栏**没配对**（CN ${cn.fences} ／ EN ${en.fences} —— ★该是偶数 ✓）`)
+    diffs.push(`${name}: 代码围栏**没配对**（CN ${cn.fences} ／ EN ${en.fences} —— 该是偶数）`)
   } else if (cn.fences !== en.fences) diffs.push(`${name}: 代码围栏数 ${cn.fences} vs ${en.fences}`)
   if (cn.links !== en.links) diffs.push(`${name}: 链接数 ${cn.links} vs ${en.links}`)
 }
 
-check('② ★中英**逐项对等**（标题／条目／表格／代码围栏／链接 ✓）', diffs.length === 0,
+check('② 中英**逐项对等**（标题／条目／表格／代码围栏／链接）', diffs.length === 0,
   diffs.length ? diffs.join(' ／ ') : `${pairs.length} 对全部对上`)
 
 // 每份文档**内部**：表格列数必须一致 （这是 markdown 表格最常见的坏法）
@@ -95,7 +95,7 @@ for (const p of all) {
   const bad = tableWidths.filter((w) => w === -1).length
   if (bad > 0) badTables.push(`${rel(p)}（${bad} 张表列数不齐）`)
 }
-check('③ ★每份文档内部：**表格列数一致** ✗（★列不齐是最常见的坏法 ✓）', badTables.length === 0,
+check('③ 每份文档内部：**表格列数一致** （列不齐是最常见的坏法）', badTables.length === 0,
   badTables.length ? badTables.join('、') : `${all.length} 份文档全齐`)
 
 // ④、**判据条数**那条：**写了又撤了** （2026-10-10 15:1x）——

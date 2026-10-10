@@ -56,7 +56,7 @@ mkdirSync(boxHello, { recursive: true })
 const helloEnv = bus.hello({ as: me, recv, onlineCapPerDay: cap, quiet })
 //   `bus.hello` 写的是**我自己的根** ⇒ 要把它**抄到邮筒上** （真手机就是这个动作）
 writeFileSync(join(boxHello, `${me}.json`), JSON.stringify(helloEnv, null, 2), 'utf8')
-console.log(`① PUT hello ⇒ ${join(boxHello, me + '.json')}${recv ? `（★收件习惯=${recv}）` : ''}`)
+console.log(`① PUT hello ⇒ ${join(boxHello, me + '.json')}${recv ? `（收件习惯=${recv}）` : ''}`)
 
 // ── ② 列目录 ≈ PROPFIND ⇒ ③ GET ⇒ ④ MOVE to seen ⇒ ⑤ PUT ack ────────────
 const list = () => { try { return readdirSync(boxInbox).filter((f) => f.endsWith('.msg.json')) } catch { return [] } }
@@ -71,14 +71,14 @@ let took = 0
 for (const f of list()) {
   const src = join(boxInbox, f)
   let env
-  try { env = JSON.parse(readFileSync(src, 'utf8')) } catch { console.log(`③ GET 失败（★跳过，不删 ✗）：${f}`); continue }
-  console.log(`③ GET ⇒ ${f}（★${env.from} → ${env.to} ✓）`)
+  try { env = JSON.parse(readFileSync(src, 'utf8')) } catch { console.log(`③ GET 失败（跳过，不删）：${f}`); continue }
+  console.log(`③ GET ⇒ ${f}（${env.from} → ${env.to}）`)
   //   ④ MOVE ⇒ seen：**先写后删** —— 搬到一半崩了，邮筒上那份还在 （"信只会晚到，不会不到"）
   try {
     writeFileSync(join(boxSeen, f), JSON.stringify(env, null, 2), 'utf8')
     unlinkSync(src)
     took += 1
-  } catch (e) { console.log(`④ MOVE 失败（★原信仍在 inbox/ ✓）：${e.message}`); continue }
+  } catch (e) { console.log(`④ MOVE 失败（原信仍在 inbox/）：${e.message}`); continue }
   //   ⑤ PUT ack ⇒ `<邮筒>/ack/<原发件人>/<id>.<我>.ack.json` （真签）
   const ackDir = join(mailbox, 'ack', String(env.from))
   mkdirSync(ackDir, { recursive: true })
@@ -92,4 +92,4 @@ for (const f of list()) {
   writeFileSync(ackPath, JSON.stringify(ackEnv, null, 2), 'utf8')
   console.log(`⑤ PUT ack ⇒ ${ackPath}`)
 }
-console.log(`\n假手机（${me}）：收了 ${took} 封，回了 ${took} 份回执 ✓`)
+console.log(`\n假手机（${me}）：收了 ${took} 封，回了 ${took} 份回执 `)

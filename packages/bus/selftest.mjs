@@ -47,10 +47,10 @@ try {
   //   不装 ⇒ 照旧验签（向后兼容）；装了但禁用 ⇒ **真的跳过 HMAC**；装了且开启 ⇒ 照验
   const broken = { ...raw, body: raw.body + 'X' }        // 正文被改 ⇒ 摘要那条必然报（与策略无关）
   const mk = (v) => createBus({ root: tmp, services: { roster, types, verify: v } })
-  check('策略：★没装 verify 包 ⇒ 照旧验签（改正文仍不过，向后兼容）',
+  check('策略：没装 verify 包 ⇒ 照旧验签（改正文仍不过，向后兼容）',
     mk(undefined).verify(broken).some((x) => /摘要不符|MAC/.test(x)))
   const offProbs = mk({ verify: () => ({ ok: true, skipped: true }) }).verify(broken)
-  check('★★策略：装了 verify 但**禁用** ⇒ 跳过 HMAC（★"默认禁用"真的生效）',
+  check('策略：装了 verify 但**禁用** ⇒ 跳过 HMAC（"默认禁用"真的生效）',
     !offProbs.some((x) => /MAC/.test(x)), JSON.stringify(offProbs))
   check('策略：装了 verify 且**开启**（放行）⇒ 仍做 HMAC（改正文仍不过）',
     mk({ verify: () => ({ ok: true }) }).verify(broken).some((x) => /MAC/.test(x)))
@@ -62,13 +62,13 @@ try {
   // 已知但已废弃的字段（2026-10-10 从共享邮局根里真信上学到的）——
   //   班级里的过渡期真把 `auth` 写进过信封；我们的 seal() 拒它（新信不许带），
   //   但 verify() **该放行旧信** —— 否则班级友递的材料永远读不进来 （我们真栽过：三封信被退）
-  check('★旧字段：带 auth 的旧信 ⇒ verify **不报"没进签名域"**（历史信要收得下）',
+  check('旧字段：带 auth 的旧信 ⇒ verify **不报"没进签名域"**（历史信要收得下）',
     !bus.verify({ ...raw, auth: 'self' }).some((x) => /没进签名域/.test(x)), JSON.stringify(bus.verify({ ...raw, auth: 'self' })))
-  check('★★旧字段：auth 也**不进签名域** ⇒ 改它照样验得过（因为它已无语义，改了没用）',
+  check('旧字段：auth 也**不进签名域** ⇒ 改它照样验得过（因为它已无语义，改了没用）',
     !bus.verify({ ...raw, auth: 'relay' }).some((x) => /MAC/.test(x)))
-  check('★★旧字段：**seal() 仍然拒它** —— 新信里绝不许再出现（没登记字段一律抛）',
+  check('旧字段：**seal() 仍然拒它** —— 新信里绝不许再出现（没登记字段一律抛）',
     (() => { try { bus.seal({ ...raw, auth: 'self' }); return false } catch (e) { return /没登记/.test(e.message) } })())
-  check('★旧字段：**别的**未知字段仍然拒（别把 fail-closed 弄丢了）',
+  check('旧字段：**别的**未知字段仍然拒（别把 fail-closed 弄丢了）',
     bus.verify({ ...raw, zzz: 1 }).some((x) => /没进签名域/.test(x)))
 
   // `keep` 的承诺是"只看不消费" —— 但它以前会把**校验不过**的信挪进退信，那是**消费性动作** 
@@ -86,12 +86,12 @@ try {
   const kp = join(busKeep.paths().inbox('bob'), `${rk.id}.msg.json`)
   writeFileSync(kp, readFileSync(kp, 'utf8').replace('会被改坏的一封', '被改过了'), 'utf8')   // 模拟"信封被篡改"
   const keepOut = busKeep.pump({ as: 'bob', keep: true })
-  check('★★keep：校验不过的信**只报不移**（keep 的承诺就是"只看不消费"）',
+  check('keep：校验不过的信**只报不移**（keep 的承诺就是"只看不消费"）',
     keepOut.length === 1 && !keepOut[0].ok && /没动它/.test(keepOut[0].why), JSON.stringify(keepOut.map((x) => x.why)))
-  check('★★keep：那封信**还在 inbox**（没被挪进退信）', existsSync(kp))
-  check('★keep：退信目录**没多出东西**', !existsSync(join(busKeep.paths().dead, `${rk.id}.msg.json`)))
+  check('keep：那封信**还在 inbox**（没被挪进退信）', existsSync(kp))
+  check('keep：退信目录**没多出东西**', !existsSync(join(busKeep.paths().dead, `${rk.id}.msg.json`)))
   const eatOut = busKeep.pump({ as: 'bob', reader: true })
-  check('★默认（有 reader ⇒ 消费）：校验不过的信**这回真挪进退信**',
+  check('默认（有 reader ⇒ 消费）：校验不过的信**这回真挪进退信**',
     eatOut.length === 1 && /已挪进/.test(eatOut[0].why) && !existsSync(kp) && existsSync(join(busKeep.paths().dead, `${rk.id}.msg.json`)),
     JSON.stringify(eatOut.map((x) => x.why)))
 
@@ -118,19 +118,19 @@ try {
   //   **不再拒发** ⇒ **照发 ＋ 明示「只收离线 ⇒ 已按离线处理」** （不许静默）；
   //   ⚠️ **信封里的 `mode` 一字不改** —— 它在签名域里 ⇒ "偷偷改成离线"会破签。
   const rOff1 = busOff.send({ as: 'alice', to: 'carol', mode: 'online', subject: 's', body: '在线件：应当照发但要明示' })
-  check('★★只收离线：对它发在线 ⇒ **不再拒发** ✗（正本第 58 条）', !!rOff1.id)
-  check('★★只收离线：**明示「已按离线处理」** ✗（不许静默；★字段 `wakePrediction.offlineOnly`）',
+  check('只收离线：对它发在线 ⇒ **不再拒发** （设计文档第 58 条）', !!rOff1.id)
+  check('只收离线：**明示「已按离线处理」** （不许静默；字段 `wakePrediction.offlineOnly`）',
     Array.isArray(rOff1.wakePrediction?.offlineOnly) && rOff1.wakePrediction.offlineOnly.includes('carol'), JSON.stringify(rOff1.wakePrediction))
-  check('★★只收离线：信**照落它那一格** ✓（正本第 60 条）', lsInbox('carol') === before + 1, `${before} ⇒ ${lsInbox('carol')}`)
-  check('★★只收离线：**`mode` 一字不改** ✗（它在签名域里 ⇒ 改了会破签 ✓）', rOff1.env.mode === 'online', String(rOff1.env.mode))
+  check('只收离线：信**照落它那一格** （设计文档第 60 条）', lsInbox('carol') === before + 1, `${before} ⇒ ${lsInbox('carol')}`)
+  check('只收离线：**`mode` 一字不改** （它在签名域里 ⇒ 改了会破签）', rOff1.env.mode === 'online', String(rOff1.env.mode))
   check('只收离线：发**离线** ⇒ 照样能发', !!busOff.send({ as: 'alice', to: 'carol', mode: 'offline', subject: 's', body: '离线件：照样能发' }).id)
-  check('只收离线：发**别人**在线 ⇒ 不受影响（★也不该乱明示 ✓）',
+  check('只收离线：发**别人**在线 ⇒ 不受影响（也不该乱明示）',
     (() => { const r = busOff.send({ as: 'alice', to: 'bob', mode: 'online', subject: 's', body: '在线件：发别人' }); return !!r.id && !r.wakePrediction })())
   const rGroup = busOff.send({ as: 'alice', to: 'pair', mode: 'online', subject: 's', body: '在线件：发给组' })
-  check('★只收离线：发给**组**、组里有它 ⇒ 也**明示**（用展开后的 targets）', rGroup.wakePrediction?.offlineOnly?.includes('carol') === true, JSON.stringify(rGroup.wakePrediction))
-  check('★只收离线：组里**醒着的人照样收到** ✓（不再整封拒掉 ✓）', rGroup.targets.includes('bob'), JSON.stringify(rGroup.targets))
+  check('只收离线：发给**组**、组里有它 ⇒ 也**明示**（用展开后的 targets）', rGroup.wakePrediction?.offlineOnly?.includes('carol') === true, JSON.stringify(rGroup.wakePrediction))
+  check('只收离线：组里**醒着的人照样收到** （不再整封拒掉）', rGroup.targets.includes('bob'), JSON.stringify(rGroup.targets))
   const rForce = busOff.send({ as: 'alice', to: 'carol', mode: 'online', subject: 's', body: '在线件：force', force: true })
-  check('★只收离线：`--force` 下同样**照发 ＋ 明示**', !!rForce.id && rForce.wakePrediction?.offlineOnly?.includes('carol') === true)
+  check('只收离线：`--force` 下同样**照发 ＋ 明示**', !!rForce.id && rForce.wakePrediction?.offlineOnly?.includes('carol') === true)
   check('只收离线：**不配** offlineOnlyFlag ⇒ 在线照发（向后兼容）',
     !!createBus({ root: tmpOff, services: { roster: rosterOff, types } }).send({ as: 'alice', to: 'carol', mode: 'online', subject: 's', body: '在线件：没配就照发' }).id)
   //   `'reject'` 三态里保留旧的"拒发" ⇒ 老部署写它 ⇒ **一字不变** 
@@ -138,8 +138,8 @@ try {
   busRej.hello({ as: 'alice' })
   let eRej = ''
   try { busRej.send({ as: 'alice', to: 'carol', mode: 'online', subject: 's', body: '配了 reject 就该拒（正文有货）' }) } catch (e) { eRej = e.message }
-  check('★只收离线：`offlineOnlyMode: "reject"` ⇒ **保留旧的拒发** ✓（老部署一字不变 ✓）', /只收离线/.test(eRej), eRej.slice(0, 50))
-  check('只收离线：属性名换了照样工作（★属性名不进核心）',
+  check('只收离线：`offlineOnlyMode: "reject"` ⇒ **保留旧的拒发** （老部署一字不变）', /只收离线/.test(eRej), eRej.slice(0, 50))
+  check('只收离线：属性名换了照样工作（属性名不进核心）',
     (() => {
       writeFileSync(join(tmpOff, 'roster-offline2.json'), JSON.stringify({ apiVersion: 1, members: [{ id: 'alice' }, { id: 'carol' }], off2: ['carol'] }), 'utf8')
       const r2 = createRoster({ file: join(tmpOff, 'roster-offline2.json') })
@@ -153,15 +153,15 @@ try {
   //   配置给属性名 ⇒ 核心不认识它；点名走 `has(to) ⇒ [to]`，根本不经过 group()／broadcast() 
   const busGa = createBus({ root: tmpOff, services: { roster: createRoster({ file: offFile, groupWithout: 'off' }), types } })
   const rAll = busGa.send({ as: 'alice', to: 'all', mode: 'offline', subject: 's', body: '群发：整份名单' })
-  check('★群发（all）：默认不到"只收离线"的成员', !rAll.targets.includes('carol') && rAll.targets.includes('bob'), JSON.stringify(rAll.targets))
-  check('★★群发：**点名**照样到（"点名才进"）', busGa.send({ as: 'alice', to: 'carol', mode: 'offline', subject: 's', body: '点名：应当到' }).targets.includes('carol'))
+  check('群发（all）：默认不到"只收离线"的成员', !rAll.targets.includes('carol') && rAll.targets.includes('bob'), JSON.stringify(rAll.targets))
+  check('群发：**点名**照样到（"点名才进"）', busGa.send({ as: 'alice', to: 'carol', mode: 'offline', subject: 's', body: '点名：应当到' }).targets.includes('carol'))
   const rPair = busGa.send({ as: 'alice', to: 'pair', mode: 'offline', subject: 's', body: '群发：按组' })
-  check('★群发（按组）：默认也不到它', !rPair.targets.includes('carol') && rPair.targets.includes('bob'), JSON.stringify(rPair.targets))
+  check('群发（按组）：默认也不到它', !rPair.targets.includes('carol') && rPair.targets.includes('bob'), JSON.stringify(rPair.targets))
   // 剔完之后组空了 ⇒ 拒发（上游已有的保护："不往名单外的信箱投信"——
   //   它顺带覆盖了"群发剔完就没人"这种情形：宁可拒发，也不发一封没有收件人的信）
   let eSolo = ''
   try { busGa.send({ as: 'alice', to: 'solo', mode: 'offline', subject: 's', body: '群发：剔完就空' }) } catch (e) { eSolo = e.message }
-  check('★群发：剔完组里没人 ⇒ 拒发（不投空信）', /没有已知成员/.test(eSolo), eSolo.slice(0, 50))
+  check('群发：剔完组里没人 ⇒ 拒发（不投空信）', /没有已知成员/.test(eSolo), eSolo.slice(0, 50))
   check('群发：没配 groupWithout ⇒ 谁都到（向后兼容）',
     createBus({ root: tmpOff, services: { roster: createRoster({ file: offFile }), types } }).send({ as: 'alice', to: 'all', mode: 'offline', subject: 's', body: '群发：没配' }).targets.includes('carol'))
 
@@ -179,15 +179,15 @@ try {
   // S11：收件人**全休眠** ⇒ **退信**（不是"拒发"）—— 设计文档判据 100-104 ＋「维护者 2026-10-06 02:5x 令」：
   //   ① 不落它信箱 ② 进班级里 `退信/`（**没删**）③ 留说明 ④ 结果里明示 ⑤ **不占配额** 
   const rDorm = busDorm.send({ as: 'alice', to: 'sleepy', mode: 'offline', subject: '退信测试', body: '发给明确休眠的人（正文有货）' })
-  check('★★休眠：对明确休眠的成员发信 ⇒ **退信**（`verdict === "bounced"`，★不是拒发 ✗）', rDorm.verdict === 'bounced', String(rDorm.verdict))
-  check('★休眠：**不落它信箱** ✗（它不会有人来取 ⇒ 落进去就是永远堆着 ✓）', lsInbox('sleepy') === beforeSleepy, `${beforeSleepy} ⇒ ${lsInbox('sleepy')}`)
-  check('★★休眠：**进缸里 `退信/`** ✓（★**没删** ✗ —— 发信人还能找回来 ✓）',
+  check('休眠：对明确休眠的成员发信 ⇒ **退信**（`verdict === "bounced"`，不是拒发）', rDorm.verdict === 'bounced', String(rDorm.verdict))
+  check('休眠：**不落它信箱** （它不会有人来取 ⇒ 落进去就是永远堆着）', lsInbox('sleepy') === beforeSleepy, `${beforeSleepy} ⇒ ${lsInbox('sleepy')}`)
+  check('休眠：**进班级里 `退信/`** （**没删** —— 发信人还能找回来）',
     existsSync(join(tmpOff, '退信', `${rDorm.id}.msg.json`)))
   const whyTxt = join(tmpOff, '退信', `${rDorm.id}.why.txt`)
-  check('★★休眠：**留说明** ✓（写明"无法收到邮件"✓）',
+  check('休眠：**留说明** （写明"无法收到邮件"）',
     existsSync(whyTxt) && /无法收到邮件/.test(readFileSync(whyTxt, 'utf8')), existsSync(whyTxt) ? readFileSync(whyTxt, 'utf8').slice(0, 40) : '（没有）')
-  check('★休眠：结果里**明示退回** ✗（不许静默 ✓）', JSON.stringify(rDorm.bounced) === '["sleepy"]', JSON.stringify(rDorm.bounced))
-  check('★★休眠：退回的信**不占配额** ✓（★真验：挂上 gate，看台账没动 ✓）',
+  check('休眠：结果里**明示退回** （不许静默）', JSON.stringify(rDorm.bounced) === '["sleepy"]', JSON.stringify(rDorm.bounced))
+  check('休眠：退回的信**不占配额** （真验：挂上 gate，看台账没动）',
     (() => {
       const gRoot = join(process.env.TEMP ?? '/tmp', `whale-bus-bounce-quota-${Date.now()}`)
       mkdirSync(gRoot, { recursive: true })
@@ -200,14 +200,14 @@ try {
       return rr.verdict === 'bounced' && before === after
     })())
   const rDormForce = busDorm.send({ as: 'alice', to: 'sleepy', mode: 'offline', subject: '退信＋force', body: '休眠＋force（正文有货）', force: true })
-  check('★休眠：`--force` 下同样**退信** ✓（★信到不了就是到不了 ✓）', rDormForce.verdict === 'bounced', String(rDormForce.verdict))
+  check('休眠：`--force` 下同样**退信** （信到不了就是到不了）', rDormForce.verdict === 'bounced', String(rDormForce.verdict))
   // 部分休眠（发给组）⇒ 只投醒着的，并把剔掉谁**如实带回去** 
   const rDormG = busDorm.send({ as: 'alice', to: 'pair', mode: 'offline', subject: 's', body: '发给组：组里有休眠的（正文有货）' })
-  check('★休眠：部分休眠 ⇒ 只投醒着的', rDormG.targets.includes('bob') && !rDormG.targets.includes('sleepy'), JSON.stringify(rDormG.targets))
-  check('★★休眠：剔掉谁**如实带回去**（不许静默）', JSON.stringify(rDormG.skippedDormant) === '["sleepy"]', JSON.stringify(rDormG.skippedDormant))
-  check('★休眠：不配 dormantFlag ⇒ 照发（向后兼容）',
+  check('休眠：部分休眠 ⇒ 只投醒着的', rDormG.targets.includes('bob') && !rDormG.targets.includes('sleepy'), JSON.stringify(rDormG.targets))
+  check('休眠：剔掉谁**如实带回去**（不许静默）', JSON.stringify(rDormG.skippedDormant) === '["sleepy"]', JSON.stringify(rDormG.skippedDormant))
+  check('休眠：不配 dormantFlag ⇒ 照发（向后兼容）',
     !!createBus({ root: tmpOff, services: { roster: rosterDorm, types } }).send({ as: 'alice', to: 'sleepy', mode: 'offline', subject: 's', body: '没配就照发（正文有货）' }).id)
-  check('★休眠：属性名换了照样工作（★属性名不进核心）',
+  check('休眠：属性名换了照样工作（属性名不进核心）',
     (() => {
       writeFileSync(join(tmpOff, 'roster-dormant2.json'), JSON.stringify({ apiVersion: 1, members: [{ id: 'alice' }, { id: 'sleepy', zzz2: true }] }), 'utf8')
       const r2 = createRoster({ file: join(tmpOff, 'roster-dormant2.json') })
@@ -243,19 +243,19 @@ try {
   //   ⚠️下面这些必须写 `mode: 'online'` —— 不写就默认**离线**，而**离线件根本不看握手** 
   //     （我第一版就漏了它 ⇒ 两条判据假红 —— 这本身就是设计文档第 3 条的现场例证）
   const noHello = bus.send({ as: 'alice', to: 'dave', mode: 'online', subject: 'x', body: '对方没握手 ⇒ 照发，但要大声说（正文有货）' })
-  check('★★握手：没握过手 ⇒ **不再拒发** ✗（信照落对方信箱 ✓）', !!noHello.id)
-  check('★★握手：**明示"对它们降级为离线"** ✗（不许静默 ✓，★与正本同名字段 `wakePrediction.willWait`）',
+  check('握手：没握过手 ⇒ **不再拒发** （信照落对方信箱）', !!noHello.id)
+  check('握手：**明示"对它们降级为离线"** （不许静默，与设计文档同名字段 `wakePrediction.willWait`）',
     Array.isArray(noHello.wakePrediction?.willWait) && noHello.wakePrediction.willWait.includes('dave'), JSON.stringify(noHello.wakePrediction))
-  check('★握手：握过手的人 ⇒ **不该**出现在 willWait 里（别乱报警 ✓）',
+  check('握手：握过手的人 ⇒ **不该**出现在 willWait 里（别乱报警）',
     !(noHello.wakePrediction?.willWait ?? []).includes('bob'))
-  check('★握手：**离线件根本不看握手** ✓（① 离线件躺着等人，握手管不着它 ✓）',
+  check('握手：**离线件根本不看握手** （① 离线件躺着等人，握手管不着它）',
     !!bus.send({ as: 'alice', to: 'dave', mode: 'offline', subject: 'x', body: '离线件不看握手（正文有货）' }).id)
   check('握手：--force 照旧能强发（收信侧只认签名）', !!bus.send({ as: 'alice', to: 'dave', force: true, subject: 'x', body: '强发：绕过握手但照旧签名（正文有货）' }).id)
   //   `'reject'` 三态里保留旧的"拒发" ⇒ 老部署写它 ⇒ **一字不变** 
   const strictHello = createBus({ root: tmp, services: { roster: createRoster({ file: join(tmp, 'roster.json') }), types }, requireHello: 'reject' })
   let strictMsg = ''
   try { strictHello.send({ as: 'alice', to: 'dave', mode: 'online', subject: 'x', body: '配了 reject 就该拒（正文有货）' }) } catch (e) { strictMsg = e.message }
-  check('★握手：`requireHello: "reject"` ⇒ **保留旧的拒发**（老部署一字不变 ✓）', /未与 dave 建立握手/.test(strictMsg), strictMsg)
+  check('握手：`requireHello: "reject"` ⇒ **保留旧的拒发**（老部署一字不变）', /未与 dave 建立握手/.test(strictMsg), strictMsg)
 
   // S6h-④：**未来时间戳 ⇒ 判不新鲜** （2026-10-10 从设计文档移植）
   //   病：原来是 `Date.now() - sentAtMs < 上限` ⇒ 未来的 `sentAtMs` 差值是**负数**
@@ -269,15 +269,15 @@ try {
   const fakerEnv = JSON.parse(readFileSync(fakerPath, 'utf8'))
   fakerEnv.sentAtMs = Date.now() + 100 * 365 * 24 * 3600 * 1000      // 2099 年
   writeFileSync(fakerPath, JSON.stringify(bSkew.seal(fakerEnv), null, 2), 'utf8')
-  check('★★S6h-④：**未来 100 年的 hello ⇒ 判不新鲜** ✗（★否则握手闸形同虚设 ✓）', bSkew.helloFresh('faker') === false)
+  check('S6h-④：**未来 100 年的 hello ⇒ 判不新鲜** （否则握手闸形同虚设）', bSkew.helloFresh('faker') === false)
   bSkew.hello({ as: 'ok' })
-  check('★S6h-④：正常 hello 仍算新鲜（★不许误判 ✓）', bSkew.helloFresh('ok') === true)
+  check('S6h-④：正常 hello 仍算新鲜（不许误判）', bSkew.helloFresh('ok') === true)
   const okPath = join(skewRoot, 'hello', 'ok.json')
   const okEnv = JSON.parse(readFileSync(okPath, 'utf8'))
   okEnv.sentAtMs = Date.now() + 30 * 1000                            // 只差 30 秒
   writeFileSync(okPath, JSON.stringify(bSkew.seal(okEnv), null, 2), 'utf8')
-  check('★S6h-④：**时钟容差内**的"未来"仍算新鲜（★机器差几秒很常见 ✓）', bSkew.helloFresh('ok') === true)
-  check('★S6h-④：容差**可配**（配成 0 ⇒ 未来 30 秒就不新鲜 ✓）',
+  check('S6h-④：**时钟容差内**的"未来"仍算新鲜（机器差几秒很常见）', bSkew.helloFresh('ok') === true)
+  check('S6h-④：容差**可配**（配成 0 ⇒ 未来 30 秒就不新鲜）',
     (() => {
       const b0 = createBus({ root: skewRoot, helloClockSkewMs: 0 })
       return b0.helloFresh('ok') === false
@@ -300,26 +300,26 @@ try {
     return null
   }
   const sendAndAck = (letter, who = 'bob') => { const r = bAck.send(letter); bAck.pump({ as: who, reader: true }); return ackOf('alice', r.id) }
-  check('★★回执①：**在线签收** ⇒ `accepted-online` ＋ `recipientState: "online"`',
+  check('回执①：**在线签收** ⇒ `accepted-online` ＋ `recipientState: "online"`',
     (() => { const a = sendAndAck({ as: 'alice', to: 'bob', mode: 'online', subject: 'a', body: '在线件（正文有货，别当回执）' }); return a?.disposition === 'accepted-online' && a?.recipientState === 'online' })(),
     '')
-  check('★回执：**离线件** ⇒ `delivered-offline`（★"本来就没降级" ✓）',
+  check('回执：**离线件** ⇒ `delivered-offline`（"本来就没降级"）',
     sendAndAck({ as: 'alice', to: 'bob', mode: 'offline', subject: 'b', body: '离线件（正文有货，别当回执）' })?.disposition === 'delivered-offline')
-  check('★★回执②：**未握手发在线** ⇒ `delivered-offline-by-stale`（★因在线声明过期 ⇒ 降级 ✓）',
+  check('回执②：**未握手发在线** ⇒ `delivered-offline-by-stale`（因在线声明过期 ⇒ 降级）',
     (() => {
       unlinkSync(join(ackRoot, 'hello', 'dave.json'))
       return sendAndAck({ as: 'alice', to: 'dave', mode: 'online', subject: 'd', body: '对方没握手（正文有货，别当回执）' }, 'dave')?.disposition === 'delivered-offline-by-stale'
     })())
-  check('★★回执③：对"只收离线"者发**在线** ⇒ `delivered-offline-by-declaration`（★因对方声明 ⇒ 按离线寄达 ✓）',
+  check('回执③：对"只收离线"者发**在线** ⇒ `delivered-offline-by-declaration`（因对方声明 ⇒ 按离线寄达）',
     sendAndAck({ as: 'alice', to: 'carol', mode: 'online', subject: 'c', body: '发给只收离线的人（正文有货，别当回执）' }, 'carol')?.disposition === 'delivered-offline-by-declaration')
-  check('★回执③的**反面**：对"只收离线"者发**离线** ⇒ `delivered-offline`（★别判过头 ✓）',
+  check('回执③的**反面**：对"只收离线"者发**离线** ⇒ `delivered-offline`（别判过头）',
     sendAndAck({ as: 'alice', to: 'carol', mode: 'offline', subject: 'c2', body: '离线件给只收离线者（正文有货，别当回执）' }, 'carol')?.disposition === 'delivered-offline')
-  check('★回执：结构字段齐全（★`by`／`ok`／`note`／`recipientState`／`disposition` 都在 ✓）',
+  check('回执：结构字段齐全（`by`／`ok`／`note`／`recipientState`／`disposition` 都在）',
     (() => {
       const a = sendAndAck({ as: 'alice', to: 'bob', mode: 'offline', subject: 'e', body: '看字段（正文有货，别当回执）' })
       return a && a.by === 'bob' && a.ok === true && 'note' in a && !!a.recipientState && !!a.disposition
     })())
-  check('★回执：`recipientState` 是**收件人自己**算的（★`dave` 刚报过到 ⇒ online ✓）',
+  check('回执：`recipientState` 是**收件人自己**算的（`dave` 刚报过到 ⇒ online）',
     (() => {
       bAck.hello({ as: 'dave' })
       return sendAndAck({ as: 'alice', to: 'dave', mode: 'offline', subject: 'f', body: '收件人状态（正文有货，别当回执）' }, 'dave')?.recipientState === 'online'
@@ -328,15 +328,15 @@ try {
   // 签名域**必须暴露出来** （2026-10-10 修）——
   //   "一套真相"的前提是**别人拿得到**：`verify` 包原来自己抄了一份 ⇒ 两边漂移 ⇒
   //     我加 `peerStateAtSend` 之后**合法的信被判"未登记字段"、当场挪进退信** （实测抓出来的）。
-  check('★★签名域暴露：`api.FIELD_ORDER` 在，且**含新加的字段**（★下游才拿得到 ✓）',
+  check('签名域暴露：`api.FIELD_ORDER` 在，且**含新加的字段**（下游才拿得到）',
     Array.isArray(bus.FIELD_ORDER) && bus.FIELD_ORDER.includes('peerStateAtSend') && bus.FIELD_ORDER.includes('deliveryNote'),
     JSON.stringify(bus.FIELD_ORDER ?? null))
   //   ⓘ "它是不是**副本**"这一条**没有判** —— 不暴露内部那份就验不了；
   //     只保证"**条数够、含新字段、下游拿得到**" （要验副本得再开一个内部出口，不值当）。
-  check('★签名域暴露：条数与内部一致（★不是空壳 ✓）',
+  check('签名域暴露：条数与内部一致（不是空壳）',
     bus.FIELD_ORDER.length >= 20 && new Set(bus.FIELD_ORDER).size === bus.FIELD_ORDER.length,
     `len=${bus.FIELD_ORDER?.length}`)
-  check('★签名域暴露：`LEGACY_FIELDS` 也在（★老信的 `auth` 认得出 ✓）',
+  check('签名域暴露：`LEGACY_FIELDS` 也在（老信的 `auth` 认得出）',
     Array.isArray(bus.LEGACY_FIELDS) && bus.LEGACY_FIELDS.includes('auth'))
 
   // ⑦ 坏信：挪进"退信"，不炸
@@ -465,7 +465,7 @@ try {
 //     **这修不了**（老版代码已经发出去了）⇒ 只能写进“**升级须知**” 
 //     （已写进 `CHANGELOG` 的「必读（二）」）。
 //   这里只能自动判“老信照收”那一半 —— 反方向要跑老版，本库自测做不了。
-check('★★签名域字段名单里有 `peerStateAtSend`（★本版新加的 ✓）',
+check('签名域字段名单里有 `peerStateAtSend`（本版新加的）',
   Array.isArray(bus.FIELD_ORDER) && bus.FIELD_ORDER.includes('peerStateAtSend'))
 //   ⚠️ 我第一版写错了对象 （2026-10-10 改正）——
 //     我写成 `bus.verify({...old, sig}).length === 0` —— 而 **`bus.verify()` 是检查信封结构**
@@ -483,7 +483,7 @@ check('★★签名域字段名单里有 `peerStateAtSend`（★本版新加的 
 //     ⇒ **所以这条判据**没有可靠的负向** —— 我把它留着，是因为它至少钉住一件事：
 //       “**签名值会随字段变**” （若哪天有人把签名改成常量或把 canonical 忽略掉，
 //       **"同一封 sign 两次相同"那一半就会红**）。而**真正在守取法的是 `compat`**。
-check('★★**字段多寡会改变签名值** ✓（★同一封→相同；★多一个字段→不同 ✓）',
+check('**字段多寡会改变签名值** （同一封→相同；多一个字段→不同）',
   (() => {
     try {
       const a = { id: 'mv0-1', from: 'a', to: 'b', body: '老信（正文有货，别当回执）', sentAtMs: 1 }
@@ -500,7 +500,7 @@ check('★★**字段多寡会改变签名值** ✓（★同一封→相同；�
 //   ⚠️ 设计文档原话是“没有新鲜 hello ⇒ 只许离线” —— 而**直接照做会误伤**：
 //     **班级内成员平时也可能没有新鲜 hello** ⇒ 那一支会把班级内在线件**全拦掉**。
 //     ⇒ 这里**只做“显式声明”那一支**；“说不清就往保守倒”**留给手机那条线**。
-check('★★★`recv`：声明 `offline-only` 的人 ⇒ 对它的**在线件会明示** ✗✓（★不拒发、**明示** ✓）',
+check('`recv`：声明 `offline-only` 的人 ⇒ 对它的**在线件会明示** （不拒发、**明示**）',
   (() => {
     try {
       const r = join(tmp, 'recv-decl'); mkdirSync(r, { recursive: true })
@@ -509,11 +509,11 @@ check('★★★`recv`：声明 `offline-only` 的人 ⇒ 对它的**在线件�
       const ro = createRoster({ file: rf })
       const bu = createBus({ root: r, services: { roster: ro }, offlineOnlyMode: 'warn' })
       bu.hello({ as: 'alice' }); bu.hello({ as: 'bob' }); bu.hello({ as: 'carol', recv: 'offline-only' })
-      const s = bu.send({ as: 'alice', to: 'carol', body: '在线件发给“只收离线”的人（★正文有货，别当回执）', mode: 'online', type: 'direct' })
+      const s = bu.send({ as: 'alice', to: 'carol', body: '在线件发给“只收离线”的人（正文有货，别当回执）', mode: 'online', type: 'direct' })
       return JSON.stringify(s.wakePrediction ?? {}).includes('offlineOnly')
     } catch { return false }
   })())
-check('★★★声明了才算 ✓：**没声明的人不受影响** ✓（★不能误伤缸内 ✗）',
+check('声明了才算：**没声明的人不受影响** （不能误伤班级内）',
   (() => {
     try {
       const r = join(tmp, 'recv-null'); mkdirSync(r, { recursive: true })
@@ -522,11 +522,11 @@ check('★★★声明了才算 ✓：**没声明的人不受影响** ✓（★�
       const ro = createRoster({ file: rf })
       const bu = createBus({ root: r, services: { roster: ro }, offlineOnlyMode: 'warn' })
       bu.hello({ as: 'alice' }); bu.hello({ as: 'bob' }); bu.hello({ as: 'carol', recv: 'offline-only' })
-      const s = bu.send({ as: 'alice', to: 'bob', body: '给普通人的在线件（★正文有货，别当回执）', mode: 'online', type: 'direct' })
+      const s = bu.send({ as: 'alice', to: 'bob', body: '给普通人的在线件（正文有货，别当回执）', mode: 'online', type: 'direct' })
       return JSON.stringify(s.wakePrediction ?? {}).includes('offlineOnly') === false
     } catch { return false }
   })())
-check('★♙离线件发给声明者 ⇒ **不提示** ✓（★它本来就收离线件 ✓）',
+check('♙离线件发给声明者 ⇒ **不提示** （它本来就收离线件）',
   (() => {
     try {
       const r = join(tmp, 'recv-off'); mkdirSync(r, { recursive: true })
@@ -535,7 +535,7 @@ check('★♙离线件发给声明者 ⇒ **不提示** ✓（★它本来就收
       const ro = createRoster({ file: rf })
       const bu = createBus({ root: r, services: { roster: ro }, offlineOnlyMode: 'warn' })
       bu.hello({ as: 'alice' }); bu.hello({ as: 'carol', recv: 'offline-only' })
-      const s = bu.send({ as: 'alice', to: 'carol', body: '离线件（★正文有货，别当回执）', mode: 'offline', type: 'direct' })
+      const s = bu.send({ as: 'alice', to: 'carol', body: '离线件（正文有货，别当回执）', mode: 'offline', type: 'direct' })
       return JSON.stringify(s.wakePrediction ?? {}).includes('offlineOnly') === false
     } catch { return false }
   })())
@@ -543,7 +543,7 @@ check('★♙离线件发给声明者 ⇒ **不提示** ✓（★它本来就收
 //   **这是“峰谷令”的邮局版**：`['22:00','09:00']` ⇒ **跨午夜的勿扰窗口**。
 //   边界四点必须对：21:59 → 不静；22:00 → **静** （起点含）；
 //     08:59 → **静**；09:00 → 不静 （终点不含）。
-check('★★★`quiet`：跨午夜勿扰的**四个边界点**全对 ✗✓（21:59不静／22:00静／08:59静／09:00不静 ✓）',
+check('`quiet`：跨午夜勿扰的**四个边界点**全对 （21:59不静／22:00静／08:59静／09:00不静）',
   (() => {
     try {
       const r = join(tmp, 'quiet-edge'); mkdirSync(r, { recursive: true })
@@ -556,7 +556,7 @@ check('★★★`quiet`：跨午夜勿扰的**四个边界点**全对 ✗✓（2
         at('2026-10-11T08:59:00') === true && at('2026-10-11T09:00:00') === false
     } catch { return false }
   })())
-check('★★勿扰时段内发**在线件** ⇒ 归入“**不叫醒**”那一类 ✗✓（★不拒发、只不叫醒 ✓）',
+check('勿扰时段内发**在线件** ⇒ 归入“**不叫醒**”那一类 （不拒发、只不叫醒）',
   (() => {
     try {
       const r = join(tmp, 'quiet-send'); mkdirSync(r, { recursive: true })
@@ -564,11 +564,11 @@ check('★★勿扰时段内发**在线件** ⇒ 归入“**不叫醒**”那一
       writeFileSync(rf, JSON.stringify({ apiVersion: 1, members: [{ id: 'alice' }, { id: 'bob' }] }), 'utf8')
       const bu = createBus({ root: r, services: { roster: createRoster({ file: rf }) }, offlineOnlyMode: 'warn' })
       bu.hello({ as: 'alice' }); bu.hello({ as: 'bob', quiet: ['00:00', '23:59'] })
-      const s = bu.send({ as: 'alice', to: 'bob', mode: 'online', type: 'direct', body: '勿扰测试（★正文有货，别当回执）' })
+      const s = bu.send({ as: 'alice', to: 'bob', mode: 'online', type: 'direct', body: '勿扰测试（正文有货，别当回执）' })
       return JSON.stringify(s.wakePrediction ?? {}).includes('offlineOnly')
     } catch { return false }
   })())
-check('★♙**没声明勿扰的人不受影响** ✓（★不能误伤 ✗）',
+check('♙**没声明勿扰的人不受影响** （不能误伤）',
   (() => {
     try {
       const r = join(tmp, 'quiet-none'); mkdirSync(r, { recursive: true })
@@ -576,7 +576,7 @@ check('★♙**没声明勿扰的人不受影响** ✓（★不能误伤 ✗）'
       writeFileSync(rf, JSON.stringify({ apiVersion: 1, members: [{ id: 'alice' }, { id: 'bob' }] }), 'utf8')
       const bu = createBus({ root: r, services: { roster: createRoster({ file: rf }) }, offlineOnlyMode: 'warn' })
       bu.hello({ as: 'alice' }); bu.hello({ as: 'bob' })
-      const s = bu.send({ as: 'alice', to: 'bob', mode: 'online', type: 'direct', body: '没声明勿扰（★正文有货，别当回执）' })
+      const s = bu.send({ as: 'alice', to: 'bob', mode: 'online', type: 'direct', body: '没声明勿扰（正文有货，别当回执）' })
       return JSON.stringify(s.wakePrediction ?? {}).includes('offlineOnly') === false
     } catch { return false }
   })())
@@ -587,7 +587,7 @@ check('★♙**没声明勿扰的人不受影响** ✓（★不能误伤 ✗）'
 //   正解：**若声明了 `quiet` 且此刻在窗口内 ⇒ 即使有读者也留着** （信一直在信箱里）。
 //   **而理由要说真话**：我第一版把"勿扰留下" 也套进了"没有读者"那句，
 //     而实际上**有读者**（`reader: true`）—— 理由跟事实不符。
-check('★★★`quiet`：勿扰时段内**即使有读者也不消费** ✗✓（★信留在信箱里 ✓）',
+check('`quiet`：勿扰时段内**即使有读者也不消费** （信留在信箱里）',
   (() => {
     try {
       const r = join(tmp, 'quiet-pump'); mkdirSync(r, { recursive: true })
@@ -595,7 +595,7 @@ check('★★★`quiet`：勿扰时段内**即使有读者也不消费** ✗✓�
       writeFileSync(rf, JSON.stringify({ apiVersion: 1, members: [{ id: 'alice' }, { id: 'bob' }] }), 'utf8')
       const bu = createBus({ root: r, services: { roster: createRoster({ file: rf }) } })
       bu.hello({ as: 'alice' }); bu.hello({ as: 'bob', quiet: ['00:00', '23:59'] })
-      bu.send({ as: 'alice', to: 'bob', mode: 'offline', type: 'direct', body: '勿扰测试（★正文有货，别当回执）' })
+      bu.send({ as: 'alice', to: 'bob', mode: 'offline', type: 'direct', body: '勿扰测试（正文有货，别当回执）' })
       const before = readdirSync(join(r, 'inbox', 'bob')).length
       const out = bu.pump({ as: 'bob', reader: true })
       const after = readdirSync(join(r, 'inbox', 'bob')).length
@@ -612,7 +612,7 @@ check('★★★`quiet`：勿扰时段内**即使有读者也不消费** ✗✓�
 //   为什么这条要单独钉：**它靠的是那个 `existsSync`** ——
 //     将来有人“优化”掉它（比如“数组已经够了，不用再查盘”）
 //     ⇒ **截断之后就真的会重复消费**。
-check('★★★状态数组被**截空**、而 `seen/` 文件还在 ⇒ **仍判重复** ✗✓（★两道保险 ✓）',
+check('状态数组被**截空**、而 `seen/` 文件还在 ⇒ **仍判重复** （两道保险）',
   (() => {
     try {
       const r = join(tmp, 'trunc'); mkdirSync(r, { recursive: true })
@@ -620,7 +620,7 @@ check('★★★状态数组被**截空**、而 `seen/` 文件还在 ⇒ **仍�
       writeFileSync(rf, JSON.stringify({ apiVersion: 1, members: [{ id: 'alice' }, { id: 'bob' }] }), 'utf8')
       const bu = createBus({ root: r, services: { roster: createRoster({ file: rf }) } })
       bu.hello({ as: 'alice' }); bu.hello({ as: 'bob' })
-      const s = bu.send({ as: 'alice', to: 'bob', mode: 'offline', type: 'direct', body: '截断测试（★正文有货，别当回执）' })
+      const s = bu.send({ as: 'alice', to: 'bob', mode: 'offline', type: 'direct', body: '截断测试（正文有货，别当回执）' })
       const first = bu.pump({ as: 'bob', reader: true })
       if (!first.length || first[0].dup) return false           // 第一次该不是 dup 
       //   模拟“被截断”：把 `state.seen` 数组**清空** （而 `seen/` 文件**不动**）

@@ -67,7 +67,7 @@ check(`并发 ${N} 路 send 全部退出码 0`, codes.every((c) => c === 0), `co
 const files = lsInbox()
 const seqs = files.map(seqOf)
 check(`投出 ${N} 封（不多不少）`, files.length === N, `实际 ${files.length}`)
-check('★★`seq` 全唯一（★本轮要害）', new Set(seqs).size === seqs.length, `seqs=${seqs.slice().sort((a, b) => a - b).join(',')}`)
+check('`seq` 全唯一（本轮要害）', new Set(seqs).size === seqs.length, `seqs=${seqs.slice().sort((a, b) => a - b).join(',')}`)
 const maxSeq = seqs.length ? Math.max(...seqs) : 0
 check('水位线文件记到了最大号', watermark() === maxSeq, `水位线=${watermark()} 最大号=${maxSeq}`)
 
@@ -80,9 +80,9 @@ const wm = watermark()
 const codeAfter = await run(['send', '--as', 'web', '--to', 'qq', '--subject', '倒退后', '--body', 'state 被写倒退之后，新信仍不许重号（正文有货，别当回执）'])
 const after = lsInbox().map(seqOf).sort((a, b) => a - b)
 const newSeq = after[after.length - 1]
-check('★state 被写倒退后，新信仍拿新号（水位线兜底）', codeAfter === 0 && newSeq === wm + 1 && newSeq > maxSeq,
+check('state 被写倒退后，新信仍拿新号（水位线兜底）', codeAfter === 0 && newSeq === wm + 1 && newSeq > maxSeq,
   `新号=${newSeq} 应有=${wm + 1} 倒退前最大=${maxSeq}`)
-check('★★倒退之后 `seq` 仍全唯一', new Set(after).size === after.length, `seqs=${after.join(',')}`)
+check('倒退之后 `seq` 仍全唯一', new Set(after).size === after.length, `seqs=${after.join(',')}`)
 check('认领文件没堆成山（留最近 300 个以内）',
   (() => { try { return readdirSync(join(tmp, 'state')).filter((f) => /^web\.seq\.\d{6}$/.test(f)).length <= 300 } catch { return false } })())
 
@@ -106,12 +106,12 @@ const runAcct = () => new Promise((resolve) => {
 })
 const acctCodes = await Promise.all(Array.from({ length: N }, () => runAcct()))
 check(`并发记账：${N} 路子进程全部退出码 0`, acctCodes.every((c) => c === 0), `codes=${acctCodes.join(',')}`)
-check(`★★★并发记账：${N} 路各记一笔 ⇒ 台账**正好 ${N} 条**（★一条都不许丢 ✓）`,
+check(`并发记账：${N} 路各记一笔 ⇒ 台账**正好 ${N} 条**（一条都不许丢）`,
   createGate({ root: acctRoot }).report({ as: 'w' }).letters === N,
   `实际 ${createGate({ root: acctRoot }).report({ as: 'w' }).letters} 条`)
-check('★★并发记账：**换一个实例**再读仍是 12 条（★这才能验"增量真落盘了" ✓）',
+check('并发记账：**换一个实例**再读仍是 12 条（这才能验"增量真落盘了"）',
   createGate({ root: acctRoot }).report({ as: 'w', days: 3650 }).letters === N)
-check('★并发记账：增量文件**各写各的**（★带时间戳 ＋ 随机 ⇒ 物理上不撞车 ✓）',
+check('并发记账：增量文件**各写各的**（带时间戳 ＋ 随机 ⇒ 物理上不撞车）',
   (() => {
     try {
       const fs2 = readdirSync(join(acctRoot, 'state', 'quota-w.d'))

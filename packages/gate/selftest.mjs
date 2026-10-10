@@ -82,7 +82,7 @@ try {
   // ⑧ 台账落盘
   //   2026-10-10：台账改成**基线 ＋ 增量** （"各写各的"—— 并发必丢的修法）——
 //     所以"落盘了"要看**增量目录** （基线那个文件在"从没迁移过"时**本来就不该有**）。
-check('台账：**增量目录**落盘了（★基线 ＋ 增量，各写各的 ✓）',
+check('台账：**增量目录**落盘了（基线 ＋ 增量，各写各的）',
   existsSync(join(tmp, 'state', 'quota-erin.d')) || existsSync(join(tmp, 'state', 'quota-erin.json')),
   JSON.stringify((() => { try { return readdirSync(join(tmp, 'state')) } catch { return [] } })()))
 
@@ -102,19 +102,19 @@ check('台账：**增量目录**落盘了（★基线 ＋ 增量，各写各的 
     },
   } })
   const rA = g4.record({ as: 'hank', to: 'bob', targets: ['bob'], mode: 'online', type: 'direct', body: '正文有货，别当回执', lvl: 'a' })
-  check('★分桶规则：命中的规则 ⇒ 落它指定的桶', rA.bucket === 'tierA', JSON.stringify(rA))
+  check('分桶规则：命中的规则 ⇒ 落它指定的桶', rA.bucket === 'tierA', JSON.stringify(rA))
   const rB = g4.record({ as: 'hank', to: 'bob', targets: ['bob'], mode: 'online', type: 'direct', body: '正文有货，别当回执', lvl: 'b' })
-  check('★分桶规则：第二条规则也认', rB.bucket === 'tierB', JSON.stringify(rB))
+  check('分桶规则：第二条规则也认', rB.bucket === 'tierB', JSON.stringify(rB))
   const rOff = g4.record({ as: 'hank', to: 'bob', targets: ['bob'], mode: 'offline', type: 'direct', body: '正文有货，别当回执' })
-  check('★分桶规则：从上往下第一个命中的赢（离线落 off 桶）', rOff.bucket === 'off', JSON.stringify(rOff))
+  check('分桶规则：从上往下第一个命中的赢（离线落 off 桶）', rOff.bucket === 'off', JSON.stringify(rOff))
   const rOffG = g4.record({ as: 'hank', to: 'all', targets: ['x', 'y', 'z'], mode: 'offline', type: 'direct', body: '正文有货，别当回执' })
-  check('★分桶规则：落在 perSend 桶 ⇒ 组发也只算 1 条', rOffG.units === 1, JSON.stringify(rOffG))
+  check('分桶规则：落在 perSend 桶 ⇒ 组发也只算 1 条', rOffG.units === 1, JSON.stringify(rOffG))
   const rNone = g4.record({ as: 'hank', to: 'bob', targets: ['bob'], mode: 'online', type: 'direct', body: '正文有货，别当回执', lvl: 'zzz' })
-  check('★分桶规则：都不命中 ⇒ 落 defaultBucket（不掉进"没有配额"）', rNone.bucket === 'tierA', JSON.stringify(rNone))
+  check('分桶规则：都不命中 ⇒ 落 defaultBucket（不掉进"没有配额"）', rNone.bucket === 'tierA', JSON.stringify(rNone))
   const g5 = createGate({ root: tmp, quota: { types: { direct: { label: 'direct', limit: 9 }, offline: { label: '离线', limit: 9, perSend: true } } } })
   const rOld1 = g5.record({ as: 'iris', to: 'bob', targets: ['bob'], mode: 'online', type: 'direct', body: '正文有货，别当回执', lvl: 'a' })
   const rOld2 = g5.record({ as: 'iris', to: 'bob', targets: ['bob'], mode: 'offline', type: 'direct', body: '正文有货，别当回执', lvl: 'a' })
-  check('★★分桶规则：不配 ⇒ 行为一字不变（在线按 type、离线走 offline 桶）',
+  check('分桶规则：不配 ⇒ 行为一字不变（在线按 type、离线走 offline 桶）',
     rOld1.bucket === 'direct' && rOld2.bucket === 'offline', JSON.stringify([rOld1.bucket, rOld2.bucket]))
 
   // S8 手机在线件小日上限（2026-10-10 从班级里设计文档移植）——
@@ -125,38 +125,38 @@ check('台账：**增量目录**落盘了（★基线 ＋ 增量，各写各的 
   const gS8 = createGate({ root: tmp, quota: { phoneFlag: 'ph', phoneOnlineCap: 3 } })
   const ctxS8 = (cap) => ({ roster: rosterS8, declaredCaps: cap === undefined ? {} : { phone: cap } })
   const L8 = (over = {}) => ({ as: 's8user', to: 'phone', targets: ['phone'], mode: 'online', type: 'direct', body: '在线件（正文有货，别当回执）', ...over })
-  check('★S8：不配 phoneFlag ⇒ 这道闸完全不启用（向后兼容）',
+  check('S8：不配 phoneFlag ⇒ 这道闸完全不启用（向后兼容）',
     createGate({ root: tmp }).check(L8(), { roster: rosterS8, declaredCaps: {} }) === 'pass')
-  check('★S8：非"手机"成员 ⇒ 不适用（★属性名由配置给）',
+  check('S8：非"手机"成员 ⇒ 不适用（属性名由配置给）',
     gS8.check(L8({ to: 'qq', targets: ['qq'] }), ctxS8(1)) === 'pass')
-  check('★S8：离线件**不受这条限**', gS8.check(L8({ mode: 'offline' }), ctxS8(0)) === 'pass')
-  check('★★S8：额度 ＝ min(自报 2, 天花板 3) ⇒ 头两封过、第三封拦',
+  check('S8：离线件**不受这条限**', gS8.check(L8({ mode: 'offline' }), ctxS8(0)) === 'pass')
+  check('S8：额度 ＝ min(自报 2, 天花板 3) ⇒ 头两封过、第三封拦',
     (() => {
       const lg = createGate({ root: tmp, quota: { phoneFlag: 'ph', phoneOnlineCap: 3 } })
       lg.record(L8(), ['phone']); lg.record(L8(), ['phone'])
       const r = lg.check(L8(), ctxS8(2))
       return r !== 'pass' && r.reject === true && /在线件上限/.test(r.reason)
     })())
-  check('★★S8：**自报更保守**（自报 1 < 天花板 3 ⇒ 发完 1 封就拦）',
+  check('S8：**自报更保守**（自报 1 < 天花板 3 ⇒ 发完 1 封就拦）',
     (() => {
       const lg = createGate({ root: tmp, quota: { phoneFlag: 'ph', phoneOnlineCap: 3 } })
       lg.record(L8(), ['phone'])
       const r = lg.check(L8(), ctxS8(1))
       return r !== 'pass' && /额度是 1 封/.test(r.reason)
     })())
-  check('★S8：**没自报** ⇒ 用天花板（★"没说"不等于"可以一直叫醒它"）',
+  check('S8：**没自报** ⇒ 用天花板（"没说"不等于"可以一直叫醒它"）',
     (() => {
       const lg = createGate({ root: tmp, quota: { phoneFlag: 'ph', phoneOnlineCap: 1 } })
       lg.record(L8(), ['phone'])
       return lg.check(L8(), ctxS8(undefined)) !== 'pass'
     })())
-  check('★★S8：`--force` **不豁免**（★它保护的是收件人的推理代价，不是"省米"）',
+  check('S8：`--force` **不豁免**（它保护的是收件人的推理代价，不是"省米"）',
     (() => {
       const lg = createGate({ root: tmp, quota: { phoneFlag: 'ph', phoneOnlineCap: 1 } })
       lg.record(L8(), ['phone'])
       return lg.check(L8({ force: true }), ctxS8(undefined)) !== 'pass'
     })())
-  check('★S8：拿不到名单 ⇒ **不拦**（宁可放过，不冤枉 ✓）',
+  check('S8：拿不到名单 ⇒ **不拦**（宁可放过，不冤枉）',
     createGate({ root: tmp, quota: { phoneFlag: 'ph', phoneOnlineCap: 1 } })
       .check(L8({ as: 's8noroster' }), { declaredCaps: {} }) === 'pass')
 
@@ -169,14 +169,14 @@ check('台账：**增量目录**落盘了（★基线 ＋ 增量，各写各的 
   //   ⓘ 试过"乐观重试（写完复读、不对就重来）"—— **不成立**：
   //     `A 读(writers=5) → B 读(5) → B 写(6) → A 写(6)` ⇒ 两个复读都读到 6 ⇒ **都以为成功** 
   //     （`+1` 这种计数**不唯一** ⇒ 判不出"我被盖了"）。实测重试之后**反而更差**（丢 8 条）。
-  check('★★并发记账：串行 12 次 ⇒ 台账记到 12 条（★基准 ✓）',
+  check('并发记账：串行 12 次 ⇒ 台账记到 12 条（基准）',
     (() => {
       const r = join(tmp, `acct-serial-${Date.now()}`)
       const g = createGate({ root: r })
       for (let i = 0; i < 12; i += 1) g.record({ as: 'a', to: 'b', targets: ['b'], mode: 'offline', type: 'direct', body: '并发记账测试（正文有货，别当回执）' }, ['b'])
       return g.report({ as: 'a' }).letters === 12
     })())
-  check('★★并发记账：**换个 gate 实例**再读 ⇒ 仍 12 条（★"各写各的"⇒ 一条不丢 ✓）',
+  check('并发记账：**换个 gate 实例**再读 ⇒ 仍 12 条（"各写各的"⇒ 一条不丢）',
     (() => {
       const r = join(tmp, `acct-cross-${Date.now()}`)
       const g = createGate({ root: r })
@@ -185,7 +185,7 @@ check('台账：**增量目录**落盘了（★基线 ＋ 增量，各写各的 
       //     （同一个实例读自己的内存缓存会**假过** —— 而 `load` 每次都读盘，所以这条其实很实）
       return createGate({ root: r }).report({ as: 'a' }).letters === 12
     })())
-  check('★并发记账：增量文件**各写各的**（★文件名不重复 ⇒ 物理上不可能撞车 ✓）',
+  check('并发记账：增量文件**各写各的**（文件名不重复 ⇒ 物理上不可能撞车）',
     (() => {
       const r = join(tmp, `acct-name-${Date.now()}`)
       const g = createGate({ root: r })
@@ -206,25 +206,25 @@ check('台账：**增量目录**落盘了（★基线 ＋ 增量，各写各的 
     return keys.length ? [keys[keys.length - 1]] : []
   }
   const Lc = () => ({ as: 'a', to: 'b', targets: ['b'], mode: 'offline', type: 'direct', body: '正文有货，别当回执' })
-  check('★★假时钟：配了 `now` ⇒ 台账按**它**算（★不是按真时间 ✓）',
+  check('假时钟：配了 `now` ⇒ 台账按**它**算（不是按真时间）',
     (() => {
       const r = clockRoot('a')
       createGate({ root: r, now: Date.parse('2026-10-15T12:00:00+08:00') }).record(Lc(), ['b'])
       return readDay(r)[0] === '2026-10-15'
     })())
-  check('★★日界生效前：日界 9 点、时刻 10-15 **08:00** ⇒ 台账落**前一天**（★正本判据 134 ✓）',
+  check('日界生效前：日界 9 点、时刻 10-15 **08:00** ⇒ 台账落**前一天**（设计文档判据 134）',
     (() => {
       const r = clockRoot('b')
       createGate({ root: r, now: Date.parse('2026-10-15T08:00:00+08:00'), quota: { dayBoundaryHour: 9 } }).record(Lc(), ['b'])
       return readDay(r)[0] === '2026-10-14'
     })())
-  check('★★日界生效后：日界 9 点、时刻 10-15 **10:00** ⇒ 台账落**当天**（★正本判据 135 ✓）',
+  check('日界生效后：日界 9 点、时刻 10-15 **10:00** ⇒ 台账落**当天**（设计文档判据 135）',
     (() => {
       const r = clockRoot('c')
       createGate({ root: r, now: Date.parse('2026-10-15T10:00:00+08:00'), quota: { dayBoundaryHour: 9 } }).record(Lc(), ['b'])
       return readDay(r)[0] === '2026-10-15'
     })())
-  check('★不配 `now` ⇒ 退回真时间（★默认行为一字不变 ✓）',
+  check('不配 `now` ⇒ 退回真时间（默认行为一字不变）',
     (() => {
       const r = clockRoot('d')
       createGate({ root: r }).record(Lc(), ['b'])
@@ -242,19 +242,19 @@ check('台账：**增量目录**落盘了（★基线 ＋ 增量，各写各的 
   //   ⇒ 拦它没有收益，只会把"想说的话"堵在发信人手里 （"闸"该拦代价，不该拦表达）
   const gOff = createGate({ root: tmp })
   const LO = (over = {}) => ({ as: 'offexempt', to: 'qq', targets: ['qq'], mode: 'offline', type: 'direct', body: '离线件（正文有货，别当回执）', ...over })
-  check('★★离线豁免①：纯回执「已读」的**离线件照发**（主人 2026-10-06 令）', gOff.check(LO({ body: '已读' })) === 'pass')
+  check('离线豁免①：纯回执「已读」的**离线件照发**（维护者 2026-10-06 令）', gOff.check(LO({ body: '已读' })) === 'pass')
   for (let i = 0; i < 5; i += 1) gOff.record(LO(), ['qq'])
-  check('★★离线豁免②：同对 20 分钟内第 4、5 封**照发**', gOff.check(LO()) === 'pass')
-  check('★★离线豁免③：本链第 3 跳的离线件**照发**', gOff.check(LO({ hop: 3, re: 'x' })) === 'pass')
-  check('★在线件**仍然**受闸①（别把闸一起豁免了）', gOff.check(LO({ mode: 'online', body: '已读' })).reject === true)
+  check('离线豁免②：同对 20 分钟内第 4、5 封**照发**', gOff.check(LO()) === 'pass')
+  check('离线豁免③：本链第 3 跳的离线件**照发**', gOff.check(LO({ hop: 3, re: 'x' })) === 'pass')
+  check('在线件**仍然**受闸①（别把闸一起豁免了）', gOff.check(LO({ mode: 'online', body: '已读' })).reject === true)
   const gOn = createGate({ root: tmp })
   for (let i = 0; i < 5; i += 1) gOn.record({ ...LO({ mode: 'online', as: 'offexempt-on' }) }, ['qq'])
-  check('★在线件**仍然**受闸②', gOn.check(LO({ mode: 'online', as: 'offexempt-on' })).reject === true)
+  check('在线件**仍然**受闸②', gOn.check(LO({ mode: 'online', as: 'offexempt-on' })).reject === true)
   // 豁免的**只是回环闸** —— 配额照旧（离线桶独立计）
   const gQuota = createGate({ root: tmp, quota: { onOver: 'reject', types: { offline: { label: '离线', limit: 1, perSend: true } } } })
   gQuota.record(LO({ as: 'offexempt-q' }), ['qq'])
   const qr = gQuota.check(LO({ as: 'offexempt-q' }), {})
-  check('★★离线件仍受**配额**（豁免的只是回环闸，不是配额 ✗）', qr !== 'pass' && qr.reject === true && /配额/.test(qr.reason), JSON.stringify(qr))
+  check('离线件仍受**配额**（豁免的只是回环闸，不是配额）', qr !== 'pass' && qr.reject === true && /配额/.test(qr.reason), JSON.stringify(qr))
 } catch (err) {
   check('自测没有抛异常', false, err && err.stack ? err.stack.split('\n')[0] : err)
 }

@@ -35,25 +35,25 @@ const pkgOf = (p) => {
 }
 
 const pkgs = Object.fromEntries(ALL.map((p) => [p, pkgOf(p)]))
-check(`① 七个包的 \`package.json\` 都在（★${ALL.join('、')} ✓）`, ALL.every((p) => pkgs[p] !== null),
+check(`① 七个包的 \`package.json\` 都在（${ALL.join('、')}）`, ALL.every((p) => pkgs[p] !== null),
   ALL.filter((p) => pkgs[p] === null).join('、'))
 
 // ② 版本号**必须全等** （发版漏一件 ⇒ 装上去半新半旧）
 const versions = [...new Set(ALL.map((p) => pkgs[p]?.version).filter(Boolean))]
-check('② ★版本号**七件全等** ✗（★漏一件就是"半新半旧" ✓）', versions.length === 1,
+check('② 版本号**七件全等** （漏一件就是"半新半旧"）', versions.length === 1,
   versions.length === 1 ? `全是 ${versions[0]}` : `出现了 ${versions.join('、')}`)
 
 // ③ 六件插件**必须**有 `dsh.bundle.patch` （少了它，真引擎里"装上了但什么都不做"）
 const noDsh = PLUGINS.filter((p) => !pkgs[p]?.dsh?.bundle?.patch)
-check('③ ★六件插件**都有** `dsh.bundle.patch` ✗（★少了它真引擎里"装上了但什么都不做" ✓）',
+check('③ 六件插件**都有** `dsh.bundle.patch` （少了它真引擎里"装上了但什么都不做"）',
   noDsh.length === 0, noDsh.length ? `缺：${noDsh.join('、')}` : PLUGINS.join('、'))
 
 // ④ `cli` **必须没有** `dsh` （它是**入口工具、不是插件**）——
 //   这条是"**故意的不一致**"："少一个字段"看起来特别像"忘了加" ⇒
 //     **下一个人会顺手补齐** ⇒ **把 CLI 也变成插件** ⇒ 所以明着写出来。
-check('④ ★★`cli` **必须没有** `dsh` ✗（★它是**入口工具、不是插件** ✓ —— ★故意的不一致，别顺手补齐 ✗）',
+check('④ `cli` **必须没有** `dsh` （它是**入口工具、不是插件** —— 故意的不一致，别顺手补齐）',
   pkgs[CLI] !== null && pkgs[CLI].dsh === undefined,
-  pkgs[CLI]?.dsh === undefined ? '没有 ✓（正确）' : '★ 它有了 dsh ⇒ 被当成插件了')
+  pkgs[CLI]?.dsh === undefined ? '没有 （正确）' : '它有了 dsh ⇒ 被当成插件了')
 
 // ②b **包之间的依赖范围必须覆盖当前版本** （2026-10-10 加 —— 而它**当场就抓到一个真的**）
 //   **病**：`cli` 的 `dependencies` 里六个包都钉着 `^0.2.0` ⇒ 而我们把版本升到 `0.3.0` 
@@ -75,10 +75,10 @@ for (const p of ALL) {
     if (!m) continue                                   // `*` 之类 ⇒ 放行 
     const [maj, min] = m[0].split('.')
     const [cmaj, cmin] = String(tv).split('.')
-    if (maj !== cmaj || min !== cmin) badRanges.push(`${p}→${name}@${range}（★当前 ${tv}）`)
+    if (maj !== cmaj || min !== cmin) badRanges.push(`${p}→${name}@${range}（当前 ${tv}）`)
   }
 }
-check('②b ★★包内依赖的**版本范围覆盖当前版本** ✗（★否则装出来"半新半旧" ✓）',
+check('②b 包内依赖的**版本范围覆盖当前版本** （否则装出来"半新半旧"）',
   badRanges.length === 0, badRanges.length ? badRanges.join('、') : '全对上')
 //   ⓘ 这条**当场就抓到一个真的** （2026-10-10）：`cli` 的六个依赖原来都钉着 `^0.2.0`，
 //     而版本升到 `0.3.0` 之后 —— **`^0.2.0` 的语义是 `>=0.2.0 <0.3.0`** ⇒ **它匹配不上 `0.3.0`** 
@@ -88,16 +88,16 @@ check('②b ★★包内依赖的**版本范围覆盖当前版本** ✗（★否
 //     而依赖范围写在**另一个字段**里、**不会跟着动**。
 
 const badName = ALL.filter((p) => !String(pkgs[p]?.name ?? '').startsWith('dsh-whale-post-'))
-check('⑤ ★包名前缀统一（`dsh-whale-post-*` ✓）', badName.length === 0, badName.join('、'))
+check('⑤ 包名前缀统一（`dsh-whale-post-*`）', badName.length === 0, badName.join('、'))
 // ⑥ **六件插件**的 `main`／`exports`／`files` 形状一致 —— **而 `cli` 少一项，且那是故意的**：
 //   六件的 `files` 里有 `cordis.patch.yml`（那是**插件**给引擎打补丁用的），
 //   而 `cli` **不是插件** ⇒ **它本来就该没有那个文件** （跟 ④ 同一条道理）。
 //   ⚠️ **这一条也容易"被顺手补齐"**："少一个文件"看起来就是漏了 ⇒ 所以**明着判**。
 const shape = (p) => JSON.stringify([pkgs[p]?.main, Object.keys(pkgs[p]?.exports ?? {}), pkgs[p]?.files])
 const pluginShapes = [...new Set(PLUGINS.map(shape))]
-check('⑥ ★六件插件的 `main`／`exports`／`files` **形状一致** ✓', pluginShapes.length === 1,
+check('⑥ 六件插件的 `main`／`exports`／`files` **形状一致** ', pluginShapes.length === 1,
   pluginShapes.length === 1 ? '六件全一致' : `${pluginShapes.length} 种形状`)
-check('⑥b ★★`cli` 的 `files` **必须少 `cordis.patch.yml`** ✗（★它不是插件 ⇒ 没有补丁文件 ✓ —— ★故意的 ✓）',
+check('⑥b `cli` 的 `files` **必须少 `cordis.patch.yml`** （它不是插件 ⇒ 没有补丁文件 —— 故意的）',
   Array.isArray(pkgs[CLI]?.files) && !pkgs[CLI].files.includes('cordis.patch.yml'),
   Array.isArray(pkgs[CLI]?.files) ? pkgs[CLI].files.join(',') : '（没有 files）')
 
@@ -113,7 +113,7 @@ const missingPatch = PLUGINS.filter((p) => {
   if (!Array.isArray(files)) return true
   return patch !== '' && !files.includes(patch)
 })
-check('③b ★★`dsh.bundle.patch` 指的文件**在 `files` 里** ✗（★否则 tarball 里没补丁 ⇒ 真引擎里"什么都不做" ✓）',
+check('③b `dsh.bundle.patch` 指的文件**在 `files` 里** （否则 tarball 里没补丁 ⇒ 真引擎里"什么都不做"）',
   missingPatch.length === 0, missingPatch.length ? `缺：${missingPatch.join('、')}` : '六件都带上')
 
 // ⑪ **发行清单里不许写死版本号** （2026-10-10 加）——
@@ -125,7 +125,7 @@ check('③b ★★`dsh.bundle.patch` 指的文件**在 `files` 里** ✗（★�
 const relFiles = ['docs/RELEASE.md', 'docs/RELEASE.en.md']
 const hardcoded = []
 for (const f of relFiles) {
-  if (!existsSync(join(repo, f))) { hardcoded.push(`★${f} 不存在`); continue }
+  if (!existsSync(join(repo, f))) { hardcoded.push(`${f} 不存在`); continue }
   const text = readFileSync(join(repo, f), 'utf8')
   // 只抓"像是要发的那一版"的写法：`v0.3.0`／`@0.3.0`／`0.3.0`（而 `<本版>` 这类占位符不算）
   for (const m of text.matchAll(/\bv?\d+\.\d+\.\d+\b/g)) {
@@ -133,15 +133,15 @@ for (const f of relFiles) {
     hardcoded.push(`${f}:${line} 里的「${m[0]}」`)
   }
 }
-check('⑪ ★★发行清单里**不许写死版本号** ✗（★该用 `<本版>` 占位 —— ★写死了每版都要改，漏改就发错 ✓）',
+check('⑪ 发行清单里**不许写死版本号** （该用 `<本版>` 占位 —— 写死了每版都要改，漏改就发错）',
   hardcoded.length === 0, hardcoded.slice(0, 4).join('、'))
 
 // ⑦ `private`：**七个包都不许 private** （private 的包发不出去）；而根**该** private 
 const priv = ALL.filter((p) => pkgs[p]?.private === true)
-check('⑦ ★七个包都**不是** `private` ✗（★private 的包发不出去 ✓）', priv.length === 0, priv.join('、'))
+check('⑦ 七个包都**不是** `private` （private 的包发不出去）', priv.length === 0, priv.join('、'))
 {
   const root = JSON.parse(readFileSync(join(repo, 'package.json'), 'utf8'))
-  check('⑧ 根 `package.json` **是** `private` ✓（★它不该被发出去 ✓）', root.private === true)
+  check('⑧ 根 `package.json` **是** `private` （它不该被发出去）', root.private === true)
 }
 
 // ⑨ 每个包的 `exports` 指向的文件**真的存在** （指向空气是最容易犯的发布错）
@@ -154,12 +154,12 @@ for (const p of ALL) {
     if (!existsSync(join(repo, 'packages', p, t))) missing.push(`${p}→${t}`)
   }
 }
-check('⑨ ★`exports` 指向的文件**真的存在** ✗（★指向空气是最容易犯的发布错 ✓）',
+check('⑨ `exports` 指向的文件**真的存在** （指向空气是最容易犯的发布错）',
   missing.length === 0, missing.join('、'))
 
 // ⑩ 仓库里不该有散落的临时文件（我这几轮写过好几个探针）
 const strays = readdirSync(repo).filter((f) => /^t-.*\.(mjs|cjs|js)$/.test(f))
-check('⑩ ★仓库根目录没有散落的临时探针 ✗（`t-*.mjs` ✓ —— ★我自己犯过 ✓）', strays.length === 0, strays.join('、'))
+check('⑩ 仓库根目录没有散落的临时探针 （`t-*.mjs` —— 我自己犯过）', strays.length === 0, strays.join('、'))
 
 // ⑬ **文档说的"npm 上是哪个版本"必须与 `package.json` 一致** （2026-10-10 加）——
 //   **病**：`README`／`INSTALL`／`cli/README` 里都有一句「**npm 上最新是 `<版本>`**」——
@@ -194,12 +194,12 @@ for (const f of verDocs) {
   const text = readFileSync(p, 'utf8')
   for (const re of VER_PATTERNS) {
     for (const m of text.matchAll(re)) {
-      if (m[1] && m[1] !== mineVer) verMismatch.push(`${f} 说 ${m[1]}（★实际 ${mineVer}）`)
+      if (m[1] && m[1] !== mineVer) verMismatch.push(`${f} 说 ${m[1]}（实际 ${mineVer}）`)
     }
   }
 }
-check('⑬ ★★文档说的"npm 上是哪个版本"**与 `package.json` 一致** ✗（★否则用户装到上一个版本 ✓）',
-  verMismatch.length === 0, verMismatch.length ? verMismatch.join('、') : `五份文档都是 ${mineVer} ✓`)
+check('⑬ 文档说的"npm 上是哪个版本"**与 `package.json` 一致** （否则用户装到上一个版本）',
+  verMismatch.length === 0, verMismatch.length ? verMismatch.join('、') : `五份文档都是 ${mineVer} `)
 
 // ⑫ **仓库领先 npm 多少** （2026-10-10 加 —— 这是**报告**，不是错误）
 //   **为什么要它**：第 65 轮我**临时用 `git log` 去数**"tag 之后有几个提交、有没有改过代码" ——
@@ -215,7 +215,7 @@ check('⑬ ★★文档说的"npm 上是哪个版本"**与 `package.json` 一致
 //     **而那个探针把这段新代码也一起提交了** ⇒ **紧接着 `git reset --hard HEAD~1` 回退探针** 
 //     ⇒ **连这段代码一起回退了** （`reflog` 里看得清清楚楚）。
 //     **教训**：**`git reset --hard` 带走的是"当时未提交的一切"** —— **不只是你想丢的那一个提交**。
-let driftLine = '（★没有 `v<当前版本>` tag ⇒ 还没发过 ⇒ 谈不上"领先" ✓）'
+let driftLine = '（没有 `v<当前版本>` tag ⇒ 还没发过 ⇒ 谈不上"领先"）'
 try {
   const mine = JSON.parse(readFileSync(join(repo, 'package.json'), 'utf8')).version
   const tag = `v${mine}`
@@ -231,19 +231,19 @@ try {
     const metaN = count(['packages/**/package.json'])
     const docN = count(['packages/**/README.md', 'docs/**/*.md', '*.md'])
     if (codeN > 0 || metaN > 0) {
-      driftLine = `★★仓库领先 npm **${n} 个提交**，其中 ★**${codeN} 个动了代码** ✗` +
+      driftLine = `仓库领先 npm **${n} 个提交**，其中 **${codeN} 个动了代码** ` +
         (metaN ? `、${metaN} 个动了包元数据` : '') +
-        ` ⇒ ★**有使用者可见的改动** —— ★**该评估发下一个版本**（★见 \`docs/RELEASE.md\` ✓）`
+        ` ⇒ **有使用者可见的改动** —— **该评估发下一个版本**（见 \`docs/RELEASE.md\`）`
     } else {
-      driftLine = `★仓库领先 npm **${n} 个提交**，★**其中零个动了代码／包元数据** ✓` +
-        (docN ? `（★有 ${docN} 个动了文档 ✓）` : '') +
-        ` ⇒ ★★**功能面与 npm 上的 \`${mine}\` 一致 ⇒ 不必发新版** ✓`
+      driftLine = `仓库领先 npm **${n} 个提交**，**其中零个动了代码／包元数据** ` +
+        (docN ? `（有 ${docN} 个动了文档）` : '') +
+        ` ⇒ **功能面与 npm 上的 \`${mine}\` 一致 ⇒ 不必发新版** `
     }
   }
-} catch { driftLine = '（★算不出来 —— 大概不在 git 仓库里 ✓）' }
+} catch { driftLine = '（算不出来 —— 大概不在 git 仓库里）' }
 console.log(`ⓘ ⑫ ${driftLine}`)
 
 for (const c of checks) console.log(`${c.ok ? 'PASS' : 'FAIL'}  ${c.name}${c.ok ? '' : '  :: ' + c.extra}`)
 const pass = checks.filter((c) => c.ok).length
-console.log(`\n${pass}/${checks.length} 合格   （查了 ${ALL.length} 个包 ✓）`)
+console.log(`\n${pass}/${checks.length} 合格   （查了 ${ALL.length} 个包）`)
 process.exit(pass === checks.length ? 0 : 1)

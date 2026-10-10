@@ -65,7 +65,7 @@ try {
   const b = run(['--profile', name, 'say ok'])
   const bOut = String(b.stdout ?? '') + String(b.stderr ?? '')
   const errs = bOut.split(/\r?\n/).filter((l) => /Error|failed|registered|Cannot find/.test(l)).length
-  say(b.status === 0 && errs === 0, '⑤ 真启退出码 0、没有错误行（★只说明"没炸"，★装没装上要看 ③④）', `退出码 ${b.status}，错误行 ${errs}`)
+  say(b.status === 0 && errs === 0, '⑤ 真启退出码 0、没有错误行（只说明"没炸"，装没装上要看 ③④）', `退出码 ${b.status}，错误行 ${errs}`)
 
   // ── ⑦ 文档里的命令真跑一遍（照 `example/README.md` 第三节）────────
   //   **为什么要它** （2026-10-10）：`example/README` 那节自称"跑一次（判据：退出码）" ⇒
@@ -87,9 +87,9 @@ try {
     let failed = 0
     for (const s of steps) {
       const r = spawnSync(process.execPath, [cli, ...s], { encoding: 'utf8' })
-      if (r.status !== 0) { failed++; console.log('        ★ ' + s[0] + ' 退出码 ' + r.status + ' :: ' + String(r.stderr ?? '').split(/\r?\n/)[0]) }
+      if (r.status !== 0) { failed++; console.log('        ' + s[0] + ' 退出码 ' + r.status + ' :: ' + String(r.stderr ?? '').split(/\r?\n/)[0]) }
     }
-    say(failed === 0, '⑦ 照 example/README 第三节跑六条命令（★退出码全 0 ✓）', failed ? failed + ' 条不过' : '')
+    say(failed === 0, '⑦ 照 example/README 第三节跑六条命令（退出码全 0）', failed ? failed + ' 条不过' : '')
   } catch (e) {
     say(false, '⑦ 跑文档命令时出错', String(e.message).slice(0, 80))
   } finally {
@@ -106,5 +106,5 @@ try {
   }
 }
 
-console.log('\n  ' + (bad ? '★ ' + bad + ' 条不过' : '✓ 全部通过（★照 INSTALL 装完，真启也过 ✓）'))
+console.log('\n  ' + (bad ? '' + bad + ' 条不过' : '全部通过（照 INSTALL 装完，真启也过）'))
 process.exit(bad ? 1 : 0)

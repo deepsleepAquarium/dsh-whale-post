@@ -538,7 +538,7 @@ export function createBus(config = {}) {
       if (stuck.length) {
         if (cfg.offlineOnlyMode === 'reject') {
           throw new Error(`拒发：${stuck.join('、')} 只收离线件（配置 offlineOnlyFlag='${cfg.offlineOnlyFlag}' ＋ offlineOnlyMode='reject'）—— ` +
-            `请用 --mode offline 重发。★这不是故障，--force 也不豁免：它们收不到在线件。`)
+            `请用 --mode offline 重发。这不是故障，--force 也不豁免：它们收不到在线件。`)
         }
         offlineOnly = stuck     // 不拒发 —— 只**明示**出来 （信照落它们那一格）
       }
@@ -622,7 +622,7 @@ export function createBus(config = {}) {
       atomicWrite(join(deadDir, `${id}.why.txt`),
         `退回原因：收件人${skippedDormant.join('、')}无法收到邮件（被明确标成休眠，配置 dormantFlag='${cfg.dormantFlag}'）。\n` +
         `这封信**没有**投进任何人的信箱，也**没有**占配额；它留在这里等你看。\n` +
-        `★换个人发，或先让它醒（把名单里那个标记去掉再发）。\n` +
+        `换个人发，或先让它醒（把名单里那个标记去掉再发）。\n` +
         `发件人：${as}　主题：${subject || '（无）'}　时间：${new Date(env.sentAtMs).toISOString()}\n`)
       return { id, seq, to, targets: [], mode: m, type, verdict: 'bounced', hop, env,
         skippedDormant, bounced: skippedDormant }
@@ -707,7 +707,7 @@ export function createBus(config = {}) {
     //   （这是实测踩出来的：我在共享邮局根上用 `--keep` 只想看一眼，三封信当场被挪进退信）
     const willConsume = (keep === false) ? true : ((keep === true || typeof keep === 'function') ? false : canRead)
     const moveDead = (f, text) => {
-      if (!willConsume) return '（★keep：没动它 ✓）'
+      if (!willConsume) return '（keep：没动它）'
       atomicWrite(join(paths().dead, f), text)
       unlinkSync(join(dir, f))
       return ' ⇒ 已挪进"退信"'
@@ -764,8 +764,8 @@ export function createBus(config = {}) {
           //     **四种"留着"各有各的理由**：`keep: true`（只看不消费）／
           //       **勿扰时段**（"这会儿连我自己也不处理"）／`keep` 函数说留 ／**真的没有读者**。
           why: keep === true ? 'keep=true：只看不消费'
-            : quietNow ? `★**勿扰时段**（★它自己用 \`quiet\` 声明的 ⇒ **这会儿连它自己也不处理**）⇒ 不投也不消费，原样留在信箱里（★窗口一过照读 ✓）`
-              : `★没有读者（没给 inject、也没声明 reader${liveNow() ? '；**有活体会话也不算**：会话活着不等于信交到了读者手里' : ''}）⇒ 不投也不消费，原样留在信箱里`,
+            : quietNow ? `**勿扰时段**（它自己用 \`quiet\` 声明的 ⇒ **这会儿连它自己也不处理**）⇒ 不投也不消费，原样留在信箱里（窗口一过照读）`
+              : `没有读者（没给 inject、也没声明 reader${liveNow() ? '；**有活体会话也不算**：会话活着不等于信交到了读者手里' : ''}）⇒ 不投也不消费，原样留在信箱里`,
         })
         continue
       }
@@ -776,7 +776,7 @@ export function createBus(config = {}) {
           inject(env)
         } catch (err) {
           const msg = String(err && err.message ? err.message : err)
-          out.push({ ...row, kept: true, injectError: msg, why: `★注入抛异常 ⇒ **不消费**（信留在信箱里，没搬 seen、没写 ack）：${msg}` })
+          out.push({ ...row, kept: true, injectError: msg, why: `注入抛异常 ⇒ **不消费**（信留在信箱里，没搬 seen、没写 ack）：${msg}` })
           continue
         }
       }

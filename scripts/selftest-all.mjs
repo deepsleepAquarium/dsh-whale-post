@@ -31,7 +31,7 @@ import { readFileSync as _readFileSync, readdirSync as _readdirSync } from 'node
     const codeOnly = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
     if (/ctx\.whale\s*=|ctx\?\.whale\?\./.test(codeOnly)) offenders.push(p)
   }
-  console.log(`— ${'static'.padEnd(9)} ${offenders.length === 0 ? 'PASS  无 ctx.whale 属性读写（★真引擎上会抛 without inject）' : 'FAIL  这几件还在读 ctx.whale：' + offenders.join('、')}`)
+  console.log(`— ${'static'.padEnd(9)} ${offenders.length === 0 ? 'PASS  无 ctx.whale 属性读写（真引擎上会抛 without inject）' : 'FAIL  这几件还在读 ctx.whale：' + offenders.join('、')}`)
   if (offenders.length) process.exitCode = 1
 }
 for (const p of items) {
@@ -55,7 +55,7 @@ for (const p of items) {
   const errLine = ((String(r.stderr ?? '') + '\n' + out).match(/^\s*((?:Syntax)?Error|ReferenceError|TypeError|RangeError)[^\n]*/m) ?? [])[0]
   results.push({ p, code: r.status, summary, crashed })
   console.log(crashed
-    ? `FAIL  ★**崩了**（★退出码 ${r.status}，★**一条 FAIL 行都没有** ⇒ ★不是判据红 ✗）${errLine ? '：' + errLine.trim().slice(0, 90) : ''}`
+    ? `FAIL  **崩了**（退出码 ${r.status}，**一条 FAIL 行都没有** ⇒ 不是判据红）${errLine ? '：' + errLine.trim().slice(0, 90) : ''}`
     : `${r.status === 0 ? 'PASS' : 'FAIL'}  ${summary}${fails.length ? '   ← ' + fails.length + ' 条不过' : ''}`)
 }
 
@@ -126,7 +126,7 @@ process.stdout.write(`— ${'imports'.padEnd(9)} `)
   const ir = spawnSync(process.execPath, [join(repo, 'scripts', 'check-imports.mjs')], { stdio: only ? 'inherit' : 'pipe', encoding: 'utf8' })
   const iout = only ? '' : String(ir.stdout ?? '')
   const isum = (iout.match(/扫了 \d+ 个文件/) ?? [])[0] ?? ''
-  const ifails = (iout.match(/^  ★/gm) ?? [])
+  const ifails = (iout.match(/^  FAIL/gm) ?? [])
   results.push({ p: 'imports', code: ir.status, summary: '' })
   console.log(`${ir.status === 0 ? 'PASS' : 'FAIL'}  ${isum}${ifails.length ? '   ← ' + ifails.length + ' 个文件有缺' : ''}`)
 }
@@ -139,7 +139,7 @@ const crashed3 = bad3.filter((r) => r.crashed)
 console.log(bad3.length === 0
   ? `全过：${results.length}/${results.length} 项（退出码 0）`
   : `有件没过：${bad3.map((b) => b.p).join('、')}（退出码 ${bad3[0].code}）` +
-    (crashed3.length ? `\n★★其中 **${crashed3.length} 件是"崩了"**（★不是判据红 ✗）：${crashed3.map((b) => b.p).join('、')}` : ''))
+    (crashed3.length ? `\n其中 **${crashed3.length} 件是"崩了"**（不是判据红）：${crashed3.map((b) => b.p).join('、')}` : ''))
 
 // ── 判据条数：**只许变多，不许悄悄变少** （2026-10-10 加）
 //   **病**：若某个自测"只跑 3 条就退出码 0" ⇒ **上面照样报 PASS** 
@@ -158,23 +158,23 @@ const shrank = []
 const grew = []
 for (const [name, base] of Object.entries(BASELINE)) {
   const now = counts.get(name)
-  if (now === undefined) { shrank.push(`${name}（★没跑到／没报条数）`); continue }
-  if (now < base) shrank.push(`${name} ${base} → ${now}（★少了 ${base - now} 条）`)
-  else if (now > base) grew.push(`${name} ${base} → ${now}（★多了 ${now - base} 条）`)
+  if (now === undefined) { shrank.push(`${name}（没跑到／没报条数）`); continue }
+  if (now < base) shrank.push(`${name} ${base} → ${now}（少了 ${base - now} 条）`)
+  else if (now > base) grew.push(`${name} ${base} → ${now}（多了 ${now - base} 条）`)
 }
 if (shrank.length) {
-  console.log(`\n★★判据**变少**了 ✗：${shrank.join('、')}`)
-  console.log('  ★★"变少"跟"判据红"是两件事 ✓ —— ★**红 ⇒ 代码有 bug** ✓；★**少了 ⇒ 判据被删了** ✗。')
-  console.log('  ⓘ ★确认是有意删的 ⇒ `node scripts/selftest-all.mjs --update-baseline` 更新基准 ✓。')
+  console.log(`\n判据**变少**了：${shrank.join('、')}`)
+  console.log('  "变少"跟"判据红"是两件事 —— **红 ⇒ 代码有 bug**；**少了 ⇒ 判据被删了**。')
+  console.log('  ⓘ 确认是有意删的 ⇒ `node scripts/selftest-all.mjs --update-baseline` 更新基准。')
 }
 if (grew.length) {
-  console.log(`\nⓘ ★判据**变多**了 ✓（★好事，★但记得更新基准 ✓）：${grew.join('、')}`)
-  console.log('  ⓘ ★`node scripts/selftest-all.mjs --update-baseline` ✓')
+  console.log(`\nⓘ 判据**变多**了 （好事，但记得更新基准）：${grew.join('、')}`)
+  console.log('  ⓘ `node scripts/selftest-all.mjs --update-baseline` ')
 }
-if (counts.size) console.log(`ⓘ 共 ${[...counts.values()].reduce((a, b) => a + b, 0)} 条判据（★基准 ${TOTAL} 条 ✓）`)
+if (counts.size) console.log(`ⓘ 共 ${[...counts.values()].reduce((a, b) => a + b, 0)} 条判据（基准 ${TOTAL} 条）`)
 
 const failed = bad3.length > 0 || shrank.length > 0
 // 另有一个**并发压测**不在这里跑 （它起十几个真子进程、慢一些）：
 //   `node scripts/racetest.mjs` —— **改了发号或落盘就要跑它** （发号撞号只在那里才看得见）
-console.log('ⓘ 另有并发压测：node scripts/racetest.mjs（★改了发号／落盘就一定要跑 ✓）')
+console.log('ⓘ 另有并发压测：node scripts/racetest.mjs（改了发号／落盘就一定要跑）')
 process.exit(failed ? 1 : 0)
