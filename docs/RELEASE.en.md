@@ -11,7 +11,7 @@
 ## ★ Step 0: run four things first; **all green before you ship** ✗
 
 ```bash
-★★Also: **the pre-commit gate is installed** ✗✓ (`npm run hooks:install` ✓) —— ★every `git commit` runs `selftest` automatically and a non-zero exit refuses the commit ✓.
+★★Also: **the pre-commit gate has to be installed first** ✗✓: `npm run hooks:install` ✓ (★local configuration, ★**a fresh clone will not have it automatically** ✓) —— ★once installed, every `git commit` runs `selftest` automatically and a non-zero exit refuses the commit ✓.
 npm run selftest     # 10 items: load-level + static criteria + cross-package + doc parity + package metadata
 npm run racetest     # 11 criteria: concurrent sequence claiming + concurrent accounting
 npm run doccheck     # Chinese/English doc parity

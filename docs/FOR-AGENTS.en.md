@@ -93,7 +93,7 @@
 | `npm run xcheck` | ★★**cross-package consistency** ✗✓ (★fine to run on its own ✓) | ★after changing anything implemented on both sides ✓ |
 | `npm run doccheck` | ★★**Chinese/English docs stay in step** ✗✓ (★headings / bullets / tables / fences / links ✓) | ★**after changing any document** ✓ (★especially when only one side was touched ✗) |
 | `npm run pkgcheck` | ★★**package metadata** ✗✓ (★versions equal / plugins have `dsh` / **`cli` does not** ✓) | ★**after touching any `package.json`** ✓ |
-| ★★★**the pre-commit gate** ✗✓ | ★**already installed** (`npm run hooks:install` ✓) —— ★every `git commit` **runs `selftest` automatically** ✓, ★and a non-zero exit **refuses the commit** ✗✓ | ★**every commit** ✓ (★about 20 s ✓) |
+| ★★★**the pre-commit gate** ✗✓ | ★★**you have to install it first**: `npm run hooks:install` ✗✓ (★it is **local configuration** (`core.hooksPath`), ★**a fresh clone will not have it automatically** ✗) —— ★once installed, every `git commit` **runs `selftest` automatically** ✓, ★and a non-zero exit **refuses the commit** ✗✓ | ★**every commit** ✓ (★about 20 s ✓) |
 | `npm run compat` | ★★★**cross-version acceptance** ✗✓ (★**it really runs the version published on npm** ✓) | ★**after touching signature-domain fields or the envelope shape** ✗✓ (★**self-tests that only exercise this version cannot see this class of problem** ✗) |
 
 ★★ **One more step you cannot skip** ✗: ★**boot it for real once** ✓ —— ★`npm run selftest` being green does **not** mean the engine can load ✓

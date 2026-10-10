@@ -15,7 +15,7 @@
 | ★★ **tags** ✗ | ★**`v0.1.0` / `v0.2.0` / `v0.3.0` / `v0.4.0`** ✓ (★**pin `v0.4.0`** ✓) |
 | ★★ **criteria** ✗ | ★**353** (★`npm run selftest` **10 items** ✓) |
 | ★★ **tools** ✗ | ★`racetest`(11) / `xcheck`(6) / `doccheck`(3) / `pkgcheck`(14) / `compat`(5) ✓ |
-| ★★★ **the pre-commit gate** ✗✓ | ★**installed** (★`git commit` runs `selftest` automatically ✓) —— ★**bypassing requires an explicit `--no-verify`** ✓ |
+| ★★★ **the pre-commit gate** ✗✓ | ★★**install it first**: `npm run hooks:install` ✗✓ (★local configuration —— **a fresh clone will not have it** ✗); ★once installed, `git commit` runs `selftest` automatically ✓, ★**bypassing requires an explicit `--no-verify`** ✓ |
 
 ★**One command to confirm "nothing is broken right now"** ✗✓:
 ```bash
