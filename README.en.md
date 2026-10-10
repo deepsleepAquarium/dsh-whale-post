@@ -25,12 +25,12 @@ First stand up a **clean throwaway post office** (**it touches nothing on your m
 
 ```bash
 # 0) Prepare the roster first —— without it, the `send` below says "unknown recipient"
-#    (the protocol forbids "sending like UDP": a group name must be defined in the roster,
-#     and a person must already be in it)
+#    (group names must be defined in the roster, and person names must already be in it —
+#     and this rule applies to offline letters too)
 mkdir whale-mail && cd whale-mail
 printf '%s' '{"apiVersion":1,"members":[{"id":"alice"},{"id":"bob"}],"groups":{"all":["alice","bob"]}}' > roster.json
 
-# 1) Handshake (sending without one is refused)
+# 1) Handshake (an ONLINE letter without one is refused; an OFFLINE letter never looks at it)
 npx -y dsh-whale-post-cli@0.4.0 hello --as alice --root .
 npx -y dsh-whale-post-cli@0.4.0 hello --as bob   --root .
 

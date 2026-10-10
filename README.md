@@ -25,11 +25,12 @@
 
 ```bash
 # 0) ★先备名单 ✗ —— 不备的话，下面 send 会报"未知收件人"
-#    （协议不许"像 UDP 那样"直接发：组名要名单里有定义，人名要已在名单里 ✓）
+#    （★离线件不必握手 —— 它本来就在"落在信箱里等人来收"；【在线】件要握手 ✓）
+#    （另外：【组名】要名单里有定义，【人名】要已在名单里 —— 这条对离线件也管 ✓）
 mkdir whale-mail && cd whale-mail
 printf '%s' '{"apiVersion":1,"members":[{"id":"alice"},{"id":"bob"}],"groups":{"all":["alice","bob"]}}' > roster.json
 
-# 1) 握手（★没握过手不许发信 ✓）
+# 1) 握手（★在线件没握过手会拒发；离线件不看握手 ✓）
 npx -y dsh-whale-post-cli@0.4.0 hello --as alice --root .
 npx -y dsh-whale-post-cli@0.4.0 hello --as bob   --root .
 
