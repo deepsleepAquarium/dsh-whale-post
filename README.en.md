@@ -109,11 +109,11 @@ node packages/cli/index.js selftest  # ★check the exit code
   ★**Still untested** ✗: the truncation path once the `seen` state array grows very long (hand-crafted only).
 * ★★**Cross-package consistency** ✗✓ (added 2026-10-10): `node scripts/xcheck.mjs` —— ★**six items** (★digest / signature domain / **MAC** / legacy fields / day boundary / "the name says what it is" ✓);
   ★it watches ★**"is one thing computed in two places still equal"** ✓ (★we hit that shape twice ✓).
-* ★★**Which version to pin** ✗✓: ★**`0.3.0` is published on npm** ✓ (★that is what the `npx` lines above install ✓,
+* ★★**Which version to pin** ✗✓: ★**`0.4.0` is published on npm** ✓ (★that is what the `npx` lines above install ✓,
   ★**and it was really installed and exercised per step 2 of [`docs/RELEASE.en.md`](docs/RELEASE.en.md)** ✓).
   ★ⓘ ★npm's registry has a **sync delay of a few minutes** ✗ ⇒ ★right after a release `@0.3.0` may not resolve yet ✓
   —— ★**if it does not, use `@0.2.0`** ✓ (★it is on npm too, and it really works ✓).
-* ★**Which tag to pin** ✗✓: pin **`v0.3.0`** ✓ (★**`0.1.x` has all six plugins failing to load in a real engine** ✗);
+* ★**Which tag to pin** ✗✓: pin **`v0.4.0`** ✓ (★**`0.1.x` has all six plugins failing to load in a real engine** ✗);
   the interfaces carry `apiVersion`, and **types can be extended at any time** (adding a type does not require touching the core ✓).
   ★What changed in each version, and why ⇒ see [`CHANGELOG.en.md`](CHANGELOG.en.md).
 * ★**The install path was exercised on a real engine once** ✓ —— ★**and that drill caught a fatal bug (fixed)** ✗:

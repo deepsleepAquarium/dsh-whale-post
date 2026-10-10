@@ -7,6 +7,44 @@
 
 ---
 
+## v0.4.0 —— 2026-10-10 (★**released** ✓ —— all seven are on npm ✓)
+
+> ★★**This version contains exactly one thing, and it is the half that was missing from the plan** ✗✓: **the "deliver" half of S6** ✓.
+
+### ★★ Added: delivering to a remote member (★the "deliver" half of S6) ✗✓
+
+★★ **The original's words** ✗ (★《跨设备邮局-1.0局域网实现清单》§1 · S6 ✓):
+"**deliver**: a letter to the phone ⇒ write the remote `inbox/潮信鲸/` ✓ (★**keep no second copy locally** ✗)"
+
+★**The illness** ✗✓: ★`pickup` (the **receive** half ✓) had been done long ago ✓, ★while ★**`send` only ever wrote the local `inbox/`** ✗
+⇒ ★★★**"delivering to the phone" was not implemented at all in the public repository** ✗✓ —— ★**and the checklist counts it as half of S6** ✓.
+★**How it was found** ✗✓: ★in round 67 I was writing the "fake phone" script from §3 of that checklist ✓, ★**and the step "the tank delivers ⇒ the fake phone receives" did not work** ✓.
+
+* ★★ **`send --remote <mailbox root> --remote-only <attribute>`** ✗✓ —— ★members carrying that attribute ⇒ **write remote + delete local** ✓
+  (★**write remote first, then delete local** ✓: ★a crash midway leaves the local copy in place ⇒ **"a letter may arrive late, never not at all"** ✓);
+  ★**without `--remote-only` ⇒ still local as before** ✓ (★**old behaviour unchanged** ✓).
+* ★★ **"No second copy locally" is not tidiness** ✗✓: ★**keeping one creates two authorities** ✓ ⇒ ★and the two will **disagree** about fetching, receipts and consumption ✓.
+
+### ★★ Added: `scripts/fake-phone.mjs` (★the "fake phone") ✗✓
+
+★The original's §3 ✓: "★write a **fake phone** script ✓ (★using `node` to read and write the 'simulated mailbox' directory directly ✓,
+★performing the phone's **five actions** ✓: ★`PUT hello` / `PROPFIND≈list` / `GET` / `MOVE⇒seen` / `PUT ack` ✓)
+⇒ ★**an end-to-end run** ✓ (★the tank delivers ⇒ the fake phone receives ⇒ the fake phone replies ⇒ the tank collects ✓)"
+
+* ★**The five actions are performed literally** ✗✓ —— ★**both the hello and the ack are genuinely signed** ✓ (★through `bus.seal` ⇒ **the tank verifies them** ✓),
+  ★**not "pretend"** ✓; ★**MOVE is also "write first, delete after"** ✓ (★a crash midway leaves the mailbox copy in place ✓).
+* ★★★ **The end-to-end run genuinely works** ✗✓: ★the tank's `send --remote` ⇒ mailbox `inbox` **1** / local **0** ✓ ⇒
+  the fake phone `--drain` ⇒ `GET` + `MOVE ⇒ seen` + `PUT ack` ✓ ⇒ mailbox `inbox` **0** / `seen` **1** / `ack/web` **1** ✓ ⇒
+  the tank's `pickup` ⇒ **1 receipt mirrored** ⇒ local `ack/web` **1** ✓✓ —— ★**closed loop** ✓.
+  ★★★**And before this, "the end-to-end run works" was only an**inference**** ✓ —— ★**now it is a demonstration** ✓.
+
+### ★ Criteria and boundaries ✗
+
+* ★`cli` 52 → **54** ✓ (★a remote member ⇒ written remotely and zero copies locally ✓ / ★without `--remote-only` ⇒ **still local** ✓); ★**353 criteria** in all ✓.
+* ★**Still not done** ✗: ★**connecting a real device** (★WebDAV + a share + pointing the remote root at a real address ✓) —— ★**that needs those five words from the keeper** ✓
+  (★§4 of the original ✓); ★the fake phone in this version is **played by a local directory**, ★**not a real phone** ✓.
+* ★**Still incompatible** ✗: ★a letter sent by `0.4.0` **bounces** on `0.3.0` ✓ (★the signature domain gained `recv` / `quiet` ✓ —— see "Read first (2)" ✓).
+
 ## v0.3.0 —— 2026-10-10 (★**released** ✓ —— all seven are on npm ✓)
 
 > ★★**Why this section stands on its own** ✗✓: ★we did a dozen more rounds after `0.2.0` shipped ——
