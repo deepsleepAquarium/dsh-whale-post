@@ -20,7 +20,7 @@ try {
   check('接口：最小集 list／has／label 齐全', ['list', 'has', 'label'].every((m) => typeof roster[m] === 'function'))
   check('接口：apiVersion 是数字', Number.isInteger(apiVersion))
 
-  // ① 名单内容全部来自文件（★核心不认识任何名字）
+  // ① 名单内容全部来自文件（核心不认识任何名字）
   writeFileSync(file, JSON.stringify({ apiVersion: 1, members: [{ id: 'alice', label: 'Alice' }, { id: 'bob' }], groups: { all: ['alice', 'bob'], club: ['alice'] } }), 'utf8')
   check('名单：list 读到 2 人', roster.list().length === 2, JSON.stringify(roster.list()))
   check('名单：label 缺省退回 id', roster.label('bob') === 'bob')
@@ -37,7 +37,7 @@ try {
   const hard = ['alice', 'bob'].filter((n) => new RegExp(`\\b${n}\\b`).test(codeOnly))
   check('防泄露：核心代码里没有写死成员名（只在文档与样例里出现）', hard.length === 0, hard.join(','))
 
-  // ★★成员属性（2026-10-10）：通用读取 —— ★属性名由调用方给，本插件里不出现任何具体属性名 ✓
+  // 成员属性（2026-10-10）：通用读取 —— 属性名由调用方给，本插件里不出现任何具体属性名 
   //   两种写法都认：① 成员对象上的同名字段 ② 顶层同名数组（"名单式"）
   const withFlags = { apiVersion: 1,
     members: [{ id: 'alice', label: 'Alice' }, { id: 'carol', label: 'Carol', flagA: true }],
@@ -58,7 +58,7 @@ try {
   check('属性：group() 不带 opts ⇒ 原样（向后兼容）', JSON.stringify(roster.group('club')) === '["alice","carol"]')
   check('属性：flag 的名字由调用方给 ⇒ 换个名字照样工作（核心不认识任何具体属性名）', roster.flag('carol', 'flagB') === true && roster.flag('carol', 'flagC') === false)
 
-  // ★★群发默认剔除（groupWithout）：★属性名由**配置**给 ✓ —— 缸里口径"群发默认不到它，点名才进"
+  // 群发默认剔除（groupWithout）：属性名由**配置**给 —— 班级里口径"群发默认不到它，点名才进"
   const rOff = createRoster({ file, groupWithout: 'flagA' })
   check('群发：group() 默认剔掉 groupWithout 指定的属性', JSON.stringify(rOff.group('club')) === '["alice"]', JSON.stringify(rOff.group('club')))
   check('群发：broadcast() 剔掉同一批人', JSON.stringify(rOff.broadcast()) === '["alice"]', JSON.stringify(rOff.broadcast()))

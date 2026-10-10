@@ -4,10 +4,10 @@
  * 接口：`ctx.whale.types`（apiVersion 1）
  *   register(id, meta) / resolve(id) / list()
  *
- * ★核心不许知道任何类型标识 —— 所以类型**是注册进来的**，随包只给三个样例：
+ * 核心不许知道任何类型标识 —— 所以类型**是注册进来的**，随包只给三个样例：
  *   `direct`（一对一）／`broadcast`（群发）／`club`（小组）
- * ★未注册的类型一律**当场拒**（不许悄悄当成默认类型 —— "急件类型写错就永远叫不醒人"这种事故我们栽过）。
- * ★要加新类型：`types.register('你自己的', { label, urgent, billable, priority })` —— **核心一行都不用动**。
+ * 未注册的类型一律**当场拒**（不许悄悄当成默认类型 —— "急件类型写错就永远叫不醒人"这种事故我们栽过）。
+ * 要加新类型：`types.register('你自己的', { label, urgent, billable, priority })` —— **核心一行都不用动**。
  */
 export const name = 'whale-types'
 export const apiVersion = 1
@@ -26,7 +26,7 @@ export function createTypes(config = {}) {
     table.set(id, m)
     return m
   }
-  // ★两种写法都收：对象 { id: meta } ／ 数组 ['id1','id2']（示例配置里写的是数组 ⇒ 必须认）
+  // 两种写法都收：对象 { id: meta } ／ 数组 ['id1','id2']（示例配置里写的是数组 ⇒ 必须认）
   //   数组里某一项写成 [id, meta] 也认（想给元数据又嫌对象啰嗦时用）
   const spec = config.types ?? SAMPLES
   const entries = Array.isArray(spec)

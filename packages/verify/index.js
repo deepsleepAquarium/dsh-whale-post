@@ -1,32 +1,32 @@
 /**
- * dsh-whale-post-verify —— 安全校验（信封验签 ＋ 名单白名单）★默认禁用（主人 2026-10-09 23:1x 定 ✓）
+ * dsh-whale-post-verify —— 安全校验（信封验签 ＋ 名单白名单）默认禁用（维护者 2026-10-09 23:1x 定）
  *
  * 接口：`ctx.whale.verify`（apiVersion 1）
  *   verify(letter) → { ok, why?, skipped? }   ← 核心只问这一句
  *   status()       → { enabled, dayIndex, willNag, allowCount, … }
- *   nag()          → string | null            ← ★该印提示就返回文案；不该印就返回 null
+ *   nag()          → string | null            ← 该印提示就返回文案；不该印就返回 null
  *   enable() / disable()
  *
- * ★三态设计（照主人原话 ✗；原文见 `docs/` 与缸内《上游记忆》✓）：
- *   ① **默认禁用** ✗ —— 未开启时 `verify()` 一律放行，但返回值里带 `skipped: true`
- *      （★让上层知道"这封没验过" ✓ —— 不许假装验过了 ✗）。
- *   ② **禁用中要提示** ✓ —— `nag()` 在未开启时返回一条醒目文案：
+ * 三态设计（照维护者原话；原文见 `docs/` 与班级内《上游记忆》）：
+ *   ① **默认禁用** —— 未开启时 `verify()` 一律放行，但返回值里带 `skipped: true`
+ *      （让上层知道"这封没验过" —— 不许假装验过了）。
+ *   ② **禁用中要提示** —— `nag()` 在未开启时返回一条醒目文案：
  *      "安全功能处于禁用中；建议开启，以免未知 agent 对其他 agent 发起欺骗或攻击" ＋ 一句开启方法。
- *   ③ ★**连提三天就不再提** ✗ —— 视为用户执意要在不安全的环境下使用；
- *      但 `status()` **永远**如实显示 `enabled: false`（★"不再提示"≠"关掉了安全" ✓）。
+ *   ③ **连提三天就不再提** —— 视为用户执意要在不安全的环境下使用；
+ *      但 `status()` **永远**如实显示 `enabled: false`（"不再提示"≠"关掉了安全"）。
  *
- * ★它守的两条线（与全仓一致 ✗）：
+ * 它守的两条线（与全仓一致）：
  *   · **只认接口，不认名字** —— 白名单来自 `config.allow`；代码里没有任何成员名。
  *   · **顶层零 I/O** —— 读盘只发生在 `createVerify()` 之后的方法调用里；异常一律自己吞。
  *
- * ★验签怎么算 ✗：优先用 `config.bus`（或 `ctx.whale.bus`）给的 `digest`／`sign` ——
+ * 验签怎么算：优先用 `config.bus`（或 `ctx.whale.bus`）给的 `digest`／`sign` ——
  *   这样它与核心**同一套算法**、不会各算各的；拿不到就用自己的内置实现（`sha256` ＋ `hmac`）。
- *   签名域与 `whale-bus` 的 `FIELD_ORDER` 一致（★`mode` 也在里面 ✓）。
+ *   签名域与 `whale-bus` 的 `FIELD_ORDER` 一致（`mode` 也在里面）。
  */
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'node:fs'
-/** ★同步睡一会儿（Atomics.wait 是本进程内唯一可靠的同步 sleep ✓）—— Windows `rename` 撞忙时退避用 ✓ */
-const sleepSync = (ms) => { try { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms) } catch { /* 环境不支持就算了 ✓ */ } }
+/** 同步睡一会儿（Atomics.wait 是本进程内唯一可靠的同步 sleep）—— Windows `rename` 撞忙时退避用 */
+const sleepSync = (ms) => { try { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms) } catch { /* 环境不支持就算了 */ } }
 import { join, dirname } from 'node:path'
 import { randomUUID } from 'node:crypto'
 
@@ -34,22 +34,22 @@ export const name = 'whale-verify'
 export const apiVersion = 1
 
 /**
- * ★★**兜底**签名域 ✗✓（2026-10-10 改名 —— ★**让名字说真话** ✓）
- *   ★它**只在"没接 `bus`"时才生效** ✓；★接了 `bus` ⇒ 用**它那份**（★实例上 `FIELD_ORDER` 就是当前生效的那份 ✓）。
- *   ★★为什么改名 ✗：★原来它就叫 `FIELD_ORDER` ✓ ⇒ ★**从外面看会以为它就是在用的那份** ✗ ——
- *     而★实际在用的是 `fieldsOf()` 的结果 ✓（★可以是 `bus` 那份、也可以是这份 ✓）★★"看着像真的、其实不是" ✓。
- *   ★（★这跟正本那句「**不许把推断说成声明**」是同一条精神 ✓ —— ★名字也是要负责任的 ✓）
- *   ⓘ `FIELD_ORDER` 这个名字**仍导出**（★别名 ✓ —— 老引用不会断 ✓）。
+ * **兜底**签名域 （2026-10-10 改名 —— **让名字说真话**）
+ *   它**只在"没接 `bus`"时才生效**；接了 `bus` ⇒ 用**它那份**（实例上 `FIELD_ORDER` 就是当前生效的那份）。
+ *   为什么改名：原来它就叫 `FIELD_ORDER` ⇒ **从外面看会以为它就是在用的那份** ——
+ *     而实际在用的是 `fieldsOf()` 的结果 （可以是 `bus` 那份、也可以是这份）"看着像真的、其实不是"。
+ *   （这跟设计文档那句「**不许把推断说成声明**」是同一条精神 —— 名字也是要负责任的）
+ *   ⓘ `FIELD_ORDER` 这个名字**仍导出**（别名 —— 老引用不会断）。
  */
 export const FALLBACK_FIELD_ORDER = ['v', 'kind', 'id', 'from', 'to', 'seq', 'subject', 'body', 'sha256', 'sentAtMs', 'type', 'mode', 're', 'hop']
-/** ★别名（向后兼容 ✓ —— 但**新代码请用 `FALLBACK_FIELD_ORDER`** 或**实例上的 `FIELD_ORDER`** ✓） */
+/** 别名（向后兼容 —— 但**新代码请用 `FALLBACK_FIELD_ORDER`** 或**实例上的 `FIELD_ORDER`**） */
 export const FIELD_ORDER = FALLBACK_FIELD_ORDER
 
 const DEFAULTS = {
   root: undefined,          // 信箱根（不传 ⇒ WHALE_POST_ROOT ⇒ 当前目录 .whale-mail）
-  enabled: false,           // ★默认禁用 —— 这是主人定的，不是"还没写" ✗
-  allow: [],                // ★白名单：允许的成员 id（空 ⇒ 不限制收件人）
-  nagDays: 3,               // ★连提几天就不再提（主人 2026-10-09：三天）
+  enabled: false,           // 默认禁用 —— 这是维护者定的，不是"还没写" 
+  allow: [],                // 白名单：允许的成员 id（空 ⇒ 不限制收件人）
+  nagDays: 3,               // 连提几天就不再提（维护者 2026-10-09：三天）
   dayBoundaryHour: 0,       // 日界（0 ＝ 自然日）
   keyFile: undefined,       // 共享钥匙文件（不传 ⇒ <root>/signing.key）
   keysDir: undefined,       // 每设备钥匙目录（不传 ⇒ <root>/keys）—— 按信封**声明的发件人**取钥
@@ -61,11 +61,11 @@ const sha256hex = (s) => createHash('sha256').update(String(s), 'utf8').digest('
 export function createVerify(config = {}) {
   const cfg = { ...DEFAULTS, ...config }
 
-  // ★时钟（独立审计 2026-10-09 抓出的坑 ✗）：
+  // 时钟（独立审计 2026-10-09 抓出的坑）：
   //   原来写的是 `typeof cfg.now === 'function' ? cfg.now() : Date.now()` ——
   //   于是**传数字**（很自然的用法）会被**静默忽略**、悄悄用"现在"⇒ 三天规则整个算错，
-  //   而且**不报错**（自测里五天全被算成同一天才发现 ✗）。
-  //   现在：函数与数字都收；★给了**无效值**不静默退化 —— 记进 `status().clockWarning` 出声 ✓。
+  //   而且**不报错**（自测里五天全被算成同一天才发现）。
+  //   现在：函数与数字都收；给了**无效值**不静默退化 —— 记进 `status().clockWarning` 出声。
   const _nowCfg = config.now
   let clockWarning = null
   const clockMs =
@@ -86,7 +86,7 @@ export function createVerify(config = {}) {
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
   }
 
-  // ── 状态（★顶层不读盘 —— 只在这些方法里读 ✓；坏文件一律退回默认，不炸 ✗）─────────
+  // ── 状态（顶层不读盘 —— 只在这些方法里读；坏文件一律退回默认，不炸）─────────
   function loadState() {
     try {
       const j = JSON.parse(readFileSync(stateFile(), 'utf8'))
@@ -105,7 +105,7 @@ export function createVerify(config = {}) {
     mkdirSync(dirname(file), { recursive: true })
     const tmp = `${file}.tmp-${randomUUID().slice(0, 8)}`
     writeFileSync(tmp, text, 'utf8')
-    // ★★同上（★Windows `rename` 会撞 EPERM／EBUSY ✓）：退避重试 ＋ 兜底直写 ✓
+    // 同上（Windows `rename` 会撞 EPERM／EBUSY）：退避重试 ＋ 兜底直写 
     for (let i = 0; i < 6; i += 1) {
       try { renameSync(tmp, file); return file } catch (err) {
         const busy = err && (err.code === 'EPERM' || err.code === 'EBUSY' || err.code === 'EACCES')
@@ -114,15 +114,15 @@ export function createVerify(config = {}) {
       }
     }
     writeFileSync(file, text, 'utf8')
-    try { unlinkSync(tmp) } catch { /* ✓ */ }
+    try { unlinkSync(tmp) } catch { /* */ }
     return file
   }
-  const saveState = (j) => { try { atomicWrite(stateFile(), JSON.stringify(j, null, 2)) } catch { /* 存不上不影响收信 ✗ */ } return j }
+  const saveState = (j) => { try { atomicWrite(stateFile(), JSON.stringify(j, null, 2)) } catch { /* 存不上不影响收信 */ } return j }
 
   const isEnabled = () => loadState().enabled || cfg.enabled === true
 
   // ── 钥匙 ────────────────────────────────────────────────────────────────
-  /** ★按**信封声明的发件人**取钥：有专用钥用专用钥，没有回落共享钥 ✓ */
+  /** 按**信封声明的发件人**取钥：有专用钥用专用钥，没有回落共享钥 */
   function keyFor(from) {
     try {
       const p = keyOfFile(String(from))
@@ -141,29 +141,29 @@ export function createVerify(config = {}) {
   }
 
   // ── 验签 ────────────────────────────────────────────────────────────────
-  /** 摘要／签名：优先借 `bus` 的实现（同一个算法，不各算各的）✓ */
+  /** 摘要／签名：优先借 `bus` 的实现（同一个算法，不各算各的）*/
   const digestOf = (body) => (typeof cfg.bus?.digest === 'function' ? cfg.bus.digest(body) : sha256hex(body))
   /**
-   * ★密钥的用法必须与 `bus.sign` **逐字节一致**（集成测试 07-10 抓出的 bug ✗）：
+   * 密钥的用法必须与 `bus.sign` **逐字节一致**（集成测试 07-10 抓出的 bug）：
    *   bus 用的是 `Buffer.from(keyHex(), 'hex')` —— 把 64 位 hex **解码成 32 字节**再当 HMAC 密钥；
    *   原来这里直接拿 hex 字符串当密钥 ⇒ 两边密钥不同 ⇒ **算出来的签名永远不符**，
-   *   而各自的自测都自洽（自测里造信也用字符串）⇒ **全绿但一接就炸** ✓。
+   *   而各自的自测都自洽（自测里造信也用字符串）⇒ **全绿但一接就炸**。
    */
   const keyBuf = (key) => (/^[0-9a-f]{64}$/i.test(String(key)) ? Buffer.from(String(key), 'hex') : Buffer.from(String(key), 'utf8'))
   /**
-   * ★★★签名域**只有一套真相** ✗✓（2026-10-10 修）——
-   *   ★病 ✗：★这份文件**抄了一份 `FIELD_ORDER`** ✓（★注释还写着"与 `whale-bus` 的 `FIELD_ORDER` 一致" ✓），
-   *     而★**两套名单会漂移** ✓：★我在 `bus` 里加了 `peerStateAtSend` 等字段 ⇒
-   *     ★这边却把它判成"**未登记字段**" ⇒ ★**一封完全合法的信被拒收、挪进退信** ✗✓。
-   *   ★★★ ⇒ ★★**传了 `cfg.bus` 就认它那份** ✓（★本文件那份只剩"没接 bus 时的兜底" ✓）；
-   *   ★★这才是"一套真相"的写法 ✓（★"两边都写一份"再怎么写注释都会漂 ✓）。
+   * 签名域**只有一套真相** （2026-10-10 修）——
+   *   病：这份文件**抄了一份 `FIELD_ORDER`** （注释还写着"与 `whale-bus` 的 `FIELD_ORDER` 一致"），
+   *     而**两套名单会漂移**：我在 `bus` 里加了 `peerStateAtSend` 等字段 ⇒
+   *     这边却把它判成"**未登记字段**" ⇒ **一封完全合法的信被拒收、挪进退信**。
+   *   ⇒ **传了 `cfg.bus` 就认它那份** （本文件那份只剩"没接 bus 时的兜底"）；
+   *   这才是"一套真相"的写法 （"两边都写一份"再怎么写注释都会漂）。
    */
   const fieldsOf = () => {
-    // ★优先用**注入的延迟函数** ✓（★`() => bus.FIELD_ORDER` —— ★函数体延迟求值 ⇒ 天然躲过暂时性死区 ✓）
-    try { const f = cfg.bus?.fields?.(); if (Array.isArray(f) && f.length) return f } catch { /* 还没建好 ⇒ 往下兜底 ✓ */ }
-    // ★其次认**直接给的数组** ✓（★谁直接传就认谁 ✓）
+    // 优先用**注入的延迟函数** （`() => bus.FIELD_ORDER` —— 函数体延迟求值 ⇒ 天然躲过暂时性死区）
+    try { const f = cfg.bus?.fields?.(); if (Array.isArray(f) && f.length) return f } catch { /* 还没建好 ⇒ 往下兜底 */ }
+    // 其次认**直接给的数组** （谁直接传就认谁）
     if (Array.isArray(cfg.bus?.FIELD_ORDER) && cfg.bus.FIELD_ORDER.length) return cfg.bus.FIELD_ORDER
-    // ★最后才是**本文件那份兜底** ✓（★没接 bus 时用 ✓ —— ★它**不该**成为第二套真相 ✓）
+    // 最后才是**本文件那份兜底** （没接 bus 时用 —— 它**不该**成为第二套真相）
     return FIELD_ORDER
   }
   function macOf(env, key) {
@@ -175,31 +175,31 @@ export function createVerify(config = {}) {
   }
 
   /**
-   * ★核心只问这一句 ✗。
-   * ★禁用时：放行，但带 `skipped: true`（★不许假装验过 ✓）。
-   * ★开启时：fail-closed —— 缺字段／未登记字段／摘要不符／签名不符／不在白名单 ⇒ 一律 `ok:false`。
+   * 核心只问这一句。
+   * 禁用时：放行，但带 `skipped: true`（不许假装验过）。
+   * 开启时：fail-closed —— 缺字段／未登记字段／摘要不符／签名不符／不在白名单 ⇒ 一律 `ok:false`。
    */
   function verify(letter) {
     if (!isEnabled()) return { ok: true, skipped: true, why: '安全校验处于**禁用**状态（未开启 ⇒ 这封没有验过）' }
     try {
       const env = letter ?? {}
-      // ① 白名单（★只在配了 allow 时才管 ✓）
+      // ① 白名单（只在配了 allow 时才管）
       const allow = Array.isArray(cfg.allow) ? cfg.allow.map(String) : []
       if (allow.length > 0 && !allow.includes(String(env.from))) {
         return { ok: false, why: `发件人不在白名单里：${env.from}` }
       }
-      // ② 必填字段（★**分 kind**：hello／ack 信封没有正文 ⇒ 没有 seq／sha256
+      // ② 必填字段（**分 kind**：hello／ack 信封没有正文 ⇒ 没有 seq／sha256
       //    —— 口径与 bus.verify 一致；07-10 集成测试抓出的 bug：原来无条件要 sha256 ⇒
-      //    一开启安全校验，连"握手（hello）"都被判不过 ⇒ 整条链发不出信 ✗）
+      //    一开启安全校验，连"握手（hello）"都被判不过 ⇒ 整条链发不出信）
       const base = ['v', 'kind', 'id', 'from', 'to']
       const need = env.kind === 'msg' ? [...base, 'seq', 'sha256'] : base
       for (const k of need) {
         if (env[k] === undefined || env[k] === null) return { ok: false, why: `信封缺字段：${k}` }
       }
-      // ③ 不许有未登记字段（★加字段忘了进签名域＝那个字段可被随便改 ✓）
+      // ③ 不许有未登记字段（加字段忘了进签名域＝那个字段可被随便改）
       const unknown = Object.keys(env).filter((k) => !fieldsOf().includes(k) && k !== 'mac')
       if (unknown.length) return { ok: false, why: `信封里有未登记字段：${unknown.join(',')}` }
-      // ④ 摘要（★只有"信"有正文 ⇒ 只对 kind==='msg' 查；hello／ack 不查 ✓）
+      // ④ 摘要（只有"信"有正文 ⇒ 只对 kind==='msg' 查；hello／ack 不查）
       if (env.kind === 'msg' && digestOf(env.body ?? '') !== env.sha256) {
         return { ok: false, why: '正文摘要不符（body 被改过）' }
       }
@@ -222,7 +222,7 @@ export function createVerify(config = {}) {
     '建议开启，以免未知 agent 对其他 agent 发起欺骗或攻击。\n' +
     '开启方法：在 profile 的配置里给 dsh-whale-post-verify 传 enabled: true（并配好 keys/ 或 signing.key）。'
 
-  /** ★它只回答"现在该不该印"，不替核心决定任何别的事 ✓ */
+  /** 它只回答"现在该不该印"，不替核心决定任何别的事 */
   function nag() {
     if (isEnabled()) return null
     const st = loadState()
@@ -231,7 +231,7 @@ export function createVerify(config = {}) {
       const next = saveState({ ...st, firstSeenDay: today, nagDays: [today] })
       return next.nagDays.length <= Number(cfg.nagDays) ? nagText() : null
     }
-    if (st.nagDays.includes(today)) return null                      // ★今天已经提过，不再重复 ✓
+    if (st.nagDays.includes(today)) return null                      // 今天已经提过，不再重复 
     const next = saveState({ ...st, nagDays: [...st.nagDays, today] })
     return next.nagDays.length <= Number(cfg.nagDays) ? nagText() : null
   }
@@ -251,7 +251,7 @@ export function createVerify(config = {}) {
       todayNagged: st.nagDays.includes(today),
       allowCount: Array.isArray(cfg.allow) ? cfg.allow.length : 0,
       stateFile: stateFile(),
-      clockWarning,          // ★时钟取值无效时在这里出声（不静默退化 ✗）
+      clockWarning,          // 时钟取值无效时在这里出声（不静默退化）
       apiVersion,
     }
   }
@@ -266,17 +266,17 @@ export function createVerify(config = {}) {
   }
 
   return { apiVersion, verify, nag, status, enable, disable, cfg, localDay, keyFor, digestOf,
-    // ★★★"当前生效的签名域"用**函数**给，**不暴露数组** ✗✓（2026-10-10）——
-    //   ★★为什么 ✗：★`FIELD_ORDER: fieldsOf()` 这种写法是**立即求值** ✓ ⇒ ★**在 `createVerify` 那一刻就定死了** ✓，
-    //     而★`bus` 往往**之后**才建好 ✓ ⇒ ★拿到的其实是**兜底那份** ⇒ ★★**"看着像当前生效的，其实是快照"** ✗✓
-    //     （★这个坑我在**同一轮里栽了两次** ✓ —— ★`cli` 那边 `services.busRef?.FIELD_ORDER` 也是它 ✓）。
-    //   ⇒ ★给一个**函数**：★谁要就**当场问** ✓（★要的是"现在这份"，不是"我刚建出来时那份" ✓）。
+    // "当前生效的签名域"用**函数**给，**不暴露数组** （2026-10-10）——
+    //   为什么：`FIELD_ORDER: fieldsOf()` 这种写法是**立即求值** ⇒ **在 `createVerify` 那一刻就定死了**，
+    //     而`bus` 往往**之后**才建好 ⇒ 拿到的其实是**兜底那份** ⇒ **"看着像当前生效的，其实是快照"** 
+    //     （这个坑我在**同一轮里栽了两次** —— `cli` 那边 `services.busRef?.FIELD_ORDER` 也是它）。
+    //   ⇒ 给一个**函数**：谁要就**当场问** （要的是"现在这份"，不是"我刚建出来时那份"）。
     fields: () => fieldsOf(),
-    /** ★兜底那份（★名字说真话 ✓ —— 它**不是**当前生效那份，除非没接 `bus` ✓） */
+    /** 兜底那份（名字说真话 —— 它**不是**当前生效那份，除非没接 `bus`） */
     FALLBACK_FIELD_ORDER }
 }
 
-/** 插件入口：挂进 Cordis 风格的 ctx（拿不到容器也能被 CLI 直接 import 使用 ✓） */
+/** 插件入口：挂进 Cordis 风格的 ctx（拿不到容器也能被 CLI 直接 import 使用） */
 export function apply(ctx, config = {}) {
   const bus = ctx?.get?.('whale.bus')
   const v = createVerify({ ...config, bus })

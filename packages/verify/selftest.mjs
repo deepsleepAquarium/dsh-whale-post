@@ -2,9 +2,9 @@
  * dsh-whale-post-verify 的加载级自测：真的 import、真的 apply、真的走三态与验签。
  * 判据看退出码：0 过／非 0 不过。
  *
- * ★覆盖四组：
- *   ① 加载级与接口形状  ② ★三态设计（默认禁用／提示／连提三天／开启后不再提）
- *   ③ 验签 fail-closed（摘要／签名／未登记字段／缺字段／白名单／★冒名）
+ * 覆盖四组：
+ *   ① 加载级与接口形状  ② 三态设计（默认禁用／提示／连提三天／开启后不再提）
+ *   ③ 验签 fail-closed（摘要／签名／未登记字段／缺字段／白名单／冒名）
  *   ④ 防泄露（代码里没有写死成员名）＋ 坏输入不炸
  */
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs'
@@ -23,7 +23,7 @@ const KEY_B = 'b'.repeat(64)
 const digest = (s) => createHash('sha256').update(String(s), 'utf8').digest('hex')
 const mac = (env, key) => {
   const canonical = JSON.stringify(FIELD_ORDER.filter((k) => env[k] !== undefined).map((k) => [k, env[k]]))
-  // ★密钥用法必须与 bus.sign 一致：64 位 hex ⇒ 解码成 32 字节（否则"自测自洽、一接就炸"）
+  // 密钥用法必须与 bus.sign 一致：64 位 hex ⇒ 解码成 32 字节（否则"自测自洽、一接就炸"）
   const buf = /^[0-9a-f]{64}$/i.test(String(key)) ? Buffer.from(String(key), 'hex') : Buffer.from(String(key), 'utf8')
   return createHmac('sha256', buf).update(canonical, 'utf8').digest('hex')
 }
@@ -99,20 +99,20 @@ try {
   check('验签：白名单里有发件人 ⇒ 过', mk({ enabled: true, now: t0, allow: ['alice'] }).verify(good).ok === true)
   check('验签：白名单空数组 ⇒ 不限制', mk({ enabled: true, now: t0, allow: [] }).verify(good).ok === true)
 
-  // ★★ 冒名：拿 bob 的钥匙签"发件人＝alice" ⇒ 必须不过（每设备钥匙的核心价值）
+  // 冒名：拿 bob 的钥匙签"发件人＝alice" ⇒ 必须不过（每设备钥匙的核心价值）
   const forged = letter({ from: 'alice' }, KEY_B)
   const rForge = on.verify(forged)
   check('★★冒名：用别人的钥匙签我的名字 ⇒ 必须不过', rForge.ok === false, JSON.stringify(rForge))
   // 而 bob 用 bob 的钥匙签自己 ⇒ 过
   check('冒名对照：bob 用 bob 的钥匙签自己 ⇒ 过', on.verify(letter({ from: 'bob' }, KEY_B, 'bob')).ok === true)
 
-  // ★ 没有专用钥 ⇒ 回落共享钥
+  // 没有专用钥 ⇒ 回落共享钥
   writeFileSync(join(tmp, 'signing.key'), 'c'.repeat(64) + '\n', 'utf8')
   const noDedicated = createVerify({ root: tmp, enabled: true, now: t0, keysDir: join(tmp, 'nokeys'), keyFile: join(tmp, 'signing.key') })
   check('回落：没有专用钥时用共享钥（★老信老成员一字不改）', noDedicated.verify(letter({}, 'c'.repeat(64), 'carol')).ok === true)
   check('回落对照：共享钥签的人，专用钥目录里没有 ⇒ 仍过', noDedicated.verify(letter({}, 'c'.repeat(64), 'carol')).ok === true)
 
-  // ★★ 集成测试抓出的真 bug（2026-10-10 凌晨）：开启安全**之后连 `hello` 都被判不过** ✗
+  // 集成测试抓出的真 bug（2026-10-10 凌晨）：开启安全**之后连 `hello` 都被判不过** 
   //   ⇒ 因为原实现无条件要求 seq／sha256，而 hello／ack 没有正文 ⇒ 整条链"握手都不成立"、发不出信。
   //   这几条判据钉住"与 bus.verify 同口径"：只有 kind==='msg' 才查 seq／sha256 与正文摘要。
   const helloEnv = { v: 1, kind: 'hello', id: 'h-1', from: 'alice', to: 'bob' }
@@ -124,15 +124,15 @@ try {
   check('对照：msg 信封缺 sha256 ⇒ 仍判不过（该严的还是要严）', on.verify({ ...good, sha256: undefined }).ok === false)
   check('对照：hello 信封签名被改 ⇒ 仍判不过（不是"什么都不查"）', on.verify({ ...helloEnv, mac: helloEnv.mac.slice(0, -1) + '0' }).ok === false)
 
-  // ★★ 与 bus **互验**（集成测试 07-10 抓出的 bug：两边算签名用的密钥形状不一致
-  //   ⇒ 各自自测全绿、一接上就"签名不符"⇒ 整条链发不出信 ✗）。
+  // 与 bus **互验**（集成测试 07-10 抓出的 bug：两边算签名用的密钥形状不一致
+  //   ⇒ 各自自测全绿、一接上就"签名不符"⇒ 整条链发不出信）。
   //   判据：**用真 bus 造一个真信封**，再看 verify 包认不认 —— 这才叫"能接上"。
   const xroot = join(tmp, 'cross-check')
   mkdirSync(xroot, { recursive: true })
   const busX = createBus({ root: xroot, services: {} })
   busX.hello({ as: 'alice' })
   const realHello = JSON.parse(readFileSync(join(xroot, 'hello', 'alice.json'), 'utf8'))
-  // ★用空 keysDir ⇒ 强制回落到共享钥（<xroot>/signing.key，由 bus 首用时生成）
+  // 用空 keysDir ⇒ 强制回落到共享钥（<xroot>/signing.key，由 bus 首用时生成）
   const vX = createVerify({ root: xroot, enabled: true, keysDir: join(xroot, '没有这个目录') })
   const rx = vX.verify(realHello)
   check('★★与 bus 互验：真 bus 造的 hello 信封 ⇒ verify 包认得出（同一把共享钥）', rx.ok === true, JSON.stringify(rx))
@@ -156,22 +156,22 @@ try {
   const vb2 = createVerify({ root: join(tmp, '不存在'), enabled: false, now: t0 })
   check('坏输入：根目录不存在 ⇒ 不炸', vb2.status().enabled === false && vb2.nag() !== null)
 
-  // ★★★签名域**只有一套真相** ✗✓（2026-10-10 修）——
-  //   ★病：★本包原来自己抄了一份 `FIELD_ORDER` ✓ ⇒ ★而"两边都写一份"再怎么写注释都会**漂** ✓：
-  //     ★`bus` 加了 `peerStateAtSend` 等字段 ⇒ ★本包把它判成"**未登记字段**"
-  //     ⇒ ★**一封完全合法的信被拒收、当场挪进退信** ✗（★实测抓出来的：`cli` 自测红 ✓）。
-  //   ★方：★**接了 `bus` 就认它那份** ✓ —— ★用**延迟函数**读（★函数体延迟 ⇒ 躲过暂时性死区 ✓）。
+  // 签名域**只有一套真相** （2026-10-10 修）——
+  //   病：本包原来自己抄了一份 `FIELD_ORDER` ⇒ 而"两边都写一份"再怎么写注释都会**漂**：
+  //     `bus` 加了 `peerStateAtSend` 等字段 ⇒ 本包把它判成"**未登记字段**"
+  //     ⇒ **一封完全合法的信被拒收、当场挪进退信** （实测抓出来的：`cli` 自测红）。
+  //   方：**接了 `bus` 就认它那份** —— 用**延迟函数**读（函数体延迟 ⇒ 躲过暂时性死区）。
   const ref = {}
   const vf = createVerify({ root: tmp, enabled: true, keysDir: join(tmp, 'keys'), bus: { fields: () => ref.bus?.FIELD_ORDER } })
-  ref.bus = { FIELD_ORDER: [...FIELD_ORDER, 'brandNewFieldFromBus'] }     // ★模拟"bus 那边加了字段"
+  ref.bus = { FIELD_ORDER: [...FIELD_ORDER, 'brandNewFieldFromBus'] }     // 模拟"bus 那边加了字段"
   check('★★一套真相：接了 `bus` ⇒ 用**它**那份（★新字段不再被判"未登记" ✓）',
     (() => {
       const r = vf.verify({ v: 1, kind: 'msg', id: 'x1', from: 'a', to: 'b', seq: 1, body: 'b', sentAtMs: Date.now(), brandNewFieldFromBus: 'ok' })
       return !(r.ok === false && /未登记字段/.test(String(r.why)))
     })())
-  // ★★"当前生效那份"用**函数**问 ✗✓（2026-10-10）——
-  //   ★为什么不是暴露数组：★那会是**实例化那一刻的快照** ✓，而 `bus` 往往**之后**才建好 ✓
-  //     ⇒ ★"看着像当前生效的，其实是旧的" ✗（★这个坑我在同一轮里栽了两次 ✓）。
+  // "当前生效那份"用**函数**问 （2026-10-10）——
+  //   为什么不是暴露数组：那会是**实例化那一刻的快照**，而 `bus` 往往**之后**才建好 
+  //     ⇒ "看着像当前生效的，其实是旧的" （这个坑我在同一轮里栽了两次）。
   check('★★一套真相：`fields()` 是**当场问**的结果（★接了 bus ⇒ 就是 bus 那份 ✓）',
     JSON.stringify(vf.fields()) === JSON.stringify(ref.bus.FIELD_ORDER),
     `fields=${vf.fields().length} bus=${ref.bus.FIELD_ORDER.length}`)
@@ -180,9 +180,9 @@ try {
   check('★一套真相：**没接** bus ⇒ 用本包兜底那份（★不含 bus 的新字段 ⇒ 退回原行为 ✓）',
     (() => {
       const v2 = createVerify({ root: tmp, enabled: true, keysDir: join(tmp, 'keys') })
-      //   ⓘ ★这里**直接判表**，不判 `verify()` 的返回值 ✗ ——
-      //     ★我第一版判的是 `r.ok === false && /未登记字段/` ⇒ ★而它**先被"签名不符"拦住了**
-      //     （★那封信本来就签不出正确 MAC ✓）⇒ `why` 里没有"未登记" ⇒ **假红** ✓（★又一次"判据写得比事实窄" ✓）。
+      //   ⓘ 这里**直接判表**，不判 `verify()` 的返回值 ——
+      //     我第一版判的是 `r.ok === false && /未登记字段/` ⇒ 而它**先被"签名不符"拦住了**
+      //     （那封信本来就签不出正确 MAC）⇒ `why` 里没有"未登记" ⇒ **假红** （又一次"判据写得比事实窄"）。
       return !v2.fields().includes('brandNewFieldFromBus')
     })())
 } catch (err) {

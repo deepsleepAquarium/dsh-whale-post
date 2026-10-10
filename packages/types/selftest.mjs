@@ -23,7 +23,7 @@ try {
   // ② 未注册的类型 ⇒ resolve 返回 undefined（⇒ 上层当场拒发）
   check('未注册：resolve 返回 undefined（不猜、不兜底）', types.resolve('没注册的类型') === undefined)
 
-  // ③ ★可扩展：加一个新类型，核心一行都不用动（这就是"接口化"的可执行证明）
+  // ③ 可扩展：加一个新类型，核心一行都不用动（这就是"接口化"的可执行证明）
   const before = readFileSync(new URL('./index.js', import.meta.url), 'utf8')
   types.register('urgent-ish', { label: '急件（样例）', urgent: true, priority: 10 })
   check('扩展：新注册的类型能查到', types.resolve('urgent-ish')?.urgent === true)
@@ -34,7 +34,7 @@ try {
   check('坏输入：register("") ⇒ 抛（不当成默认类型）', (() => { try { types.register(''); return false } catch { return true } })())
   check('坏输入：resolve(null) ⇒ undefined（不炸）', types.resolve(null) === undefined)
 
-  // ④b ★数组写法（示例配置里就是 `types: [direct, broadcast, club]`）必须真注册出这三个 id
+  // ④b 数组写法（示例配置里就是 `types: [direct, broadcast, club]`）必须真注册出这三个 id
   const arr = createTypes({ types: ['direct', 'broadcast', 'club'] })
   check('数组写法：注册出 direct／broadcast／club（不是 "0"/"1"/"2"）',
     JSON.stringify(arr.list().map((x) => x.id).sort()) === JSON.stringify(['broadcast', 'club', 'direct']),

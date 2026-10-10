@@ -1,5 +1,5 @@
 /**
- * dsh-whale-post-deliver 的加载级自测 —— ★这一件管的是"信会不会丢"。
+ * dsh-whale-post-deliver 的加载级自测 —— 这一件管的是"信会不会丢"。
  * 判据看退出码：0 过／非 0 不过。
  */
 import { apply, createDeliver, apiVersion } from './index.js'
@@ -28,10 +28,10 @@ try {
   check('在线 ＋ 有会话 ⇒ delivered', v === 'delivered', v)
   check('在线 ＋ 有会话 ⇒ 真的注入了一次', injected.length === 1 && injected[0].includes('在线邮件'), JSON.stringify(injected))
 
-  // ③ ★只投活体：对方没有会话 ⇒ kept（信留着，绝不丢）
+  // ③ 只投活体：对方没有会话 ⇒ kept（信留着，绝不丢）
   check('在线 ＋ 没会话 ⇒ kept（信只会晚到，不会不到）', deliver.deliver(letter({ to: 'bob', mode: 'online' }), { targets: ['bob'] }) === 'kept')
 
-  // ④ ★注入失败 ⇒ 也 kept（绝不许因为"投不进去"就把信丢掉）
+  // ④ 注入失败 ⇒ 也 kept（绝不许因为"投不进去"就把信丢掉）
   const thrower = createDeliver({ sessionOf: () => ({ live: true, inject: () => { throw new Error('会话炸了') } }) })
   check('注入抛异常 ⇒ kept（信不丢）', thrower.deliver(letter({ mode: 'online' }), { targets: ['bob'] }) === 'kept')
 
@@ -47,15 +47,15 @@ try {
   const bare = createDeliver({})
   check('没有会话探针 ⇒ 一律 kept（保守优先）', bare.deliver(letter({ mode: 'online' }), { targets: ['bob'] }) === 'kept')
 
-  // ⑧ ★"活着"与"能投"是两件事（独立审计 2026-10-05 的变异点）：探针说 `live:false` 却给了 inject
+  // ⑧ "活着"与"能投"是两件事（独立审计 2026-10-05 的变异点）：探针说 `live:false` 却给了 inject
   //    ⇒ 仍**不许**投 —— 不许拿"有 inject"替代"会话活着"
   const halfLive = createDeliver({ sessionOf: () => ({ live: false, inject: () => { throw new Error('不该被调用') } }) })
   check('live:false 但给了 inject ⇒ 仍 kept（不许用 inject 顶替"活着"）', halfLive.deliver(letter({ mode: 'online' }), { targets: ['bob'] }) === 'kept')
 
-  // ★★S10 v2 休眠判定（2026-10-10 从缸里正本移植）——
-  //   ★v1 的教训：**不许拿「邮差还活着」当「它在读信」**（缸里小毛咪的邮差每 10 分钟续 hello，可她本人不读信）
-  //   ⇒ ① 明示位（declared）② **推断**（★信箱里最老的一封没读的信躺了多久 —— 这才是"没读信"的明证）
-  //   ⚠️ ★**没有积压 ⇒ 不许判休眠** ✗；★**不知道就说 `unknown`** ✗（不许把"不知道"说成"休眠" ✓）
+  // S10 v2 休眠判定（2026-10-10 从班级里设计文档移植）——
+  //   v1 的教训：**不许拿「邮差还活着」当「它在读信」**（班级里小毛咪的邮差每 10 分钟续 hello，可她本人不读信）
+  //   ⇒ ① 明示位（declared）② **推断**（信箱里最老的一封没读的信躺了多久 —— 这才是"没读信"的明证）
+  //   ⚠️ **没有积压 ⇒ 不许判休眠**；**不知道就说 `unknown`** （不许把"不知道"说成"休眠"）
   const DAY = 24 * 3600 * 1000
   const NOW = Date.parse('2026-10-10T02:00:00Z')
   const mkD = (oldestDays, declared) => createDeliver({
@@ -78,7 +78,7 @@ try {
     createDeliver({ dormantSoftDays: 1, dormantHardDays: 2, now: () => NOW, oldestPendingMs: () => NOW - 3 * DAY }).dormancyOf('bob').state === 'dormant')
   check('★★休眠：明示位**优先于**推断（积压 0 天但被明确标了 ⇒ 仍是 dormant/declared）',
     (() => { const d = mkD(null, true).dormancyOf('sleepy'); return d.state === 'dormant' && d.source === 'declared' })())
-  // ★明示休眠的收件人 ⇒ 退回（与核心同口径：--force 也不豁免）
+  // 明示休眠的收件人 ⇒ 退回（与核心同口径：--force 也不豁免）
   check('★休眠：明示休眠的收件人 ⇒ rejected（退回）',
     mkD(0, true).deliver(letter({ to: 'sleepy', mode: 'online' }), { targets: ['sleepy'] }) === 'rejected')
   check('★休眠：**只是安静**（inferred quiet）⇒ 不退回（★不许自己猜休眠 ✗）',

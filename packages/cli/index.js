@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * dsh-whale-post-cli —— 零依赖命令行（★它是**入口工具**，不是插件）
+ * dsh-whale-post-cli —— 零依赖命令行（它是**入口工具**，不是插件）
  *
  *   whale-post hello  --as alice
  *   whale-post send   --as alice --to bob --subject 主题 --body 正文 [--mode online|offline]
@@ -8,19 +8,19 @@
  *                     [--live bob,carol]     # 哪些收件人此刻有"活体会话"（在线件才会真投出去）
  *   whale-post pump   --as bob [--keep]      # 收信（默认消费：搬进 seen ＋ 写 ack）
  *   whale-post pickup --as web --remote <别处的信箱根>
- *                                            # ★去**别的信箱根**把自己的信取回来（★离线也能用）
+ *                                            # 去**别的信箱根**把自己的信取回来（离线也能用）
  *                                            #   远端根也可用环境变量 WHALE_POST_REMOTE_ROOT
  *   whale-post quota  --as alice [--days 7]
  *   whale-post roster / types / key / selftest
  *
- * 通用参数：`--root <目录>`（★默认 `./.whale-mail`，或环境变量 `WHALE_POST_ROOT`）
+ * 通用参数：`--root <目录>`（默认 `./.whale-mail`，或环境变量 `WHALE_POST_ROOT`）
  *          `--only-offline <属性名>`：带此属性的成员**只收离线**（对它发在线 ⇒ 拒发）
  *          `--dormant <属性名>`：带此属性的成员被**明确**标成休眠（发信 ⇒ 当场拒发，不合信箱）
- *          `--no-gate`：★整套闸都不要（★并发压测用 ✓ —— 压测要看的是"发号撞不撞"，不是"闸拦不拦" ✓）
- *          `--only-offline <属性名>`（pickup 用）：★只镜像"只收离线成员"的 hello ✓
- *          `--account`（pickup 用）：★取件时**替发件人记账** ✓（★远端自己记过就别开 —— 那会**双记** ✗）
+ *          `--no-gate`：整套闸都不要（并发压测用 —— 压测要看的是"发号撞不撞"，不是"闸拦不拦"）
+ *          `--only-offline <属性名>`（pickup 用）：只镜像"只收离线成员"的 hello 
+ *          `--account`（pickup 用）：取件时**替发件人记账** （远端自己记过就别开 —— 那会**双记**）
  * 退出码：0 ＝ 成功；2 ＝ 拒发／输入不合法；1 ＝ 没料到的错。
- * ★判据看**退出码**，不要看输出里的中文。
+ * 判据看**退出码**，不要看输出里的中文。
  */
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync, renameSync, unlinkSync, statSync, utimesSync } from 'node:fs'
 import { join } from 'node:path'
@@ -42,20 +42,20 @@ const flag = (name) => argv.includes(`--${name}`)
 const die = (code, msg) => { if (msg) console.error(msg); process.exit(code) }
 
 /**
- * ★★探活：动"邮筒"之前先看它活着没 ✗（S12 断线不卡死 · 2026-10-10 从缸里正本移植 ✓）
+ * 探活：动"邮筒"之前先看它活着没 （S12 断线不卡死 · 2026-10-10 从班级里设计文档移植）
  *
- * ★病（正本原话）✗：★「**SMB 掉线时同步 fs 调用会挂住几十秒** ✗（本地盘不会 ✓）
- *   ⇒ `pickup` 会卡住、发信也会卡住 ✓」
- * ★方（三条口径 ✓）：
- *   ① ★**本机路径不用探** ✓（人造邮筒／盘上的目录 ⇒ 直接算通 ✓）；
- *   ② ★**只看 TCP 445 通不通** ✓ —— 不碰盘、不做 IO ✓；
- *   ③ ★★**Node 的同步 fs 自己没有超时** ✗ ⇒ 只能靠「**子进程 ＋ timeout**」拿到上限 ✓
- *      （★最后一招是兜底、不是主力：真正快的是那个 1.2 秒的 `net.connect` 超时 ✓）。
- * ⚠️ 缓存**按根字符串**存 ✓ —— ★换根就重探 ✓（"免得缓存说了谎" ✓）。
+ * 病（设计文档原话）：「**SMB 掉线时同步 fs 调用会挂住几十秒** （本地盘不会）
+ *   ⇒ `pickup` 会卡住、发信也会卡住 」
+ * 方（三条口径）：
+ *   ① **本机路径不用探** （人造邮筒／盘上的目录 ⇒ 直接算通）；
+ *   ② **只看 TCP 445 通不通** —— 不碰盘、不做 IO；
+ *   ③ **Node 的同步 fs 自己没有超时** ⇒ 只能靠「**子进程 ＋ timeout**」拿到上限 
+ *      （最后一招是兜底、不是主力：真正快的是那个 1.2 秒的 `net.connect` 超时）。
+ * ⚠️ 缓存**按根字符串**存 —— 换根就重探 （"免得缓存说了谎"）。
  */
 const _remoteAlive = new Map()
 function remoteAlive(rootPath, force = false) {
-  if (!/^\\\\/.test(String(rootPath ?? ''))) return true     // ★本机路径 ⇒ 不用探 ✓
+  if (!/^\\\\/.test(String(rootPath ?? ''))) return true     // 本机路径 ⇒ 不用探 
   const r = String(rootPath)
   if (!force && _remoteAlive.has(r)) return _remoteAlive.get(r)
   const host = (r.match(/^\\+([^\\]+)/) ?? [, ''])[1]
@@ -69,17 +69,17 @@ function remoteAlive(rootPath, force = false) {
   return ok
 }
 
-/** 把接口件拼起来（★核心只认接口，这里就是"接线"） */
+/** 把接口件拼起来（核心只认接口，这里就是"接线"） */
 /**
- * ★★★"钉"——把**推断的休眠**升格成**明示的休眠** ✗✓（2026-10-10 从正本移植；★正本判据 106 ✓）
+ * "钉"——把**推断的休眠**升格成**明示的休眠** （2026-10-10 从设计文档移植；设计文档判据 106）
  *
- * ★正本原话 ✗：★"推断休眠**不自动退** ✗ —— 否则'退了 ⇒ 证据没了 ⇒ 又判活跃'**来回摆** ✗；
- *   ★要真退就**先钉** —— ★**钉了才是明示** ✓、才稳 ✓"
- * ★★根子 ✗✓：★那是"用**同一个信号**既当**证据**、又当**动作**" ✓ —— ★信号既是"它不读信"的**证据**，
- *   又是"把信退掉"的**动作** ⇒ ★**动作会毁掉证据** ⇒ ★系统**来回摆** ✓。
- * ★★★"钉"就是把它们分开 ✗✓：★★ **推断永远是推断**（`source: 'inferred'` ✓），
- *   ★而**"钉"是一个人的决定** ✓ ⇒ ★落盘留痕（**谁／为什么／什么时候** ✓）⇒ ★从此那条算 `declared` ✓。
- * ★为什么必须留痕 ✗：★因为它**是一个决定** ✓ —— ★"谁做的决定，写谁" ✓（★跟署名那条一脉 ✓）。
+ * 设计文档原话："推断休眠**不自动退** —— 否则'退了 ⇒ 证据没了 ⇒ 又判活跃'**来回摆**；
+ *   要真退就**先钉** —— **钉了才是明示**、才稳 "
+ * 根子：那是"用**同一个信号**既当**证据**、又当**动作**" —— 信号既是"它不读信"的**证据**，
+ *   又是"把信退掉"的**动作** ⇒ **动作会毁掉证据** ⇒ 系统**来回摆**。
+ * "钉"就是把它们分开：**推断永远是推断**（`source: 'inferred'`），
+ *   而**"钉"是一个人的决定** ⇒ 落盘留痕（**谁／为什么／什么时候**）⇒ 从此那条算 `declared`。
+ * 为什么必须留痕：因为它**是一个决定** —— "谁做的决定，写谁" （跟署名那条一脉）。
  */
 const pinnedFile = (r) => join(r, 'state', 'pinned-dormant.json')
 function readPinned(r) {
@@ -94,9 +94,9 @@ function writePinned(r, pinned) {
 }
 
 /**
- * ★★"根"只有**一处解析** ✗✓（2026-10-10 抽出来）——
- *   ★原来只在 `wire()` 里那一行 ✓ ⇒ ★而 `dormant` 子命令也要知道根（★"钉"存在根下 ✓）
- *     ⇒ ★抽成一个函数，两边共用 ✓（★"同一件事只写一份" —— 就是这几轮一直在清的那种病 ✓）。
+ * "根"只有**一处解析** （2026-10-10 抽出来）——
+ *   原来只在 `wire()` 里那一行 ⇒ 而 `dormant` 子命令也要知道根（"钉"存在根下）
+ *     ⇒ 抽成一个函数，两边共用 （"同一件事只写一份" —— 就是这几轮一直在清的那种病）。
  */
 function wireRoot(root) {
   return root ?? opt('root') ?? process.env.WHALE_POST_ROOT ?? join(process.cwd(), '.whale-mail')
@@ -105,83 +105,83 @@ function wireRoot(root) {
 function wire({ root, live, allow: allowIn, verifyEnabled } = {}) {
   const r = wireRoot(root)
   const injected = []
-  // ★`--live a,b` 声明"这些人此刻有活体会话"（独立审计 2026-10-05：原来它只在自测里被用到 ⇒ 死参数 ✗）
+  // `--live a,b` 声明"这些人此刻有活体会话"（独立审计 2026-10-05：原来它只在自测里被用到 ⇒ 死参数）
   const liveList = (Array.isArray(live) && live.length)
     ? live
     : String(opt('live', '')).split(',').map((s) => s.trim()).filter(Boolean)
   const liveSet = new Set(liveList)
-  // ★★★"谁是**明示休眠**" —— **只写一份** ✗✓（2026-10-10）
-  //   ★★两路都算 ✗：★① 名单里带那个**属性** ✓（`--dormant <属性名>` ✓）；
-  //     ★② ★**被人"钉"过的** ✓（★"钉"＝把推断升格成明示 ✓ —— 见 `readPinned` 那段 ✓）。
-  //   ★★★**为什么必须只写一份** ✗✓：★我第一版在 `pickup` 里**另写了一遍**（只认属性名 ✗）
-  //     ⇒ ★**"钉"了却不退** ✓（★实测：钉完再取件，那封**还躺在邮筒上** ✓）——
-  //     ★这已经是我们这几轮第四次踩"同一件事写两份" ✓（★`FIELD_ORDER`／日界／摘要／这一处 ✓）。
-  //   ★下游两处共用它：★`deliver`（★判休眠用 ✓）＋ ★`pickup`（★退积压用 ✓）。
+  // "谁是**明示休眠**" —— **只写一份** （2026-10-10）
+  //   两路都算：① 名单里带那个**属性** （`--dormant <属性名>`）；
+  //     ② **被人"钉"过的** （"钉"＝把推断升格成明示 —— 见 `readPinned` 那段）。
+  //   **为什么必须只写一份**：我第一版在 `pickup` 里**另写了一遍**（只认属性名）
+  //     ⇒ **"钉"了却不退** （实测：钉完再取件，那封**还躺在邮筒上**）——
+  //     这已经是我们这几轮第四次踩"同一件事写两份" （`FIELD_ORDER`／日界／摘要／这一处）。
+  //   下游两处共用它：`deliver`（判休眠用）＋ `pickup`（退积压用）。
   //
-  // ★★"明示休眠"的属性名从命令行给 ✓ —— ★核心与 CLI 都不认识任何具体名字 ✓
+  // "明示休眠"的属性名从命令行给 —— 核心与 CLI 都不认识任何具体名字 
   const flagName = opt('dormant')
   const declaredDormant = (id) => {
     const w = String(id)
     if (flagName && services.roster.flag(w, flagName)) return true
     return Object.prototype.hasOwnProperty.call(readPinned(r), w)
   }
-  // ★安全校验：**默认禁用**（enabled 不写就是禁用）——
+  // 安全校验：**默认禁用**（enabled 不写就是禁用）——
   //   `--enable-verify` 可以就地打开；`--allow a,b` 给白名单（不写 ⇒ 不限制）
   const allow = (Array.isArray(allowIn) && allowIn.length)
     ? allowIn
     : String(opt('allow', '')).split(',').map((s) => s.trim()).filter(Boolean)
   const vSvc = createVerify({ root: r, enabled: flag('enable-verify') || verifyEnabled === true, allow,
-    // ★★签名域的**唯一真相**用**延迟函数**交过去 ✗✓（2026-10-10 修）——
-    //   ★`() => services.busRef?.FIELD_ORDER`：★函数体**延迟求值** ⇒ ★天然躲过暂时性死区 ✓
-    //   （★我第一版写成立即求值的属性 ⇒ `Cannot access 'services' before initialization` ✓；
-    //    第二版改成建完 bus 回填 `vSvc.cfg.bus` ⇒ ★**没生效** ⇒ 还是被判"未登记字段" ✓ ⇒ 才改成这个 ✓）
+    // 签名域的**唯一真相**用**延迟函数**交过去 （2026-10-10 修）——
+    //   `() => services.busRef?.FIELD_ORDER`：函数体**延迟求值** ⇒ 天然躲过暂时性死区 
+    //   （我第一版写成立即求值的属性 ⇒ `Cannot access 'services' before initialization`；
+    //    第二版改成建完 bus 回填 `vSvc.cfg.bus` ⇒ **没生效** ⇒ 还是被判"未登记字段" ⇒ 才改成这个）
     bus: { sign: (env) => services.busRef?.sign(env), fields: () => services.busRef?.FIELD_ORDER,
-      // ★★`digest` 也走**延迟函数** ✗✓（2026-10-10 加）——
-      //   ★`verify` 那边本来就有"优先用 `cfg.bus.digest`、否则用自己那份"的写法 ✓（★它比 `FIELD_ORDER` 那处做得好 ✓），
-      //     而★**我上一版没把 `digest` 传过去** ⇒ ★它一直走**兜底那份** ✓ ⇒ ★一旦 bus 改了摘要算法，**两边就漂** ✗
-      //     （★摘要漂了会怎样：★**信被判"摘要不符"、当场退信** ✓ —— ★同 HMAC 那类"两边都自洽、一接就炸" ✓）。
+      // `digest` 也走**延迟函数** （2026-10-10 加）——
+      //   `verify` 那边本来就有"优先用 `cfg.bus.digest`、否则用自己那份"的写法 （它比 `FIELD_ORDER` 那处做得好），
+      //     而**我上一版没把 `digest` 传过去** ⇒ 它一直走**兜底那份** ⇒ 一旦 bus 改了摘要算法，**两边就漂** 
+      //     （摘要漂了会怎样：**信被判"摘要不符"、当场退信** —— 同 HMAC 那类"两边都自洽、一接就炸"）。
       digest: (body) => services.busRef?.digest(body) } })
   const services = {
     roster: createRoster({ file: opt('roster') ?? join(r, 'roster.json') }),
-    types: createTypes(),    // ★`--no-gate` ⇒ **整套闸都不要** ✓（★并发压测要用 ✓ —— 12 路同对发信会被回环闸**正确地**拦住 ✓，
-    //   而压测要看的是"发号会不会撞"，不是"闸拦不拦" ✓；★缸里正本用的是环境变量 `WHALE_POST_NO_GATE` ✓）
+    types: createTypes(),    // `--no-gate` ⇒ **整套闸都不要** （并发压测要用 —— 12 路同对发信会被回环闸**正确地**拦住，
+    //   而压测要看的是"发号会不会撞"，不是"闸拦不拦"；班级里设计文档用的是环境变量 `WHALE_POST_NO_GATE`）
     ...(flag('no-gate') ? {} : { gate: createGate({ root: r }) }),
-    // ★★把**签名域那一份真相**交给 verify ✗✓（2026-10-10 修）——
-    //   ★`verify` 原来自己抄了一份 `FIELD_ORDER` ⇒ ★**两边会漂移** ✗：
-    //     我在 `bus` 里加字段（`peerStateAtSend` 等）⇒ ★那封**完全合法**的信被判成"未登记字段"
-    //     ⇒ ★**被拒收、挪进退信** ✗（★这是实测抓出来的：`cli` 自测当场红 ✓）。
-    //   ⚠️ ★`bus` 得等 `services` 建完才存在 ✗ ⇒ ★**不能在这里读它**（★我第一版写 `services.busRef?.FIELD_ORDER`
-    //      ⇒ **暂时性死区** ⇒ `Cannot access 'services' before initialization` ✓ —— ★而箭头函数那种延迟写法**躲得过** ✓，
-    //      立即求值的属性**躲不过** ✓）；★所以这里**先建**，等 `bus` 建好再**回填 `cfg.bus`** ✓。
+    // 把**签名域那一份真相**交给 verify （2026-10-10 修）——
+    //   `verify` 原来自己抄了一份 `FIELD_ORDER` ⇒ **两边会漂移**：
+    //     我在 `bus` 里加字段（`peerStateAtSend` 等）⇒ 那封**完全合法**的信被判成"未登记字段"
+    //     ⇒ **被拒收、挪进退信** （这是实测抓出来的：`cli` 自测当场红）。
+    //   ⚠️ `bus` 得等 `services` 建完才存在 ⇒ **不能在这里读它**（我第一版写 `services.busRef?.FIELD_ORDER`
+    //      ⇒ **暂时性死区** ⇒ `Cannot access 'services' before initialization` —— 而箭头函数那种延迟写法**躲得过**，
+    //      立即求值的属性**躲不过**）；所以这里**先建**，等 `bus` 建好再**回填 `cfg.bus`**。
     verify: vSvc,
     deliver: createDeliver({
       sessionOf: (id) => (liveSet.has(id) ? { live: true, inject: (text) => injected.push({ id, text }) } : undefined),
-      // ★★"明示休眠"**两路** ✗✓（2026-10-10）：★① 名单里带那个**属性** ✓（`--dormant <属性名>` ✓）；
-      //   ★② ★**被人"钉"过的** ✓（★"钉"＝把推断升格成明示 ✓ —— 见 `readPinned` 那段 ✓）。
-      //   ★★两路都算 `declared` ✓ ⇒ ★**退回逻辑才肯动它** ✓（★而推断出来的**永远不动** ✓ ——
-      //     否则"退掉积压 ⇒ 证据消失 ⇒ 又判活跃"**来回摆** ✗）。
-      //   ⚠️ ★★这个判据**只写一份** ✗✓ —— ★就是上面那个局部 `declaredDormant` ✓，这里**只是传进去** ✓：
-      //     ★我第一版在这里**另写了一遍**（只认属性名 ✗）⇒ ★**"钉"了却不退** ✓
-      //     （★实测抓出来的：钉完再取件，那封**还在邮筒上** ✓）—— ★**又是"同一件事写两份"** ✓。
+      // "明示休眠"**两路** （2026-10-10）：① 名单里带那个**属性** （`--dormant <属性名>`）；
+      //   ② **被人"钉"过的** （"钉"＝把推断升格成明示 —— 见 `readPinned` 那段）。
+      //   两路都算 `declared` ⇒ **退回逻辑才肯动它** （而推断出来的**永远不动** ——
+      //     否则"退掉积压 ⇒ 证据消失 ⇒ 又判活跃"**来回摆**）。
+      //   ⚠️ 这个判据**只写一份** —— 就是上面那个局部 `declaredDormant`，这里**只是传进去**：
+      //     我第一版在这里**另写了一遍**（只认属性名）⇒ **"钉"了却不退** 
+      //     （实测抓出来的：钉完再取件，那封**还在邮筒上**）—— **又是"同一件事写两份"**。
       declaredDormant,
     }),
   }
   const bus = createBus({
     root: r,
     services,
-    // ★★两个"按属性拦"的开关：属性名**从命令行给**，核心不认识任何具体名字 ✓
+    // 两个"按属性拦"的开关：属性名**从命令行给**，核心不认识任何具体名字 
     //   `--only-offline <属性名>`：带此属性的成员**只收离线**（对它发在线 ⇒ 拒发）
     //   `--dormant <属性名>`：带此属性的成员被**明确**标成休眠（发信 ⇒ 当场拒发，不合信箱）
     ...(opt('only-offline') ? { offlineOnlyFlag: opt('only-offline') } : {}),
     ...(opt('dormant') ? { dormantFlag: opt('dormant') } : {}),
   })
-  //   ★★`remoteOnlyFlag` **不能塞进 `createBus`** ✗✓（2026-10-10 补）——
-  //     ★因为★**投远端是 `cli` 的动作，不是 `bus` 的** ✓（★`bus` 的 `send` 只懂"落在本机谁的格子里" ✓）；
-  //     ★★★**所以它单独挂着** ✓（★`bus` 的 `cfg` 里没有它 ⇒ ★**我第一版写成 `cfg.remoteOnlyFlag` ⇒ `ReferenceError`** ✗ ——
-  //     ★**而语法检查照不出来** ✓，★**只有真跑才炸** ✓ ★★**这正是 `FOR-AGENTS` 第十节第 4 条那个形状** ✓）。
+  //   `remoteOnlyFlag` **不能塞进 `createBus`** （2026-10-10 补）——
+  //     因为**投远端是 `cli` 的动作，不是 `bus` 的** （`bus` 的 `send` 只懂"落在本机谁的格子里"）；
+  //     **所以它单独挂着** （`bus` 的 `cfg` 里没有它 ⇒ **我第一版写成 `cfg.remoteOnlyFlag` ⇒ `ReferenceError`** ——
+  //     **而语法检查照不出来**，**只有真跑才炸** **这正是 `FOR-AGENTS` 第十节第 4 条那个形状**）。
   services.remoteOnlyFlag = opt('remote-only') ?? process.env.WHALE_POST_REMOTE_ONLY_FLAG ?? undefined
-  services.busRef = bus     // ★回填：★`verify` 那边通过**延迟函数**读它（★"一套真相" ✓ —— 见上面 `vSvc` 那段的注释 ✓）
-  // ★★把"谁是明示休眠"**挂出去** ✗✓（★只写一份 ✓ —— `deliver` 与 `pickup` 共用同一句 ✓）
+  services.busRef = bus     // 回填：`verify` 那边通过**延迟函数**读它（"一套真相" —— 见上面 `vSvc` 那段的注释）
+  // 把"谁是明示休眠"**挂出去** （只写一份 —— `deliver` 与 `pickup` 共用同一句）
   services.declaredDormant = declaredDormant
   return { root: r, bus, services, injected, liveSet, allow }
 }
@@ -201,9 +201,9 @@ function selftest() {
       groups: { all: ['alice', 'bob', 'carol'], club: ['alice', 'bob'] },
     }, null, 2), 'utf8')
 
-    // ★自测里**显式开安全校验** —— 因为下面要验"改一个字段就不过"；
+    // 自测里**显式开安全校验** —— 因为下面要验"改一个字段就不过"；
     //   而默认那一档是"禁用"（禁用时按设计跳过 HMAC ⇒ 改 mode 查不出来，另有一条判据专门盯它）
-    const { bus: w, services, injected } = wire({ root: tmp, live: ['bob'], verifyEnabled: true })   // ★只有 bob 有"活体会话"
+    const { bus: w, services, injected } = wire({ root: tmp, live: ['bob'], verifyEnabled: true })   // 只有 bob 有"活体会话"
     w.hello({ as: 'alice' }); w.hello({ as: 'bob' }); w.hello({ as: 'carol' })
 
     // ① 离线件：落在对方信箱、不叫醒
@@ -211,7 +211,7 @@ function selftest() {
     check('离线件：投进对方信箱', existsSync(join(tmp, 'inbox', 'bob', `${s1.id}.msg.json`)))
     check('离线件：判 kept（不叫醒）', s1.verdict === 'kept', s1.verdict)
 
-    // ② 收信＝消费 ＋ 写回执 ＋ 幂等（★要**声明读者**才会消费：会话活着不算 —— 见收信侧闭环判据）
+    // ② 收信＝消费 ＋ 写回执 ＋ 幂等（要**声明读者**才会消费：会话活着不算 —— 见收信侧闭环判据）
     const got = w.pump({ as: 'bob', reader: true })
     check('收信：拉到 1 封', got.length === 1 && got[0].ok, JSON.stringify(got.map((g) => g.handled)))
     check('收信：离线件标着 [离线]', String(got[0]?.handled ?? '').startsWith('[离线]'), got[0]?.handled)
@@ -223,7 +223,7 @@ function selftest() {
     check('在线件：有活体会话 ⇒ delivered', s2.verdict === 'delivered', s2.verdict)
     check('在线件：真的注入了会话', injected.some((x) => x.text.includes('在线件')))
 
-    // ④ ★只投活体：对方没有会话 ⇒ 不投也不消费（信只会晚到，不会不到）
+    // ④ 只投活体：对方没有会话 ⇒ 不投也不消费（信只会晚到，不会不到）
     const s3 = w.send({ as: 'alice', to: 'carol', mode: 'online', subject: '叫不醒的人', body: '对方没有活体会话：这封信应当留在信箱里等人来收' })
     check('只投活体：对方没会话 ⇒ kept', s3.verdict === 'kept', s3.verdict)
     check('只投活体：信仍在对方信箱里', existsSync(join(tmp, 'inbox', 'carol', `${s3.id}.msg.json`)))
@@ -233,27 +233,27 @@ function selftest() {
     check('组名：club 解析成 alice（不含发件人自己）', s4.targets.length === 1 && s4.targets[0] === 'alice', JSON.stringify(s4.targets))
 
     // ⑥ 回环闸①：纯回执
-    //   ★★注意必须用**在线件** ✗ —— 2026-10-10 起，★离线件**豁免整套回环闸** ✓
-    //   （★"主人 2026-10-06 令"＋正本判据 29-31 ✓：三道闸拦的是"别多叫醒人一次"，
-    //    而离线件**根本不叫醒任何人** ⇒ 拦它没有收益 ✓）
+    //   注意必须用**在线件** —— 2026-10-10 起，离线件**豁免整套回环闸** 
+    //   （"维护者 2026-10-06 令"＋设计文档判据 29-31：三道闸拦的是"别多叫醒人一次"，
+    //    而离线件**根本不叫醒任何人** ⇒ 拦它没有收益）
     let e1 = ''
     try { w.send({ as: 'alice', to: 'bob', mode: 'online', subject: '回执', body: '收到' }) } catch (e) { e1 = e.message }
     check('回环闸①：纯回执拒发（★在线件）', /纯回执/.test(e1), e1)
-    //   ★同一条的"反面"：同一个纯回执换成**离线** ⇒ **照发** ✓
+    //   同一条的"反面"：同一个纯回执换成**离线** ⇒ **照发** 
     let offlineAckOk = false
     try { w.send({ as: 'alice', to: 'bob', mode: 'offline', subject: '回执', body: '收到' }); offlineAckOk = true } catch { offlineAckOk = false }
     check('★★离线豁免闸①：纯回执的**离线件照发**（主人 2026-10-06 令）', offlineAckOk)
 
-    // ⑦ 回环闸②：同一对 20 分钟内限封数（超出就拒）—— ★同样要用在线件 ✓
-    //   ★★注意：`recent` 现在**只记在线件** ✗（2026-10-10 改：离线件豁免整套回环闸，
-    //     让它占满"叫醒记录"会把后面的**在线件**误拦 ✓）⇒ ★这条判据要**自己把在线件发满** ✓。
-    //   ★用 `force` 填到刚好超过上限（★`force` 跳过闸、但**照样进 `recent`** ✓）
-    //     —— ★不许在 `try` 外面发，否则第 3 封就抛，把整个自测炸掉 ✗（我们刚栽过 ✓）。
+    // ⑦ 回环闸②：同一对 20 分钟内限封数（超出就拒）—— 同样要用在线件 
+    //   注意：`recent` 现在**只记在线件** （2026-10-10 改：离线件豁免整套回环闸，
+    //     让它占满"叫醒记录"会把后面的**在线件**误拦）⇒ 这条判据要**自己把在线件发满**。
+    //   用 `force` 填到刚好超过上限（`force` 跳过闸、但**照样进 `recent`**）
+    //     —— 不许在 `try` 外面发，否则第 3 封就抛，把整个自测炸掉 （我们刚栽过）。
     for (let i = 0; i < 4; i += 1) w.send({ as: 'alice', to: 'bob', mode: 'online', force: true, subject: `填满${i}`, body: `把叫醒记录填满：第 ${i} 封（正文有货，不是回执）` })
     let e2 = ''
     try { w.send({ as: 'alice', to: 'bob', mode: 'online', subject: '连发', body: '填满之后再发一封普通的（正文有货，不是回执）' }) } catch (e) { e2 = e.message }
     check('回环闸②：同对限封数（超出就拒）（★在线件）', /同对回环/.test(e2), e2)
-    //   ★同一条的"反面"：同一对再来**离线**件 ⇒ **照发** ✓（豁免 ✓）
+    //   同一条的"反面"：同一对再来**离线**件 ⇒ **照发** （豁免）
     let offlineMoreOk = false
     try { w.send({ as: 'alice', to: 'bob', mode: 'offline', subject: '离线', body: '同一对再来离线件（正文有货，不是回执）' }); offlineMoreOk = true } catch { offlineMoreOk = false }
     check('★★离线豁免闸②：同对连发位置上的**离线件照发**（主人 2026-10-06 令）', offlineMoreOk)
@@ -285,7 +285,7 @@ function selftest() {
     const rep = g.report({ as: 'dave' })
     check('配额：离线条**不并进**"单位"（计费口径分开）', rep.today.units === 3 && rep.today.offlineLetters === 1, JSON.stringify(rep.today))
 
-    // ⑪ ★组名配额要**真的接线**（独立复核抓出的死分支：闸读了 groupMembers，但没人传给它）
+    // ⑪ 组名配额要**真的接线**（独立复核抓出的死分支：闸读了 groupMembers，但没人传给它）
     //    ⇒ 这条判据走**真 send 路径**：只要核心忘了把组员名单传下去，它立刻变红
     const sGroup = w.send({ as: 'carol', to: 'all', mode: 'online', subject: '组发计费', body: '组发计费：组内成员合成 1 单位、组外按户算（正文有货，不是回执）' })
     const repGroup = services.gate.report({ as: 'carol' })
@@ -303,7 +303,7 @@ function selftest() {
 
 // ── 命令 ───────────────────────────────────────────────────────────────
 function main() {
-  // ★--help／-h／help 一律当"打用法"（陌生人第一下就敲这个）
+  // --help／-h／help 一律当"打用法"（陌生人第一下就敲这个）
   if (!cmd || cmd === '--help' || cmd === '-h' || cmd === 'help') {
     console.log([
       'whale-post <命令> [选项]        ★六件已发 npm：npx -y dsh-whale-post-cli <命令>（第七件 verify 在仓内，待发）',
@@ -331,15 +331,15 @@ function main() {
     }
     if (cmd === 'hello') {
       const as = opt('as') || die(2, 'hello 需要 --as')
-      //   ★★`--recv` / `--cap`：★**收件习惯由邮差自己声明** ✗✓（2026-10-10 补；
-      //     ★正本《跨设备邮局-1.0局域网实现清单》附录三 ✓）——
-      //     · ★`--recv offline-only` ⇒ ★对它发在线件时**明示"按离线寄达"** ✓（★不拒发 ✓）；
-      //     · ★`--cap 3` ⇒ ★自报"每天最多收几封在线件" ✓（★闸取 `min(自报, 天花板)` ✓）。
-      //   ★两个都**进签名域** ✓（★"自报"也要能被验出改过 ✓）；不给 ⇒ 不进信封 ✓（老 hello 照旧 ✓）。
+      //   `--recv` / `--cap`：**收件习惯由邮差自己声明** （2026-10-10 补；
+      //     设计文档《跨设备邮局-1.0局域网实现清单》附录三）——
+      //     · `--recv offline-only` ⇒ 对它发在线件时**明示"按离线寄达"** （不拒发）；
+      //     · `--cap 3` ⇒ 自报"每天最多收几封在线件" （闸取 `min(自报, 天花板)`）。
+      //   两个都**进签名域** （"自报"也要能被验出改过）；不给 ⇒ 不进信封 （老 hello 照旧）。
       const recv = opt('recv') || undefined
       const cap = opt('cap') ? Number(opt('cap')) : undefined
-      //   ★★`--quiet 22:00-09:00` ✗✓：★勿扰时段（★“峰谷令”的邮局版 ✓）——
-      //     ★跨午夜照写 ✓（★`from > to` 是**正常**写法 ✗）。
+      //   `--quiet 22:00-09:00`：勿扰时段（“峰谷令”的邮局版）——
+      //     跨午夜照写 （`from > to` 是**正常**写法）。
       const quietArg = opt('quiet') ? String(opt('quiet')).split('-').map((x) => x.trim()) : undefined
       bus.hello({ as, recv, onlineCapPerDay: cap, quiet: quietArg && quietArg.length === 2 ? quietArg : undefined })
       const extra = [recv ? `收件习惯=${recv}` : '', Number.isFinite(cap) ? `自报在线上限=${cap}` : '', quietArg && quietArg.length === 2 ? `勿扰时段=${quietArg[0]}–${quietArg[1]}` : ''].filter(Boolean).join('，')
@@ -364,8 +364,8 @@ function main() {
       const to = opt('to') || die(2, 'send 需要 --to')
       const bodyFile = opt('body-file')
       const bodyRaw = opt('body', '')
-      // ★拒绝"参数冒充正文"（独立审计 2026-10-05）：`--body --force` 原来会被当成"正文＝--force 且带 force"
-      //   ⇒ 顺手把三道闸全绕过去 ✗。选项值以 `--` 开头一律当写错。
+      // 拒绝"参数冒充正文"（独立审计 2026-10-05）：`--body --force` 原来会被当成"正文＝--force 且带 force"
+      //   ⇒ 顺手把三道闸全绕过去。选项值以 `--` 开头一律当写错。
       if (String(bodyRaw).startsWith('--')) die(2, '--body 的值看起来是个参数（以 -- 开头）—— 拒绝把参数当正文（否则 --force 之类会被一起吃掉）')
       const body = bodyFile ? readFileSync(bodyFile, 'utf8') : bodyRaw
       const r = bus.send({
@@ -377,16 +377,16 @@ function main() {
         re: opt('re'),
         force: flag('force'),
       })
-      // ★★★**"投"那半边：发给远端成员的 ⇒ 写远端 `inbox/<目标>/`，本机不留第二份** ✗✓
-      //   （2026-10-10 补；★正本《跨设备邮局-1.0局域网实现清单》**§一 · S6** 原话 ✓：
-      //    ★"**投**：发给手机的 ⇒ 写远端 `inbox/潮信鲸/` ✓（★**本机不留第二份** ✗）"✓）
-      //   ★★**为什么要补** ✗✓：★`pickup`（**取** 那半边 ✓）早就做了 ✓，★而★**`send` 从来只写本机 `inbox/`** ✗
-      //     ⇒ ★★★**"投给手机"这件事在公开版里**根本没实现**** ✓ —— ★**而清单把它算作 S6 的一半** ✓。
-      //   ★**怎么知道谁是"远端成员"** ✗：★配 `remoteOnlyFlag`（★同 `offlineOnlyFlag` 的形状 ✓ ——
-      //     ★**核心不认识具体属性名** ✓，★**属性名由配置给** ✓）。
-      //   ⚠️ ★**本机不留第二份** ✗ —— ★★**留了就会有两份权威** ✓（★而两份会在"取件／回执／消费"上**各说各话** ✗）。
+      // **"投"那半边：发给远端成员的 ⇒ 写远端 `inbox/<目标>/`，本机不留第二份** 
+      //   （2026-10-10 补；设计文档《跨设备邮局-1.0局域网实现清单》**§一 · S6** 原话：
+      //    "**投**：发给手机的 ⇒ 写远端 `inbox/潮信鲸/` （**本机不留第二份**）"）
+      //   **为什么要补**：`pickup`（**取** 那半边）早就做了，而**`send` 从来只写本机 `inbox/`** 
+      //     ⇒ **"投给手机"这件事在公开版里**根本没实现**** —— **而清单把它算作 S6 的一半**。
+      //   **怎么知道谁是"远端成员"**：配 `remoteOnlyFlag`（同 `offlineOnlyFlag` 的形状 ——
+      //     **核心不认识具体属性名**，**属性名由配置给**）。
+      //   ⚠️ **本机不留第二份** —— **留了就会有两份权威** （而两份会在"取件／回执／消费"上**各说各话**）。
       const remote = opt('remote') ?? process.env.WHALE_POST_REMOTE_ROOT
-      const remoteFlag = services.remoteOnlyFlag   // ★★它挂在 `services` 上 ✓（★不在 `bus.cfg` 里 ✗）
+      const remoteFlag = services.remoteOnlyFlag   // 它挂在 `services` 上 （不在 `bus.cfg` 里）
       const toRemote = (remote && remoteFlag && services.roster && typeof services.roster.flag === 'function')
         ? r.targets.filter((t) => services.roster.flag(t, remoteFlag))
         : []
@@ -398,7 +398,7 @@ function main() {
           if (!existsSync(srcP)) continue
           const dstDir = join(remote, 'inbox', t)
           mkdirSync(dstDir, { recursive: true })
-          //   ★**先写远端、再删本机** ✓（★中途崩 ⇒ 本机那份还在 ⇒ "信只会晚到，不会不到" ✓）
+          //   **先写远端、再删本机** （中途崩 ⇒ 本机那份还在 ⇒ "信只会晚到，不会不到"）
           writeFileSync(join(dstDir, `${r.id}.msg.json`), readFileSync(srcP, 'utf8'), 'utf8')
           unlinkSync(srcP)
           moved += 1
@@ -409,15 +409,15 @@ function main() {
       const verdictTxt = r.verdict === 'delivered' ? 'delivered（投出去了）'
         : r.verdict === 'kept' ? 'kept（留在信箱里等人来收）' : String(r.verdict)
       console.log(`已投递 ${r.id} → ${r.targets.join(',')}（seq ${r.seq}）【${modeTxt}】`)
-      // ★★没投给谁，也要说出来 ✗ —— 部分收件人被明确标成休眠时，核心把它带回来了（不许静默 ✓）
+      // 没投给谁，也要说出来 —— 部分收件人被明确标成休眠时，核心把它带回来了（不许静默）
       if (Array.isArray(r.skippedDormant) && r.skippedDormant.length) {
         console.log(`★没投：${r.skippedDormant.join('、')} 被明确标成休眠 ⇒ 信没进它们的信箱（换人或先让它们醒）`)
       }
       console.log(`投递策略：${verdictTxt}`)
-      //   ★★★"**明示**"必须打到**发信人眼前** ✗✓（2026-10-10 补）——
-      //     ★★**病** ✗：★`wakePrediction.offlineOnly` 原来**只落在信封里** ✓ ⇒ ★**发信人看不到** ✗ ——
-      //       ★而"**不许静默降级**"的本意正是"**如实告诉发件人**" ✓（★不是"悄悄写进信封" ✓）。
-      //     ★所以这里把它说出来 ✓：★哪儿个人是**按离线寄达**的 ✓、★哪几个是**没握手**的 ✓。
+      //   "**明示**"必须打到**发信人眼前** （2026-10-10 补）——
+      //     **病**：`wakePrediction.offlineOnly` 原来**只落在信封里** ⇒ **发信人看不到** ——
+      //       而"**不许静默降级**"的本意正是"**如实告诉发件人**" （不是"悄悄写进信封"）。
+      //     所以这里把它说出来：哪儿个人是**按离线寄达**的、哪几个是**没握手**的。
       const wp = r.wakePrediction ?? {}
       if (Array.isArray(wp.offlineOnly) && wp.offlineOnly.length) {
         console.log(`★对 ${wp.offlineOnly.join('、')} **按离线寄达**（★它们自己声明只收离线 ⇒ 这封不会叫醒它们）—— ★不是故障，信已在它们的信箱里 ✓`)
@@ -432,7 +432,7 @@ function main() {
     }
     if (cmd === 'pump') {
       const as = opt('as') || die(2, 'pump 需要 --as')
-      // ★reader：CLI 把信打进终端 ⇒ 它**就是读者**。不这样声明，默认规则是"没有读者就不消费"
+      // reader：CLI 把信打进终端 ⇒ 它**就是读者**。不这样声明，默认规则是"没有读者就不消费"
       //   （信会一直留在信箱里 —— 这是"信只会晚到，不会不到"的收信侧那一半）
       const rs = bus.pump({ as, keep: flag('keep') ? true : undefined, reader: !flag('keep') })
       if (rs.length === 0) console.log('（信箱是空的）')
@@ -444,27 +444,27 @@ function main() {
       return 0
     }
     if (cmd === 'pickup') {
-      // ★★S6 取件 ＋ S7 到达侧记账（2026-10-10 从缸里正本移植的**完整版** ✓）——
-      //   场景：信箱在**别人那儿**（或共享目录的另一头 ✓）；我人不在，但信在 ✓
-      //   ① ★**镜像 hello** ✗：把远端 `hello/` 里"**只收离线成员**"的 hello 搬回本机
-      //      ⇒ ★**握手闸才看得见手机** ✓（★缸内成员的 hello **不搬** ✗；属性名由 `--only-offline <名>` 给 ✓）
+      // S6 取件 ＋ S7 到达侧记账（2026-10-10 从班级里设计文档移植的**完整版**）——
+      //   场景：信箱在**别人那儿**（或共享目录的另一头）；我人不在，但信在 
+      //   ① **镜像 hello**：把远端 `hello/` 里"**只收离线成员**"的 hello 搬回本机
+      //      ⇒ **握手闸才看得见手机** （班级内成员的 hello **不搬**；属性名由 `--only-offline <名>` 给）
       //   ② 远端 `inbox/<我>/` 的信 ⇒ **验签** ⇒ 搬进本机 `inbox/`
-      //      ＋ ★远端那份 **`MOVE` 进 `seen/`** ✗（★**消费凭证** ✓ —— 不是删掉 ✓）
-      //   ③ ★**幂等认三处** ✗：本机 inbox ／ 本机 seen ／ **远端 seen** ⇒ 任一处有 ⇒ 跳过 ✓
-      //   ④ ★★**每"新搬进一封"才记一次账** ✗：按信封 `mode` 记 **发件人** 的配额
-      //      ⇒ ★到达侧记账 ✓、★**绝不双记** ✓（幂等拦在前面，两个记账点不会同时命中同一封 ✓）
-      //   ★验不过的信 ⇒ **不搬、不消费、不删** ✗（留在远端等人查 ✓）
+      //      ＋ 远端那份 **`MOVE` 进 `seen/`** （**消费凭证** —— 不是删掉）
+      //   ③ **幂等认三处**：本机 inbox ／ 本机 seen ／ **远端 seen** ⇒ 任一处有 ⇒ 跳过 
+      //   ④ **每"新搬进一封"才记一次账**：按信封 `mode` 记 **发件人** 的配额
+      //      ⇒ 到达侧记账、**绝不双记** （幂等拦在前面，两个记账点不会同时命中同一封）
+      //   验不过的信 ⇒ **不搬、不消费、不删** （留在远端等人查）
       const as = opt('as') || die(2, 'pickup 需要 --as')
       const remote = opt('remote') ?? process.env.WHALE_POST_REMOTE_ROOT
       if (!remote) die(2, 'pickup 需要 --remote <远端信箱根>（或环境变量 WHALE_POST_REMOTE_ROOT）')
-      // ★★动邮筒之前先探活 ✗（S12 ✓）—— ★不通就**当场判死**，别让同步 fs 在 SMB 掉线时挂几十秒 ✓
-      //   ⚠️★**必须在任何一次碰远端盘的调用之前** ✗ —— 连 `existsSync` 本身都会挂 ✓
+      // 动邮筒之前先探活 （S12）—— 不通就**当场判死**，别让同步 fs 在 SMB 掉线时挂几十秒 
+      //   ⚠️**必须在任何一次碰远端盘的调用之前** —— 连 `existsSync` 本身都会挂 
       if (!remoteAlive(remote)) {
         die(2, `远端根现在够不着（${remote}）—— ★**SMB 掉线时同步 fs 会挂住几十秒** ✗，所以这里先探活再动盘。`
           + '等网络回来再跑；★这一次**一个文件都没动** ✓')
       }
       if (!existsSync(remote)) die(2, `远端根不存在：${remote}（★要指到"信箱根"那一层 ✓）`)
-      const onlyOffline = opt('only-offline')          // ★不配 ⇒ 一个 hello 都不镜像 ✓
+      const onlyOffline = opt('only-offline')          // 不配 ⇒ 一个 hello 都不镜像 
       const rInbox = join(remote, 'inbox', as)
       const rSeenDir = join(remote, 'seen', as)
       const mine = bus.paths().inbox(as)
@@ -472,9 +472,9 @@ function main() {
       mkdirSync(mine, { recursive: true })
       const seenNames = (d) => (existsSync(d) ? new Set(readdirSync(d).filter((x) => x.endsWith('.msg.json'))) : new Set())
       const mineSeen = seenNames(seenDir)
-      const remoteSeen = seenNames(rSeenDir)           // ★③ 第三处 ✓
+      const remoteSeen = seenNames(rSeenDir)           // ③ 第三处 
 
-      // ① ★镜像 hello：只搬"只收离线成员"的 ✓（★核心/本件都不认识具体属性名 —— 由 --only-offline 给 ✓）
+      // ① 镜像 hello：只搬"只收离线成员"的 （核心/本件都不认识具体属性名 —— 由 --only-offline 给）
       let mirrored = 0
       if (onlyOffline) {
         const rHello = join(remote, 'hello')
@@ -483,22 +483,22 @@ function main() {
           mkdirSync(myHello, { recursive: true })
           for (const f of readdirSync(rHello).filter((x) => x.endsWith('.json'))) {
             const w = f.replace(/\.json$/, '')
-            if (!services.roster.flag(w, onlyOffline)) continue      // ★缸内成员不搬 ✓
-            try { writeFileSync(join(myHello, f), readFileSync(join(rHello, f), 'utf8'), 'utf8'); mirrored++ } catch { /* 单个失败不拦住别的 ✓ */ }
+            if (!services.roster.flag(w, onlyOffline)) continue      // 班级内成员不搬 
+            try { writeFileSync(join(myHello, f), readFileSync(join(rHello, f), 'utf8'), 'utf8'); mirrored++ } catch { /* 单个失败不拦住别的 */ }
           }
         }
       }
 
-      // ★★★S6b：把邮筒上"**别人回给我的回执**"镜像回来 ✗✓（2026-10-10 从正本移植；★正本判据 107-110 ✓）
-      //   ★**病** ✗：★`pickup` 原来只镜像 `hello/` ✓ ⇒ ★★**邮筒上的 `ack/<我>/` 从来没搬过** ✓
-      //     ⇒ ★**发信人的本机**永远看不到"**对方已经收了**"** ✗✓（★正本原话：★"**此前收不到**" ✓）——
-      //     而★"发出去的信，对方收没收到"**正是邮局要回答的问题** ✓。
-      //   ★★两条纪律（正本 108／109 ✓）：
-      //     · ★**只镜不删** ✗ —— ★邮筒那份**原样留着** ✓（★跟 `hello` 镜像一个道理：★
-      //       ★那台邮筒可能还有别的取件人 ✓）；
-      //     · ★**幂等** ✗ —— ★**内容相同就跳过** ✓（★否则每次 `pickup` 都重写一遍，
-      //       ★而重写会动 mtime ⇒ ★**下游"多久没动"那类判断会跟着乱** ✓）。
-      //   ⚠️ ★回执是**发给发信人的** ✓ ⇒ 它躺在邮筒的 `ack/<我>/` 里 ✓（★不是 `ack/` 根下 ✓）。
+      // S6b：把邮筒上"**别人回给我的回执**"镜像回来 （2026-10-10 从设计文档移植；设计文档判据 107-110）
+      //   **病**：`pickup` 原来只镜像 `hello/` ⇒ **邮筒上的 `ack/<我>/` 从来没搬过** 
+      //     ⇒ **发信人的本机**永远看不到"**对方已经收了**"** （设计文档原话："**此前收不到**"）——
+      //     而"发出去的信，对方收没收到"**正是邮局要回答的问题**。
+      //   两条纪律（设计文档 108／109）：
+      //     · **只镜不删** —— 邮筒那份**原样留着** （跟 `hello` 镜像一个道理：
+      //       那台邮筒可能还有别的取件人）；
+      //     · **幂等** —— **内容相同就跳过** （否则每次 `pickup` 都重写一遍，
+      //       而重写会动 mtime ⇒ **下游"多久没动"那类判断会跟着乱**）。
+      //   ⚠️ 回执是**发给发信人的** ⇒ 它躺在邮筒的 `ack/<我>/` 里 （不是 `ack/` 根下）。
       let ackMirrored = 0
       {
         const rAck = join(remote, 'ack', as)
@@ -508,8 +508,8 @@ function main() {
           for (const f of readdirSync(rAck).filter((x) => x.endsWith('.json'))) {
             let same = false
             try { same = readFileSync(join(myAck, f), 'utf8') === readFileSync(join(rAck, f), 'utf8') } catch { same = false }
-            if (same) continue                                   // ★幂等：一模一样就跳过 ✓（★不动 mtime ✓）
-            try { writeFileSync(join(myAck, f), readFileSync(join(rAck, f), 'utf8'), 'utf8'); ackMirrored++ } catch { /* 单个失败不拦住别的 ✓ */ }
+            if (same) continue                                   // 幂等：一模一样就跳过 （不动 mtime）
+            try { writeFileSync(join(myAck, f), readFileSync(join(rAck, f), 'utf8'), 'utf8'); ackMirrored++ } catch { /* 单个失败不拦住别的 */ }
           }
         }
       }
@@ -518,19 +518,19 @@ function main() {
       let took = 0, skipped = 0, bad = 0, swept = 0, converged = 0, bounced = 0
       const files = existsSync(rInbox) ? readdirSync(rInbox).filter((x) => x.endsWith('.msg.json')) : []
       if (!existsSync(rInbox)) console.log(`ⓘ 远端没有这个收件箱：${rInbox}（★只做了 hello 镜像 ✓）`)
-      mkdirSync(rSeenDir, { recursive: true })          // ★准备"消费凭证"那一格 ✓
+      mkdirSync(rSeenDir, { recursive: true })          // 准备"消费凭证"那一格 
 
-      // ★★★S11 取件那半边：把**明示休眠**者信箱里积压的信**退回** ✗✓
-      //   （2026-10-10 从正本移植；★正本判据 105-106 ＋「主人 2026-10-06 02:5x 令」✓）
-      //   ★正本原话 ✗：★"当邮局把收件人标记为休眠时，处理中心应退回所有邮件（**此人无法收到邮件**）"✓
-      //   ★★它扫**两个地方** ✗✓ —— ★**只扫本机是不够的**：
-      //     ① ★本机 `inbox/<谁>/` ✓（★缸内的信 ✓）
-      //     ② ★**远端邮筒的 `inbox/<谁>/`** ✓✓（★对 `offlineOnly` 那些"手机" ✓ ——
-      //        ★★**它们的信本来就躺在邮筒上等人来取** ⇒ ★不扫邮筒就等于**没退** ✓）。
-      //   ★★⚠️ **推断休眠不自动退** ✗✓（正本原话）：
-      //     ★否则"**退掉积压 ⇒ 证据消失 ⇒ 又判活跃 ⇒ 再积压**"**来回摆** ✗ ——
-      //     ★根子是"用**同一个信号**既当**证据**、又当**动作**" ✓；
-      //     ★推断出来的**只大声提示** ✓；★要真退就**先钉**（★把推断升格成明示，才稳 ✓ —— 那一版下一轮做 ✓）。
+      // S11 取件那半边：把**明示休眠**者信箱里积压的信**退回** 
+      //   （2026-10-10 从设计文档移植；设计文档判据 105-106 ＋「维护者 2026-10-06 02:5x 令」）
+      //   设计文档原话："当邮局把收件人标记为休眠时，处理中心应退回所有邮件（**此人无法收到邮件**）"
+      //   它扫**两个地方** —— **只扫本机是不够的**：
+      //     ① 本机 `inbox/<谁>/` （班级内的信）
+      //     ② **远端邮筒的 `inbox/<谁>/`** （对 `offlineOnly` 那些"手机" ——
+      //        **它们的信本来就躺在邮筒上等人来取** ⇒ 不扫邮筒就等于**没退**）。
+      //   ⚠️ **推断休眠不自动退** （设计文档原话）：
+      //     否则"**退掉积压 ⇒ 证据消失 ⇒ 又判活跃 ⇒ 再积压**"**来回摆** ——
+      //     根子是"用**同一个信号**既当**证据**、又当**动作**"；
+      //     推断出来的**只大声提示**；要真退就**先钉**（把推断升格成明示，才稳 —— 那一版下一轮做）。
       const bounceOne = (dir, w, f, why) => {
         let env
         try { env = JSON.parse(readFileSync(join(dir, f), 'utf8')) } catch { env = undefined }
@@ -554,20 +554,20 @@ function main() {
         console.log(`退回   ${f} ⇒ 退信/（收件人「${w}」被明示标成休眠 ✓ —— ★信没丢 ✗）`)
         return true
       }
-      // ★★"明示休眠"的属性名**从命令行给** ✓（`--dormant <属性名>` ✓ —— ★核心与 CLI 都不认识具体名字 ✓）
-      //   ★★"谁是明示休眠"**只有一份判据** ✗✓（★`wire()` 里那个 `declaredDormant` ✓）——
-      //     ★我第一版在这里**另写了一遍**（只认 `--dormant` 的属性名 ✗）⇒ ★**"钉"了却不退** ✓
-      //     （★实测抓出来的：钉完再取件，那封**还躺在邮筒上** ✓）。
-      //   ★所以这里**不再看 `dormantFlagName`** ✗，只看 `services.declaredDormant` ✓；
-      //     ★而"要不要做这件事"＝★**有没有任何人是明示休眠** ✓（★不取决于命令行有没有配属性名 ✓）。
+      // "明示休眠"的属性名**从命令行给** （`--dormant <属性名>` —— 核心与 CLI 都不认识具体名字）
+      //   "谁是明示休眠"**只有一份判据** （`wire()` 里那个 `declaredDormant`）——
+      //     我第一版在这里**另写了一遍**（只认 `--dormant` 的属性名）⇒ **"钉"了却不退** 
+      //     （实测抓出来的：钉完再取件，那封**还躺在邮筒上**）。
+      //   所以这里**不再看 `dormantFlagName`**，只看 `services.declaredDormant`；
+      //     而"要不要做这件事"＝**有没有任何人是明示休眠** （不取决于命令行有没有配属性名）。
       const anyDormant = services.roster.list().map((m) => String((m && m.id) || m)).filter(Boolean).some((w) => services.declaredDormant(w))
       if (anyDormant) {
-        //   ⚠️ ★★`services.roster.list()` 给的是**对象数组** ✗（`[{ id, label, …属性 }]` ✓），
-        //     ★**不是**一串 id ✓ —— ★我第一版写成 `for (const w of list())` 然后 `flag(w, name)` ⇒
-        //     ★`w` 是对象 ⇒ `flag` **永远 false** ⇒ **整个退回逻辑静静地不执行** ✗✓
-        //     （★实测抓出来的：探针打出 `list=[{"id":"web",…},{"id":"phone","zzz":true,…}]` ✓）。
-        //   ★★这又是一次"名字没说真话" ✓ —— ★`list()` 听起来像"给 id 列表"，★给的却是对象 ✓
-        //     （★跟上一轮 `FALLBACK_FIELD_ORDER` 同一条精神：★**名字也是要负责任的** ✓）。
+        //   ⚠️ `services.roster.list()` 给的是**对象数组** （`[{ id, label, …属性 }]`），
+        //     **不是**一串 id —— 我第一版写成 `for (const w of list())` 然后 `flag(w, name)` ⇒
+        //     `w` 是对象 ⇒ `flag` **永远 false** ⇒ **整个退回逻辑静静地不执行** 
+        //     （实测抓出来的：探针打出 `list=[{"id":"web",…},{"id":"phone","zzz":true,…}]`）。
+        //   这又是一次"名字没说真话" —— `list()` 听起来像"给 id 列表"，给的却是对象 
+        //     （跟上一轮 `FALLBACK_FIELD_ORDER` 同一条精神：**名字也是要负责任的**）。
         const memberIds = services.roster.list().map((m) => String((m && m.id) || m)).filter(Boolean)
         const seenWho = new Set()
         for (const w of memberIds) {
@@ -580,7 +580,7 @@ function main() {
             for (const f of fs2) bounceOne(dir, w, f, '收件人被标为**休眠**（★此人无法收到邮件 ✓；主人 2026-10-06 令 ✓）')
           }
         }
-        // ★★推断出来的：**只提示，不退** ✗✓（★退了就会"来回摆" ✓）
+        // 推断出来的：**只提示，不退** （退了就会"来回摆"）
         for (const w of memberIds) {
           if (services.declaredDormant(w)) continue
           const d = typeof services.deliver?.dormancyOf === 'function' ? services.deliver.dormancyOf(w) : null
@@ -590,66 +590,66 @@ function main() {
           }
         }
       }
-      // ★★★S6h-①②（2026-10-10 从正本移植；正本判据 73-76 ✓）——★"搬一半崩了"这个现场怎么收拾 ✗✓：
-      //   ① ★**半截 `.tmp` ⇒ 不理它** ✓（★既不导入 ✓ 也不删 ✓ —— ★我们自己的 `.tmp` 就是半截的意思 ✓）；
-      //      ★**陈旧**的 `.tmp`（★躺过 `tmpStaleMs`）⇒ ★**MOVE 进邮筒的 `垃圾/`** ✓✓ —— ★★**绝不删** ✗
-      //      （★"绝不删"是我们这一族的老规矩：★看不懂的东西就挪到一边，别替别人决定它的死活 ✓）。
-      //   ② ★**收敛式 MOVE** ✗✓：★如果某封信**已经在本机 `seen/` 里**（＝上次搬到一半崩了 ✓），
-      //      而邮筒那份**还在 `inbox/`** ⇒ ★**把它补 MOVE 进 `seen/`** ✓ —— ★★且**不记账** ✗
-      //      （★账在第一次导入时就记过了 ⇒ 再记就是**双记** ✓）。
+      // S6h-①②（2026-10-10 从设计文档移植；设计文档判据 73-76）——"搬一半崩了"这个现场怎么收拾：
+      //   ① **半截 `.tmp` ⇒ 不理它** （既不导入 也不删 —— 我们自己的 `.tmp` 就是半截的意思）；
+      //      **陈旧**的 `.tmp`（躺过 `tmpStaleMs`）⇒ **MOVE 进邮筒的 `垃圾/`** —— **绝不删** 
+      //      （"绝不删"是我们这一族的老规矩：看不懂的东西就挪到一边，别替别人决定它的死活）。
+      //   ② **收敛式 MOVE**：如果某封信**已经在本机 `seen/` 里**（＝上次搬到一半崩了），
+      //      而邮筒那份**还在 `inbox/`** ⇒ **把它补 MOVE 进 `seen/`** —— 且**不记账** 
+      //      （账在第一次导入时就记过了 ⇒ 再记就是**双记**）。
       const rTrash = join(remote, '垃圾')
       const tmpStaleMs = Number(opt('tmp-stale-ms', 3600 * 1000))
       if (existsSync(rInbox)) {
         for (const x of readdirSync(rInbox)) {
-          if (!x.startsWith('.') || !x.endsWith('.tmp')) continue          // ★只碰"看起来像我们半截"的 ✓
-          // ⚠️ ★**不要**按 `as` 收窄 ✗ —— ★第一版我写成 `x.startsWith('.'+as+'.')` ⇒
-          //   ★而邮筒上的半截可能**不属于任何收件人**（★比如别的进程留下的 ✓）⇒ ★那样就永远清不掉 ✓。
-          //   ★这个收件箱是**我的**（★`inbox/<as>/` ✓）⇒ ★在里面的半截就是"该收拾的" ✓。
+          if (!x.startsWith('.') || !x.endsWith('.tmp')) continue          // 只碰"看起来像我们半截"的 
+          // ⚠️ **不要**按 `as` 收窄 —— 第一版我写成 `x.startsWith('.'+as+'.')` ⇒
+          //   而邮筒上的半截可能**不属于任何收件人**（比如别的进程留下的）⇒ 那样就永远清不掉。
+          //   这个收件箱是**我的**（`inbox/<as>/`）⇒ 在里面的半截就是"该收拾的"。
           let old = false
           try { old = Date.now() - statSync(join(rInbox, x)).mtimeMs > tmpStaleMs } catch { old = false }
           if (!old) { console.log(`半截   ${x}（★不理它 ✓ —— 可能是别的进程正在搬 ✓）`); continue }
           mkdirSync(rTrash, { recursive: true })
-          try { renameSync(join(rInbox, x), join(rTrash, x)); swept++; console.log(`陈旧   ${x} ⇒ MOVE 进邮筒 垃圾/ ✓（★没删 ✗）`) } catch { /* 挪不动就算了 ✓ */ }
+          try { renameSync(join(rInbox, x), join(rTrash, x)); swept++; console.log(`陈旧   ${x} ⇒ MOVE 进邮筒 垃圾/ ✓（★没删 ✗）`) } catch { /* 挪不动就算了 */ }
         }
       }
       for (const f of files) {
-        // ★★S6h-② 收敛：★**"搬了一半"的现场** ✗✓ —— ★★它的样子是：
-        //   ★**本机 `inbox/` 已经有这封信**（第①步做完了 ✓）★**而邮筒那份还没 MOVE 进 `seen/`**（第②步没做 ✓）。
-        //   ⚠️ ★不收拾的后果 ✗：★幂等（`existsSync(mine,f)`）会把它判成"跳过" ⇒
-        //     ★**邮筒那份永远留在 `inbox/`** ✓ —— ★"消费凭证"缺一份，而邮筒上多一份**永远搬不走的信** ✓✓。
-        //   ⇒ 把邮筒那份**补 MOVE** ✓ —— ★★且**不记账** ✗（★账在第一次导入时就记过了 ⇒ 再记就是双记 ✓）。
-        //   ⚠️ 必须**排在幂等判断之前** ✗（★否则先被 `existsSync` 拦成"跳过" ✓ —— 我第一版就这么写的 ✓）。
+        // S6h-② 收敛：**"搬了一半"的现场** —— 它的样子是：
+        //   **本机 `inbox/` 已经有这封信**（第①步做完了）**而邮筒那份还没 MOVE 进 `seen/`**（第②步没做）。
+        //   ⚠️ 不收拾的后果：幂等（`existsSync(mine,f)`）会把它判成"跳过" ⇒
+        //     **邮筒那份永远留在 `inbox/`** —— "消费凭证"缺一份，而邮筒上多一份**永远搬不走的信**。
+        //   ⇒ 把邮筒那份**补 MOVE** —— 且**不记账** （账在第一次导入时就记过了 ⇒ 再记就是双记）。
+        //   ⚠️ 必须**排在幂等判断之前** （否则先被 `existsSync` 拦成"跳过" —— 我第一版就这么写的）。
         if (existsSync(join(mine, f)) && !remoteSeen.has(f)) {
-          try { renameSync(join(rInbox, f), join(rSeenDir, f)); converged++; console.log(`收敛   ${f} ⇒ 搬了一半：邮筒那份补 MOVE 进 seen/ ✓（★不记账 ✗）`) } catch { /* 挪不动下次再来 ✓ */ }
+          try { renameSync(join(rInbox, f), join(rSeenDir, f)); converged++; console.log(`收敛   ${f} ⇒ 搬了一半：邮筒那份补 MOVE 进 seen/ ✓（★不记账 ✗）`) } catch { /* 挪不动下次再来 */ }
           continue
         }
-        // ★③ 幂等认三处 ✓
+        // ③ 幂等认三处 
         if (mineSeen.has(f) || remoteSeen.has(f) || existsSync(join(mine, f))) { skipped++; continue }
         let env = null
         try { env = JSON.parse(readFileSync(join(rInbox, f), 'utf8')) } catch { bad++; console.log(`坏件   ${f}（读不出来 ⇒ 不搬）`); continue }
         const probs = bus.verify(env)
         if (probs.length) { bad++; console.log(`不过   ${f} :: ${probs.join('；')}（★不搬、不消费、不删 —— 留在远端等人查 ✓）`); continue }
         const tmp = join(mine, `.${f}.tmp`)
-        // ★★★搬信要**保住原始 mtime** ✗✓（2026-10-10 按正本 S6h-③ 加）
-        //   ★病 ✗：★`writeFileSync` ＋ `renameSync` 会给它**现在**的 mtime ⇒
-        //     ★**"刚取回来的信"看起来像"刚到"** ✓ ⇒ ★★而休眠推断／新鲜度判定**正是看 mtime 的**
-        //     ⇒ ★**等于用假在线骗自己的闸** ✗✓（★正本原话 ✓）。
+        // 搬信要**保住原始 mtime** （2026-10-10 按设计文档 S6h-③ 加）
+        //   病：`writeFileSync` ＋ `renameSync` 会给它**现在**的 mtime ⇒
+        //     **"刚取回来的信"看起来像"刚到"** ⇒ 而休眠推断／新鲜度判定**正是看 mtime 的**
+        //     ⇒ **等于用假在线骗自己的闸** （设计文档原话）。
         const srcStat = statSync(join(rInbox, f))
         writeFileSync(tmp, JSON.stringify(env, null, 2), 'utf8')
-        renameSync(tmp, join(mine, f))                  // ★落地（抛了就轮不到下面两行 ✓）
-        try { utimesSync(join(mine, f), srcStat.atime, srcStat.mtime) } catch { /* ★设不上不拦住搬信 ✓ */ }
-        renameSync(join(rInbox, f), join(rSeenDir, f))  // ★★远端那份 MOVE 进 seen ✗（消费凭证 ✓）
+        renameSync(tmp, join(mine, f))                  // 落地（抛了就轮不到下面两行）
+        try { utimesSync(join(mine, f), srcStat.atime, srcStat.mtime) } catch { /* 设不上不拦住搬信 */ }
+        renameSync(join(rInbox, f), join(rSeenDir, f))  // 远端那份 MOVE 进 seen （消费凭证）
         took++
-        // ★★④ 到达侧记账：记**发件人**的配额 ✗ —— ★**默认不记，要 `--account` 显式开** ✓
-        //   ⚠️ 为什么默认关：★缸里的场景是"**手机**把信留在邮筒、**缸内成员取件时替它记**"（★手机自己不记 ✓）；
-        //      ★但如果**远端本身就是一台真邮局**（它有自己的 gate ✓），它**在发信时就记过了** ✗
-        //      ⇒ 我们再记一遍**就是双记** ✓。★"远端有没有账本"是**部署事实**，不是核心能猜的 ⇒ 交给使用者说 ✓。
+        // ④ 到达侧记账：记**发件人**的配额 —— **默认不记，要 `--account` 显式开** 
+        //   ⚠️ 为什么默认关：班级里的场景是"**手机**把信留在邮筒、**班级内成员取件时替它记**"（手机自己不记）；
+        //      但如果**远端本身就是一台真邮局**（它有自己的 gate），它**在发信时就记过了** 
+        //      ⇒ 我们再记一遍**就是双记**。"远端有没有账本"是**部署事实**，不是核心能猜的 ⇒ 交给使用者说。
         let quota = ''
         if (flag('account') && services.gate && typeof services.gate.record === 'function') {
           try {
             const rec = services.gate.record({ as: env.from, to: as, targets: [as], mode: env.mode ?? 'online', type: env.type ?? 'direct', subject: env.subject ?? '', body: env.body ?? '' })
             if (rec) quota = `　配额（${rec.bucket}）：${env.from} 今日 ${rec.used + rec.units}/${Number.isFinite(rec.limit) ? rec.limit : '∞'}`
-          } catch { /* ★记账失败不该让信丢掉 ✓ */ }
+          } catch { /* 记账失败不该让信丢掉 */ }
         }
         console.log(`取回   ${f} :: ${env.from} → ${as}《${env.subject ?? ''}》[${env.mode ?? 'online'}]${quota}`)
       }
@@ -692,17 +692,17 @@ function main() {
       console.log(text === null ? '（无需提示）' : text)
       return 0
     }
-    // ★★★`dormant`：把"推断的休眠"**钉**成"明示的休眠" ✗✓（2026-10-10 从正本移植；★正本判据 106 ✓）
-    //   ★正本原话 ✗：★"推断休眠**不自动退** ✗ —— 否则'退了 ⇒ 证据没了 ⇒ 又判活跃'**来回摆** ✗；
-    //     ★要真退就**先钉**（`dormant --pin <成员>` ✓）—— ★**钉了才是明示** ✓、才稳 ✓"
-    //   ★★★**"钉"是什么** ✗✓：★★ **把"猜测"和"决定"分开** ✓ ——
-    //     ★`dormancyOf` 的推断**永远是推断**（`source: 'inferred'` ✓）；★而**"钉"是一个人的决定** ✓
-    //     ⇒ ★写进名单后就**从此算 `declared`** ✓ ⇒ ★**退回逻辑才肯动它** ✓✓。
-    //   ★★**它必须留痕** ✗（★谁钉的／为什么／什么时候 ✓）—— ★**因为那是一个决定，要能追溯** ✓
-    //     （★跟"署名"那条一脉：★谁做的决定，写谁 ✓）。
+    // `dormant`：把"推断的休眠"**钉**成"明示的休眠" （2026-10-10 从设计文档移植；设计文档判据 106）
+    //   设计文档原话："推断休眠**不自动退** —— 否则'退了 ⇒ 证据没了 ⇒ 又判活跃'**来回摆**；
+    //     要真退就**先钉**（`dormant --pin <成员>`）—— **钉了才是明示**、才稳 "
+    //   **"钉"是什么**：**把"猜测"和"决定"分开** ——
+    //     `dormancyOf` 的推断**永远是推断**（`source: 'inferred'`）；而**"钉"是一个人的决定** 
+    //     ⇒ 写进名单后就**从此算 `declared`** ⇒ **退回逻辑才肯动它**。
+    //   **它必须留痕** （谁钉的／为什么／什么时候）—— **因为那是一个决定，要能追溯** 
+    //     （跟"署名"那条一脉：谁做的决定，写谁）。
     if (cmd === 'dormant') {
-      //   ⚠️ ★"钉"存在**这个根**的 `state/pinned-dormant.json` 里 ✓ ⇒ ★处处都要带上根 ✓
-      //     （★我第一版漏了根 ⇒ `readPinned()` 少一个参数 ⇒ 拿不到 ✓）。
+      //   ⚠️ "钉"存在**这个根**的 `state/pinned-dormant.json` 里 ⇒ 处处都要带上根 
+      //     （我第一版漏了根 ⇒ `readPinned()` 少一个参数 ⇒ 拿不到）。
       const pinRoot = wireRoot()
       const pinned = readPinned(pinRoot)
       const pinWho = opt('pin')
@@ -712,7 +712,7 @@ function main() {
         const by = opt('by') ?? process.env.USERNAME ?? process.env.USER ?? 'unknown'
         pinned[pinWho] = { why: String(why), by: String(by), atMs: Date.now() }
         writePinned(pinRoot, pinned)
-        //   ⚠️ ★模板字符串里**不能直接写反引号** ✗ —— ★我第一版写了 `` `declared` `` ⇒ `missing ) after argument list` ✓
+        //   ⚠️ 模板字符串里**不能直接写反引号** —— 我第一版写了 `` `declared` `` ⇒ `missing ) after argument list` 
         console.log(`已钉：${pinWho} 被标成**明示休眠** ✓（★从今往后 ` + '`dormancyOf`' + ` 会判 'declared' ✓）`)
         console.log(`  ★谁钉的：${by}／★为什么：${why}／★什么时候：${new Date(pinned[pinWho].atMs).toISOString()}`)
         console.log('  ⓘ ★钉了之后，`pickup --dormant <属性名>` 才会**退回**它的积压 ✓（★这是"一个人的决定" ✓）。')
