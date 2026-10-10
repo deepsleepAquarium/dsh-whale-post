@@ -45,7 +45,7 @@
 ## 四、怎么发（照抄这三条）
 
 **三条命令，用完就走**。装法见 `docs/INSTALL.md`；下面是**仓内路径版**，
-**装了 npm 包**就把 `node packages/cli/index.js` 换成 `npx -y dsh-whale-post-cli@0.5.2`。
+**装了 npm 包**就把 `node packages/cli/index.js` 换成 `npx -y dsh-whale-post-cli@0.5.3`。
 
 ```bash
 # ① 握手 —— 只在你要发【在线】件时才需要（离线件不看它）

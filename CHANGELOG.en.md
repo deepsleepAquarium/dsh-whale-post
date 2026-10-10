@@ -7,6 +7,42 @@
 
 ---
 
+## v0.5.3 —— 2026-10-11 (**released**)
+
+> **The ledger gained a reconciliation command: recompute a ledger from the filesystem.**
+
+### **Why it exists**
+
+Item five of the S6h hardening list (design doc, appendix 2) has two halves: "**the count may be low,
+never high**" (done long ago: the ledger is "a base file + increment files", so a crash may under-count
+and it **never double-counts**) and "**a reconciliation command**" (missing until now). Without a
+recomputation the ledger can only be **believed, never verified** —— which the design doc calls
+"the foundation of 'the ledger is optional'".
+
+### **One deliberate decision: do not write a second recount**
+
+In `gate`, "one letter becomes one increment" was extracted into `incrementFor`, and "merge an increment
+into the per-day ledger" into `mergeIncrement`, so `record` (bookkeeping), `report` (reading) and
+`recount` (recomputation) run on **the same production line** —— drift between "recompute" and "record"
+is therefore **structurally** impossible, rather than prevented by a comment.
+
+### **What you will see**
+
+* `whale-post reconcile --as <who> [--days N] [--remote <root>]`: compares **per day, per bucket**,
+  **match ⇒ exit 0; difference ⇒ exit 3**;
+* **A "not compared" line**: `forced` / `over` / `feeCent` / `byPhone` / `recent` **cannot be
+  recomputed** (`force` is a choice made at send time and leaves no trace in the letter; `over` and
+  `feeCent` depend on the usage read at bookkeeping time) —— better to say "not compared" than to hand
+  out a number that looks like "it matches";
+* **Letters sent to the remote side are not on this machine** ⇒ by default only the local root is
+  counted; pass `--remote` to include it.
+
+### **Criteria**
+
+Two, both actually run: right after sending ⇒ matches (exit 0); **deliberately delete one letter from
+`seen/` ⇒ it must report a difference** (exit 3). The second one is the point —— it proves the recount
+**really reads the files**; otherwise "print the ledger back" would satisfy the first one too.
+Criteria 365 → **367**.
 ## v0.5.2 —— 2026-10-11 (**released**)
 
 > **Fixing one wrong sentence that was sitting on the npm page.**

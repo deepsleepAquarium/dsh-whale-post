@@ -57,5 +57,5 @@ Zero-dependency command line (**it is an entry tool, not a plugin**)
 * **`--body` may not impersonate an argument** —— `--body --force` is read as "the body is `--force`, and `force` is set" ⇒ **and that bypasses all three gates in one move**;
   any option value starting with `--` counts as a mistake (exit code 2).
 * **Argument order does not matter** —— `--as` / `--to` may be written before or after the command.
-* **The latest on npm is now `0.5.2`** (that is what the `npx` line below installs); while **this checkout is `0.5.2` too** —— **the two now agree**.
-* **Use the copy on npm**: `npx -y dsh-whale-post-cli@0.5.2 <command>` (no clone, no `npm install`).
+* **The latest on npm is now `0.5.3`** (that is what the `npx` line below installs); while **this checkout is `0.5.3` too** —— **the two now agree**.
+* **Use the copy on npm**: `npx -y dsh-whale-post-cli@0.5.3 <command>` (no clone, no `npm install`).
