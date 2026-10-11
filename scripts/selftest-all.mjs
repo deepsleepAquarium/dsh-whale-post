@@ -19,7 +19,7 @@ const repo = join(dirname(fileURLToPath(import.meta.url)), '..')
 //   ⓘ **怎么发现的**：★2026-10-11 给 `docs` 加判据后，按 `CONTRIBUTING` 那条
 //     "★**随便改坏一行、自测必须变红**"做**负向测试** ⇒ ★**它 FAIL 了、而退出码还是 0** ✓✓
 //     —— ★★**负向测试抓出来的不是新代码的错、★是旧代码的错** ✓（★`static` 一直如此 ✓）。
-let extrasFailed = false
+let extrasFailed = []
 const only = process.argv.includes('--each')
 //   `--update-baseline`：把"现在每件多少条"写回基准 （**显式动作** ⇒ 删判据时糊弄不过去）
 const updateBaseline = process.argv.includes('--update-baseline')
@@ -52,7 +52,7 @@ import { readFileSync as _readFileSync, readdirSync as _readdirSync } from 'node
     if (/\bctx\??\.whale\b/.test(codeOnly(src))) offenders.push(p)
   }
   console.log(`— ${'static'.padEnd(9)} ${offenders.length === 0 ? 'PASS  无 ctx.whale 属性读写（真引擎上会抛 without inject）' : 'FAIL  这几件还在读 ctx.whale：' + offenders.join('、')}`)
-  if (offenders.length) { process.exitCode = 1; extrasFailed = true }
+  if (offenders.length) { process.exitCode = 1; extrasFailed.push('static') }
 }
 // ★★ 交接文档里的"判据条数"必须等于基准总数（2026-10-11 加）——
 //   **为什么加**：`docs/HANDOFF` 的状态表里写着「**判据 <N> 条**」，而**没有判据守它** ✗ ⇒
@@ -77,7 +77,7 @@ import { readFileSync as _readFileSync, readdirSync as _readdirSync } from 'node
   console.log(`— ${'docs'.padEnd(9)} ${bad.length === 0
     ? 'PASS  交接文档里的判据条数 ＝ 基准总数（' + want + '，中英一致）'
     : 'FAIL  ' + bad.map((s) => s.rel + ' 说 ' + (s.n ?? '没找到')).join('；') + '，而基准是 ' + want + ' 条'}`)
-  if (bad.length) { process.exitCode = 1; extrasFailed = true }
+  if (bad.length) { process.exitCode = 1; extrasFailed.push('docs') }
 }
 // ★★**文档里不许有装饰标记**（2026-10-11 加）——
 //   **为什么加**：★"给文档去掉装饰标记与内部用词"是 **0.5.0 那一版做的事** ✓（★`CHANGELOG` 里写着 ✓），
@@ -138,7 +138,9 @@ import { readFileSync as _readFileSync, readdirSync as _readdirSync } from 'node
   console.log(`— ${'innerwords'.padEnd(9)} ${offenders2.length === 0
     ? 'PASS  文档正文里没有内部用词（对外的东西不当记事本 ✓）'
     : 'FAIL  这几份文档里还有内部用词（签名／称呼）：' + offenders2.join('、')}`)
-  if (offenders.length || offenders2.length) { process.exitCode = 1; extrasFailed = true }
+  if (offenders.length) extrasFailed.push('markers')
+  if (offenders2.length) extrasFailed.push('innerwords')
+  if (offenders.length || offenders2.length) { process.exitCode = 1 }
 }
 for (const p of items) {
   const file = join(repo, 'packages', p, 'selftest.mjs')
@@ -242,10 +244,11 @@ const bad3 = results.filter((r) => r.code !== 0)
 //   汇总里也要**点名"崩了"的那几件** （否则"有件没过"看起来像"判据红了"）——
 //     两者要修的地方完全不同：**判据红 ⇒ 代码有 bug**；**崩了 ⇒ 自测自己坏了**。
 const crashed3 = bad3.filter((r) => r.crashed)
-console.log(bad3.length === 0
-  ? `全过：${results.length}/${results.length} 项（退出码 0）`
-  : `有件没过：${bad3.map((b) => b.p).join('、')}（退出码 ${bad3[0].code}）` +
-    (crashed3.length ? `\n其中 **${crashed3.length} 件是"崩了"**（不是判据红）：${crashed3.map((b) => b.p).join('、')}` : ''))
+//   ★★★**2026-10-12 01:5x 移到最后** ✗✓✓：★原先这行**只看包项 `bad3`** ✗、★而且把"退出码 0"
+//     **硬写在字符串里** ✓ ⇒ ★**`static`／`docs`／`markers`／`innerwords` 红了的时候，它照样打"全过"** ✗✓
+//     —— ★★**退出码对、话不对，一样会骗人** ✓（★这一条是狐狸 2026-10-12 的对抗审计抓到的 ✓，
+//     ★它做的负向测试原文：★退出码 1、而那行写着"退出码 0" ✓✓）。
+//   ⓘ **所以要等 `failed` 算完再说话** ⇒ ★**挪到脚本最后** ✓（★汇总本来就该在最后 ✓）。
 
 // ── 判据条数：**只许变多，不许悄悄变少** （2026-10-10 加）
 //   **病**：若某个自测"只跑 3 条就退出码 0" ⇒ **上面照样报 PASS** 
@@ -301,11 +304,26 @@ if (updateBaseline) {
   if (notRun.length) console.log(`  ⓘ 这几件这次没跑到 ⇒ 它们的数字没动：${notRun.join('、')}`)
 }
 
-const failed = bad3.length > 0 || shrank.length > 0 || extrasFailed
-//   ★★**汇总那句话也要对** ✗✓：★"全过：七件都全过"说的是**七个包项** ✓ ——
-//     ★而 `static`／`docs` **不在那七项里** ✗ ⇒ ★它们红了的时候，★上面那行会**照样打"全过"** ✓✓
-//     ⇒ ★**退出码对、话不对，一样会骗人** ✓ ⇒ 这里补一句说清 ✓（2026-10-11 加）。
-if (extrasFailed) console.log('★ 注意：上面有**非"包项"的守卫**没过（`static` 或 `docs`）—— 七个包项全过**不等于**整个自测过')
+const failed = bad3.length > 0 || shrank.length > 0 || extrasFailed.length > 0
+//   ★★★**汇总（★2026-10-12 01:5x 挪到这里、并改成"照实说话" ✓）** ——
+//     ★**规矩**：★**只要有一处红，就不许出现"全过"两个字** ✓✓ ——
+//     ★因为 CI 里没人读退出码、★人只看这一行（★狐狸审计的原话：★"这一行是整套防线里
+//     ★唯一会『喊了没人听见』的地方" ✓✓）。
+//   ⓘ **三样都要说**：★**包项**（`bad3`）／★**非包项的守卫**（`extrasFailed` 里那几个名字 ✓）／
+//     ★**条数缩水**（`shrank` ✓ —— ★"沉默的删除" ✓）。
+const guardNames = [...new Set(extrasFailed)]
+if (!failed) {
+  console.log(`全过：${results.length}/${results.length} 项（退出码 0）`)
+} else {
+  const parts = []
+  if (bad3.length) {
+    parts.push(`有件没过：${bad3.map((b) => b.p).join('、')}（退出码 ${bad3[0].code}）` +
+      (crashed3.length ? `\n其中 **${crashed3.length} 件是"崩了"**（不是判据红）：${crashed3.map((b) => b.p).join('、')}` : ''))
+  }
+  if (guardNames.length) parts.push(`有守卫没过：${guardNames.join('、')}（非"包项"，七个包全过**不等于**整个自测过）`)
+  if (shrank.length) parts.push(`有判据条数**缩水**：${shrank.join('、')}`)
+  console.log('★ 没过：\n' + parts.join('\n'))
+}
 // 另有一个**并发压测**不在这里跑 （它起十几个真子进程、慢一些）：
 //   `node scripts/racetest.mjs` —— **改了发号或落盘就要跑它** （发号撞号只在那里才看得见）
 console.log('ⓘ 另有并发压测：node scripts/racetest.mjs（改了发号／落盘就一定要跑）')
