@@ -29,13 +29,13 @@ I searched all **14329** entries (the build stamped `builtAt: 2026-10-10T07:30:1
 
 | package | in the catalog? | catalog version | latest on npm |
 |---|---|---|---|
-| `dsh-whale-post-bus` | **yes** | `0.4.0` | `0.4.0` |
-| `dsh-whale-post-roster` | **yes** | `0.4.0` | `0.4.0` |
-| `dsh-whale-post-types` | **yes** | `0.4.0` | `0.4.0` |
-| `dsh-whale-post-deliver` | **yes** | `0.4.0` | `0.4.0` |
-| `dsh-whale-post-gate` | **yes** | `0.4.0` | `0.4.0` |
-| **`dsh-whale-post-verify`** | **yes** | `0.4.0` | `0.4.0` |
-| **`dsh-whale-post-cli`** | **no** (**and that is correct**) | — | `0.4.0` |
+| `dsh-whale-post-bus` | **yes** | `0.6.1` | `0.6.1` |
+| `dsh-whale-post-roster` | **yes** | `0.6.1` | `0.6.1` |
+| `dsh-whale-post-types` | **yes** | `0.6.1` | `0.6.1` |
+| `dsh-whale-post-deliver` | **yes** | `0.6.1` | `0.6.1` |
+| `dsh-whale-post-gate` | **yes** | `0.6.1` | `0.6.1` |
+| **`dsh-whale-post-verify`** | **yes** | `0.6.1` | `0.6.1` |
+| **`dsh-whale-post-cli`** | **no** (**and that is correct**) | — | `0.6.1` |
 
 **It answered at 2026-10-10 02:36Z, and both points landed**:
 1. **`verify` was never rejected** — **it was created 10-09 17:07Z and first harvestable at 17:10Z**, **while the catalog I read was built at 12:39Z** ⇒ **a few hours apart** ⇒ **today's build picked it up**.
@@ -59,7 +59,7 @@ I searched all **14329** entries (the build stamped `builtAt: 2026-10-10T07:30:1
 ## 4. One sentence
 
 **We have been in the shop all along** — harvested automatically back at `0.1.x`, **no PR needed**;
-**all six plugins are now listed and current** (`0.4.0`);
+**all six plugins are now listed and current** (`0.6.1`);
 **and `cli` is absent because it is not an installable plugin** (`no-bundle`) — **which is correct**.
 
 ## 5. The other (larger) directory: `awesome-dsh-plugin`
