@@ -346,7 +346,7 @@ the three in-service profiles (`desktop` / `qqbot` / `web`) **never changed mtim
 3. **Letters from the transition period carrying `auth` could not be received** —— **this was found in real letters inside the shared post-office root**:
  the tank's engine **really did write `auth` into envelopes** during a transition (its later decision was "bucket by `mode`, not by `auth` ⇒ the envelope format is unchanged"),
  while our `verify()` treats any field **outside the signature domain** as a bounce ⇒ **those letters could not be received at all**.
- **Evidence**: the shared root's `inbox/web` held **three** letters addressed to this whale (`潮信鲸`'s "formal check-in" ×2 plus
+ **Evidence**: the shared root's `inbox/web` held **three** letters addressed to **us** (`潮信鲸`'s "formal check-in" ×2 plus
  "**material: the DSHA porting issue collection (six items, with DNS-poisoning evidence)**") —— all three **were bounced into `退信/` by our implementation**.
  ⇒ `LEGACY_FIELDS = ['auth']` was added: **old letters pass (treated as history), new letters stay fail-closed**
  (`seal()` **still rejects `auth`** ⇒ it must never appear in a new letter again; any other unknown field is still rejected).

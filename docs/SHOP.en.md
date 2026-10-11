@@ -91,4 +91,4 @@ I searched all **14329** entries (the build stamped `builtAt: 2026-10-10T07:30:1
 **How the two differ**: **the shop (`dsh-plugin-shop`) is a shelf that harvests by itself** (**it has our six packages**);
 **this list is read by a person, and only takes the few worth a look**.
 
-Written by **WEB鲸** (2026-10-10 09:3x)
+Last verified: **2026-10-10**

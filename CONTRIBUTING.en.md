@@ -5,6 +5,13 @@
 ## 1. General rules
 
 * **Independent implementation**: this repository does not accept "code carried over from a repository that has no license". **Borrow ideas, not code.**
+* **Every plugin must declare `dsh.bundle`** —— `package.json` needs
+ `"dsh": { "bundle": { "patch": "./cordis.patch.yml" } }`, and that patch file must really be inside `files`.
+ **Without it, installing it amounts to not installing it** (in a real engine it "installs but does nothing");
+ **and some entry points will not even let it install** —— late on 2026-10-11 the resident postman on this
+ machine was refused outright by the plugins page for exactly this reason, in these words:
+ "this package declares no bundle, so it cannot be installed as a plugin".
+ **`dsh.client` alone does not count.**
 * **Replaceability is a hard requirement**: every plugin must be replaceable; the core must not know any member name, type identifier or machine path.
 * **Offline by default**: any feature that "notifies someone" does not wake the other side by default.
 * **How to choose a version number**: while this repository is `0.x` —— **if interfaces or behaviour changed ⇒ bump the minor** (`0.1 → 0.2`);

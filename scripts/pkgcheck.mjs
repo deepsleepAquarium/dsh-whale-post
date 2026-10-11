@@ -44,8 +44,12 @@ check('② 版本号**七件全等** （漏一件就是"半新半旧"）', versi
   versions.length === 1 ? `全是 ${versions[0]}` : `出现了 ${versions.join('、')}`)
 
 // ③ 六件插件**必须**有 `dsh.bundle.patch` （少了它，真引擎里"装上了但什么都不做"）
+//   ⓘ **2026-10-12 01:1x 补一条后果**（★这条是主人让写进改造计划的 ✓）：★**有的入口连"装上"都不给** ✗ ——
+//     ★那天深夜本机那个常驻邮差（`@dsh-profile/whale-postman` ✓）**没声明 `dsh.bundle`** ⇒
+//     ★从**桌面版的插件页**装它时被**当面拒收**，原文「**这个包没有声明组合包，无法作为插件安装**」✓✓。
+//     ⇒ ★所以这条判据守的**不止"别装着不干活"**，★**还守着"能不能进得了门"** ✓。
 const noDsh = PLUGINS.filter((p) => !pkgs[p]?.dsh?.bundle?.patch)
-check('③ 六件插件**都有** `dsh.bundle.patch` （少了它真引擎里"装上了但什么都不做"）',
+check('③ 六件插件**都有** `dsh.bundle.patch` （少了它真引擎里"装上了但什么都不做"；有的入口则直接拒收）',
   noDsh.length === 0, noDsh.length ? `缺：${noDsh.join('、')}` : PLUGINS.join('、'))
 
 // ④ `cli` **必须没有** `dsh` （它是**入口工具、不是插件**）——

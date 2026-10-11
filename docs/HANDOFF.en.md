@@ -89,4 +89,4 @@ side are not on this machine** ⇒ by default only the local root is counted; pa
  **they are not in this repo**, so **no paths are given here**;
 * **`git log`** —— **the messages say "why"** (not "which line changed").
 
-Written by **WEB鲸** (2026-10-10 08:3x)
+Last verified: **2026-10-10**

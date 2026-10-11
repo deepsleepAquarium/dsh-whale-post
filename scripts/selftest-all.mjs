@@ -87,10 +87,25 @@ import { readFileSync as _readFileSync, readdirSync as _readdirSync } from 'node
 //   ⓘ **口径照当初那件事**：★**代码围栏里不查** ✓（★那里是命令与输出，本来就会出现各种符号 ✓）；
 //     ★**`CHANGELOG` 要查** ✓（★它也是给人读的文档 ✓）；★`.strip-backups`／`node_modules` 不看 ✓。
 //   ⓘ **不进基准**：★它和 `static`／`docs` 一样——报的不是"多少条判据" ✓。
+// ★★★**2026-10-11 20:4x 扩了一条：内部用词也不许进文档** ✗✓✓（★维护者当场提醒的 ✓）：
+//   **原话**：★「**README 之类要对外发布的东西千万别当成自己的记事本**」✓ ——
+//   ★而当时的 `markers` **只查标记、不查词** ✗ ⇒ ★**同一天**我自己就往公开的 `docs/RELEASE.md` 里写了
+//   ★**一句带内部称呼的口径** ✗、★而 `HANDOFF`／`SHOP` 里还签着内部代号 ✗✓
+//   （★一共 **6 处** ✓）⇒ ★**标记清了、词没清** ✓✓ —— ★**两件事，乙批当年都做过，而我只守了一半** ✓。
+//   ⓘ **这一段的写法也守同一条** ✗✓：★**举例时只说"内部称呼／内部代号"，不把词写出来** ✓ ——
+//     ★否则这就是"**在讲清规矩的地方，把规矩本身破了**" ✓（★而那些词**只能出现在下面的词表里** ✓，
+//     ★因为词表**必须**包含它们 —— ★那是它的本职 ✓）。
+//   ⓘ **口径**（★与"清标记"一致 ✓）：★**代码围栏里也不查** ✓ —— ★那里的字是**命令与输出** ✓；
+//     ★**日期留着**（★"最后核于哪天"对外有用 ✓）、★**去掉的是"签名与内部称呼"** ✓。
+//   ⓘ **词表是校准过的** ✗✓：★十一个候选，★**当时全仓 0 处** ✓ 才敢设成判据 ✓
+//     （★"太严的守卫比没有更坏" ✓ —— ★而 `主` 这种**裸子串**会命中 7 个文件 ⇒ ★**只按整词查** ✓）。
 {
   const MARK = /[★✓✗]/
+  //   ★★**内部用词**：★出了这个仓就没人认识的那些称呼 ✓（★新加一个之前，先 `git grep` 数一遍 ✓）
+  const INNER = /WEB鲸|阿鲸|本鲸|鲸鲸|小鲸|主人|缸|正本|子agent|记事本|本子/
   const SKIP = ['node_modules', '.git', '.strip-backups']
   const offenders = []
+  const offenders2 = []
   const walk = (dir, relBase) => {
     let entries = []
     try { entries = _readdirSync(dir, { withFileTypes: true }) } catch { return }
@@ -103,20 +118,27 @@ import { readFileSync as _readFileSync, readdirSync as _readdirSync } from 'node
       let text = ''
       try { text = _readFileSync(p, 'utf8') } catch { continue }
       let inFence = false
-      let hit = false
+      let hitMark = false
+      let hitWord = false
       for (const l of text.split('\n')) {
         if (/^\s*```/.test(l)) { inFence = !inFence; continue }
         if (inFence) continue
-        if (MARK.test(l)) { hit = true; break }
+        if (MARK.test(l)) hitMark = true
+        if (INNER.test(l)) hitWord = true
+        if (hitMark && hitWord) break
       }
-      if (hit) offenders.push(rel)
+      if (hitMark) offenders.push(rel)
+      if (hitWord) offenders2.push(rel)
     }
   }
   walk(repo, '')
   console.log(`— ${'markers'.padEnd(9)} ${offenders.length === 0
     ? 'PASS  文档正文里没有装饰标记（★✓✗ —— 代码围栏里不算 ✓）'
     : 'FAIL  这几份文档的正文里还有装饰标记：' + offenders.join('、')}`)
-  if (offenders.length) { process.exitCode = 1; extrasFailed = true }
+  console.log(`— ${'innerwords'.padEnd(9)} ${offenders2.length === 0
+    ? 'PASS  文档正文里没有内部用词（对外的东西不当记事本 ✓）'
+    : 'FAIL  这几份文档里还有内部用词（签名／称呼）：' + offenders2.join('、')}`)
+  if (offenders.length || offenders2.length) { process.exitCode = 1; extrasFailed = true }
 }
 for (const p of items) {
   const file = join(repo, 'packages', p, 'selftest.mjs')

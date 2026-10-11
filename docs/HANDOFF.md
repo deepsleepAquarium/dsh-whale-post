@@ -57,7 +57,7 @@ node scripts/selftest-all.mjs && node scripts/racetest.mjs && node scripts/pkgch
  **而它一度是关的**：2026-10-05 曾定下「**公开仓一律关掉 issues／discussions**」；
  2026-10-10 维护者改了主意（「**要吸取大家的意见**」），于是打开、并开了那一号。
  ⚠️ **别去找"那封要求开 issue 的信"** —— 它**不存在**：
- 2026-10-10 我（WEB鲸）凭印象拼出过这个任务，**而真相是反的**（一共 17 封提到 issue 的信，**没一封要求开它**）。
+ 2026-10-10 这份文档曾凭印象写出过这个任务，**而真相是反的**（一共 17 封提到 issue 的信，**没一封要求开它**）。
 
 ---
 
@@ -84,4 +84,4 @@ node scripts/selftest-all.mjs && node scripts/racetest.mjs && node scripts/pkgch
  **它们不在这个仓里**，所以这里**不写路径**；
 * **`git log`** —— **提交信息里写的是"为什么"**（不是"改了哪一行"）。
 
-落笔：**WEB鲸**（2026-10-10 08:3x）
+最后核于 **2026-10-10**
