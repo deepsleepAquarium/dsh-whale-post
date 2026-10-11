@@ -184,6 +184,38 @@ Measured (**at the 2026-10-10 release** —— see the `CHANGELOG` for exactly w
 **a checklist must not hard-code a version**, otherwise every release needs an edit here and a missed edit ships the wrong version).
 
 The conclusion **goes into the `CHANGELOG` "Read first (2)"** ("upgrade both sides first, then start sending").
+
+---
+
+## Step 7: whether to publish a **GitHub Release** —— **a higher bar than publishing to npm**
+
+**This rule comes from the maintainer (2026-10-11)**:
+
+> **"The old versions stay unpublished; `061` is the first version we can put in front of people —— if we ourselves cannot bear to look at it, putting it out there only invites ridicule."**
+
+⇒ **npm and a Release are two different things**:
+
+| | Facing whom | May it be half-finished |
+|---|---|---|
+| **the packages on npm** | **machines, and people who install by number** | **yes** —— as long as they resolve by number; nobody looks unless you point at them |
+| **a GitHub Release** | **people** (the repository's front door, `/releases/latest`, watchers get notified) | **no** —— **if you cannot bear to look at it, do not put it out** |
+
+**How** (replace `<this version>` with the tag you are shipping):
+
+```bash
+# (1) Take the notes FROM the CHANGELOG section, do not hand-write them (hand-writing drifts apart).
+#     Cut from `## v<this version>` up to the next `## v`.
+# (2) Prepend a short header: what this is, how to install, where the docs are (three or four lines).
+# (3) Publish (--latest makes /releases/latest point at it).
+gh release create v<this version> --title '<this version> —— <one line>' --notes-file <the cut .md> --latest
+# (4) Read it back once (a Release is an irreversible public action).
+gh release view v<this version> --json name,isDraft,isPrerelease --jq '.'
+gh api repos/<owner>/<repo>/releases/latest --jq '.tag_name'
+```
+
+**Note**: **do not backfill old versions** —— a Release is a **front door**, not an archive;
+history lives in the `CHANGELOG` and in `git tag`, and **neither of those loses anything**.
+
 ---
 
 ## A cheat sheet
