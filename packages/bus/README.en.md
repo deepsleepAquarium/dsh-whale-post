@@ -56,7 +56,7 @@ if you pass `inject` it really is called, and **if it throws ⇒ nothing is cons
 | `helloClockSkewMs` | `60 seconds` | **clock tolerance**: how far ahead of "now" a `hello`'s `sentAtMs` may be and still **not count as the future** (machines being a few seconds off is common). **Any timestamp in the future is judged not fresh** (design document S6h-④: otherwise **forging a hello dated 2099 would make the handshake gate meaningless**; fail-safe: **a wrong judgement may only lean towards offline**) |
 | `defaultType` | `'direct'` | set it to `null` ⇒ **a letter with no type is refused outright** (we do not guess for the caller) |
 | `offlineOnlyFlag` | unset | **three states**: unset ⇒ not enabled; set to an attribute name ⇒ **send anyway + say so via `wakePrediction.offlineOnly`** (design document criteria 58-62: **no more refusal** —— "if you cannot wake them, leave it in the box and wait, but say so loudly"); `offlineOnlyMode: 'reject'` ⇒ **the old refusal** |
-| `dormantFlag` | unset | for a member **explicitly marked dormant** ⇒ **bounce** (S11): **it does not land in their mailbox** / **it goes into the class `退信/`** (**not deleted**) / **a `*.why.txt` note is left** / the result says `verdict: 'bounced'` plus the `bounced` list, **plainly** / **it takes no quota** (it returns before `gate.record`). **Never guess dormancy yourself from "how long since their last hello"**. Only partially dormant (a send to a group) ⇒ deliver only to the awake ones + `skippedDormant` |
+| `dormantFlag` | unset | for a member **explicitly marked dormant** ⇒ **bounce** (S11): **it does not land in their mailbox** / **it goes into the same-family `退信/`** (**not deleted**) / **a `*.why.txt` note is left** / the result says `verdict: 'bounced'` plus the `bounced` list, **plainly** / **it takes no quota** (it returns before `gate.record`). **Never guess dormancy yourself from "how long since their last hello"**. Only partially dormant (a send to a group) ⇒ deliver only to the awake ones + `skippedDormant` |
 
 ## Structured receipts (added 2026-10-10 per the design document: today's design target is 2026-10-06 01:5x)
 
@@ -103,7 +103,7 @@ while the sender believes "the protocol does not allow sending" —— **that is
 * **fail-closed in both directions**: `seal()` **throws** on an **unregistered field**; `verify()` **refuses** on an unregistered field
   ("adding a field and forgetting the signature domain" = that field can be changed at will and verification still passes).
 * **Fields that are known but retired** (`LEGACY_FIELDS`, learned on 2026-10-10 from **real letters** in the shared post-office root):
-  the class's setup **really did write `auth` into envelopes** during its transition period (the later decision was "bucket assignment looks only at `mode`, not at `auth` ⇒ the envelope format changes not one character"),
+  the same-family setup **really did write `auth` into envelopes** during its transition period (the later decision was "bucket assignment looks only at `mode`, not at `auth` ⇒ the envelope format changes not one character"),
   so those historical letters are **judged "not in the signature domain" and bounced outright** by us —— our implementation **really did bounce three of them** in the shared root.
   The rule: **old letters pass (treat them as history), new letters stay fail-closed** —— `seal()` **still refuses `auth`**,
   while `verify()` lets it through (**it has no semantics left ⇒ changing it achieves nothing**); **any other unknown field is still refused**.

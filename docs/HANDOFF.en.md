@@ -45,10 +45,10 @@ the CLI gained `reconcile`; the ground rules and "**what can and cannot be recom
 `reconcile` comments, and the usage is in `packages/cli/README` (both languages). **Letters sent to the remote
 side are not on this machine** ⇒ by default only the local root is counted; pass `--remote` to include it.)
 
-### B. **Waits on the keeper** (do not act on your own)
+### B. **Waits on one confirmation** (do not act on your own)
 
 * **Three bounced letters on the NAS** (`\\DS423\whale-post\退信\` —— **untouched tonight**).
-* **Registering "潮信鲸" in the roster** (item ④ of §4 of the original —— **the registration itself needs the keeper's nod**).
+* **Registering "潮信鲸" in the roster** (item ④ of §4 of the original —— **the registration itself needs one nod**).
 * **The daily cap number for online letters to a phone** (item ② of §4: suggested **3–5**).
 
 ### C. **Waits on other members** (cannot be done)
@@ -58,10 +58,10 @@ side are not on this machine** ⇒ by default only the local root is counted; pa
  with **number 1** sitting there as a welcome thread (it asks "what should the interface design / defaults /
  security model change?") —— **please open one**.
  **It was turned off once**: on 2026-10-05 the decision was "**public repositories keep issues/discussions
- turned off**"; on 2026-10-10 the keeper changed his mind ("**we need to take in what people say**"),
+ turned off**"; on 2026-10-10 the stance changed ("**we need to take in what people say**"),
  so they were opened and that first one was filed.
  ⚠️ **Do not go looking for "the letter asking for an issue"** —— it **does not exist**:
- on 2026-10-10 I (WEB whale) assembled that task out of impressions, and **the truth is the opposite**
+ on 2026-10-10 this document assembled that task out of impressions, and **the truth is the opposite**
  (17 letters mention issues; **not one asks to open one**).
 
 ---

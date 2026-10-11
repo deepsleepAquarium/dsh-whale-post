@@ -42,7 +42,7 @@ const flag = (name) => argv.includes(`--${name}`)
 const die = (code, msg) => { if (msg) console.error(msg); process.exit(code) }
 
 /**
- * 探活：动"邮筒"之前先看它活着没 （S12 断线不卡死 · 2026-10-10 从班级里设计文档移植）
+ * 探活：动"邮筒"之前先看它活着没 （S12 断线不卡死 · 2026-10-10 从同族实现的设计文档移植）
  *
  * 病（设计文档原话）：「**SMB 掉线时同步 fs 调用会挂住几十秒** （本地盘不会）
  *   ⇒ `pickup` 会卡住、发信也会卡住 」
@@ -144,7 +144,7 @@ function wire({ root, live, allow: allowIn, verifyEnabled } = {}) {
   const services = {
     roster: createRoster({ file: opt('roster') ?? join(r, 'roster.json') }),
     types: createTypes(),    // `--no-gate` ⇒ **整套闸都不要** （并发压测要用 —— 12 路同对发信会被回环闸**正确地**拦住，
-    //   而压测要看的是"发号会不会撞"，不是"闸拦不拦"；班级里设计文档用的是环境变量 `WHALE_POST_NO_GATE`）
+    //   而压测要看的是"发号会不会撞"，不是"闸拦不拦"；同族实现的设计文档用的是环境变量 `WHALE_POST_NO_GATE`）
     ...(flag('no-gate') ? {} : { gate: createGate({ root: r }) }),
     // 把**签名域那一份真相**交给 verify （2026-10-10 修）——
     //   `verify` 原来自己抄了一份 `FIELD_ORDER` ⇒ **两边会漂移**：
@@ -234,7 +234,7 @@ function selftest() {
 
     // ⑥ 回环闸①：纯回执
     //   注意必须用**在线件** —— 2026-10-10 起，离线件**豁免整套回环闸** 
-    //   （"维护者 2026-10-06 令"＋设计文档判据 29-31：三道闸拦的是"别多叫醒人一次"，
+    //   （"2026-10-06 定的口径"＋设计文档判据 29-31：三道闸拦的是"别多叫醒人一次"，
     //    而离线件**根本不叫醒任何人** ⇒ 拦它没有收益）
     let e1 = ''
     try { w.send({ as: 'alice', to: 'bob', mode: 'online', subject: '回执', body: '收到' }) } catch (e) { e1 = e.message }
@@ -242,7 +242,7 @@ function selftest() {
     //   同一条的"反面"：同一个纯回执换成**离线** ⇒ **照发** 
     let offlineAckOk = false
     try { w.send({ as: 'alice', to: 'bob', mode: 'offline', subject: '回执', body: '收到' }); offlineAckOk = true } catch { offlineAckOk = false }
-    check('离线豁免闸①：纯回执的**离线件照发**（维护者 2026-10-06 令）', offlineAckOk)
+    check('离线豁免闸①：纯回执的**离线件照发**（2026-10-06 定的口径）', offlineAckOk)
 
     // ⑦ 回环闸②：同一对 20 分钟内限封数（超出就拒）—— 同样要用在线件 
     //   注意：`recent` 现在**只记在线件** （2026-10-10 改：离线件豁免整套回环闸，
@@ -256,7 +256,7 @@ function selftest() {
     //   同一条的"反面"：同一对再来**离线**件 ⇒ **照发** （豁免）
     let offlineMoreOk = false
     try { w.send({ as: 'alice', to: 'bob', mode: 'offline', subject: '离线', body: '同一对再来离线件（正文有货，不是回执）' }); offlineMoreOk = true } catch { offlineMoreOk = false }
-    check('离线豁免闸②：同对连发位置上的**离线件照发**（维护者 2026-10-06 令）', offlineMoreOk)
+    check('离线豁免闸②：同对连发位置上的**离线件照发**（2026-10-06 定的口径）', offlineMoreOk)
 
     // ⑧ 空正文 / 未注册类型 / 名额写错 ⇒ 一律拒发
     let e3 = ''; try { w.send({ as: 'bob', to: 'alice', subject: 'x', body: '   ' }) } catch (e) { e3 = e.message }
@@ -444,10 +444,10 @@ function main() {
       return 0
     }
     if (cmd === 'pickup') {
-      // S6 取件 ＋ S7 到达侧记账（2026-10-10 从班级里设计文档移植的**完整版**）——
+      // S6 取件 ＋ S7 到达侧记账（2026-10-10 从同族实现的设计文档移植的**完整版**）——
       //   场景：信箱在**别人那儿**（或共享目录的另一头）；我人不在，但信在 
       //   ① **镜像 hello**：把远端 `hello/` 里"**只收离线成员**"的 hello 搬回本机
-      //      ⇒ **握手闸才看得见手机** （班级内成员的 hello **不搬**；属性名由 `--only-offline <名>` 给）
+      //      ⇒ **握手闸才看得见手机** （同族实现里的成员的 hello **不搬**；属性名由 `--only-offline <名>` 给）
       //   ② 远端 `inbox/<我>/` 的信 ⇒ **验签** ⇒ 搬进本机 `inbox/`
       //      ＋ 远端那份 **`MOVE` 进 `seen/`** （**消费凭证** —— 不是删掉）
       //   ③ **幂等认三处**：本机 inbox ／ 本机 seen ／ **远端 seen** ⇒ 任一处有 ⇒ 跳过 
@@ -483,7 +483,7 @@ function main() {
           mkdirSync(myHello, { recursive: true })
           for (const f of readdirSync(rHello).filter((x) => x.endsWith('.json'))) {
             const w = f.replace(/\.json$/, '')
-            if (!services.roster.flag(w, onlyOffline)) continue      // 班级内成员不搬 
+            if (!services.roster.flag(w, onlyOffline)) continue      // 同族实现里的成员不搬 
             try { writeFileSync(join(myHello, f), readFileSync(join(rHello, f), 'utf8'), 'utf8'); mirrored++ } catch { /* 单个失败不拦住别的 */ }
           }
         }
@@ -521,10 +521,10 @@ function main() {
       mkdirSync(rSeenDir, { recursive: true })          // 准备"消费凭证"那一格 
 
       // S11 取件那半边：把**明示休眠**者信箱里积压的信**退回** 
-      //   （2026-10-10 从设计文档移植；设计文档判据 105-106 ＋「维护者 2026-10-06 02:5x 令」）
+      //   （2026-10-10 从设计文档移植；设计文档判据 105-106 ＋「2026-10-06 定的口径」）
       //   设计文档原话："当邮局把收件人标记为休眠时，处理中心应退回所有邮件（**此人无法收到邮件**）"
       //   它扫**两个地方** —— **只扫本机是不够的**：
-      //     ① 本机 `inbox/<谁>/` （班级内的信）
+      //     ① 本机 `inbox/<谁>/` （同族实现里的信）
       //     ② **远端邮筒的 `inbox/<谁>/`** （对 `offlineOnly` 那些"手机" ——
       //        **它们的信本来就躺在邮筒上等人来取** ⇒ 不扫邮筒就等于**没退**）。
       //   ⚠️ **推断休眠不自动退** （设计文档原话）：
@@ -546,7 +546,7 @@ function main() {
           `主题：${(env && env.subject) || '(无)'}`,
           `退回时刻：${new Date().toISOString()}`,
           '',
-          '这封信**没有丢** —— 它躺在退信这儿等着被处理 （重投／找收件人，由发件人或维护者定）。',
+          '这封信**没有丢** —— 它躺在退信这儿等着被处理 （重投／找收件人，由发件人或**使用者**定）。',
           '它**没有进**收件人的信箱，所以也**不占发件人的配额**。',
           '为什么退它：收件人被**明示**标成休眠 —— "信不会有人来取，落进去就是永远堆着"。',
         ].join('\n'), 'utf8')
@@ -577,7 +577,7 @@ function main() {
           for (const dir of [bus.paths().inbox(w), join(remote, 'inbox', w)]) {
             let fs2 = []
             try { fs2 = readdirSync(dir).filter((x) => x.endsWith('.msg.json')) } catch { continue }
-            for (const f of fs2) bounceOne(dir, w, f, '收件人被标为**休眠**（此人无法收到邮件；维护者 2026-10-06 令）')
+            for (const f of fs2) bounceOne(dir, w, f, '收件人被标为**休眠**（此人无法收到邮件；2026-10-06 定的口径）')
           }
         }
         // 推断出来的：**只提示，不退** （退了就会"来回摆"）
@@ -641,7 +641,7 @@ function main() {
         renameSync(join(rInbox, f), join(rSeenDir, f))  // 远端那份 MOVE 进 seen （消费凭证）
         took++
         // ④ 到达侧记账：记**发件人**的配额 —— **默认不记，要 `--account` 显式开** 
-        //   ⚠️ 为什么默认关：班级里的场景是"**手机**把信留在邮筒、**班级内成员取件时替它记**"（手机自己不记）；
+        //   ⚠️ 为什么默认关：同族实现里的场景是"**手机**把信留在邮筒、**同族实现里的成员取件时替它记**"（手机自己不记）；
         //      但如果**远端本身就是一台真邮局**（它有自己的 gate），它**在发信时就记过了** 
         //      ⇒ 我们再记一遍**就是双记**。"远端有没有账本"是**部署事实**，不是核心能猜的 ⇒ 交给使用者说。
         let quota = ''

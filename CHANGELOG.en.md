@@ -199,7 +199,7 @@ change behaviour** —— every string literal in the code was compared byte for
 
 **The illness**: `pickup` (the **receive** half) had been done long ago, while **`send` only ever wrote the local `inbox/`**
 ⇒ **"delivering to the phone" was not implemented at all in the public repository** —— **and the checklist counts it as half of S6**.
-**How it was found**: in round 67 I was writing the "fake phone" script from §3 of that checklist, **and the step "the tank delivers ⇒ the fake phone receives" did not work**.
+**How it was found**: in round 67 I was writing the "fake phone" script from §3 of that checklist, **and the step "the machine delivers ⇒ the fake phone receives" did not work**.
 
 * **`send --remote <mailbox root> --remote-only <attribute>`** —— members carrying that attribute ⇒ **write remote + delete local**
  (**write remote first, then delete local**: a crash midway leaves the local copy in place ⇒ **"a letter may arrive late, never not at all"**);
@@ -210,19 +210,19 @@ change behaviour** —— every string literal in the code was compared byte for
 
 The original's §3: "write a **fake phone** script (using `node` to read and write the 'simulated mailbox' directory directly,
 performing the phone's **five actions**: `PUT hello` / `PROPFIND≈list` / `GET` / `MOVE⇒seen` / `PUT ack`)
-⇒ **an end-to-end run** (the tank delivers ⇒ the fake phone receives ⇒ the fake phone replies ⇒ the tank collects)"
+⇒ **an end-to-end run** (the machine delivers ⇒ the fake phone receives ⇒ the fake phone replies ⇒ the machine collects)"
 
-* **The five actions are performed literally** —— **both the hello and the ack are genuinely signed** (through `bus.seal` ⇒ **the tank verifies them**),
+* **The five actions are performed literally** —— **both the hello and the ack are genuinely signed** (through `bus.seal` ⇒ **the machine verifies them**),
  **not "pretend"**; **MOVE is also "write first, delete after"** (a crash midway leaves the mailbox copy in place).
-* **The end-to-end run genuinely works**: the tank's `send --remote` ⇒ mailbox `inbox` **1** / local **0** ⇒
+* **The end-to-end run genuinely works**: the machine's `send --remote` ⇒ mailbox `inbox` **1** / local **0** ⇒
  the fake phone `--drain` ⇒ `GET` + `MOVE ⇒ seen` + `PUT ack` ⇒ mailbox `inbox` **0** / `seen` **1** / `ack/web` **1** ⇒
- the tank's `pickup` ⇒ **1 receipt mirrored** ⇒ local `ack/web` **1** —— **closed loop**.
+ the machine's `pickup` ⇒ **1 receipt mirrored** ⇒ local `ack/web` **1** —— **closed loop**.
  **And before this, "the end-to-end run works" was only an**inference**** —— **now it is a demonstration**.
 
 ### Criteria and boundaries
 
 * `cli` 52 → **54** (a remote member ⇒ written remotely and zero copies locally / without `--remote-only` ⇒ **still local**); **353 criteria** in all.
-* **Still not done**: **connecting a real device** (WebDAV + a share + pointing the remote root at a real address) —— **that needs those five words from the keeper**
+* **Still not done**: **connecting a real device** (WebDAV + a share + pointing the remote root at a real address) —— **that needs one confirmation**
  (§4 of the original); the fake phone in this version is **played by a local directory**, **not a real phone**.
 * **Measured: the two published versions run against each other** (when releasing `0.4.0`, 2026-10-10):
  · `0.3.0` sends ⇒ `0.4.0` receives: **works**;
@@ -309,7 +309,7 @@ From `0.3.0` onwards both sides have the **same signature domain** (`recv` / `qu
 * **`--force` does not exempt the "offline-only" rule** —— that rule is a **physical constraint**
  (that member simply cannot receive an online letter), not a "gate".
 
-### Compatibility (the keeper asked for this to be written down on 2026-10-10 —— it is a requirement, not a selling point)
+### Compatibility (written down on 2026-10-10 —— it is a requirement, not a selling point)
 
 **The post office must run on both engines**: the **desktop engine** (`0.2.0-rc.2`) and the **web engine** (`0.1.5-alpha.2`).
 We guarantee that with **three self-imposed rules** —— **not with "it happened to run on one machine"**:
@@ -344,7 +344,7 @@ the three in-service profiles (`desktop` / `qqbot` / `web`) **never changed mtim
  It is now byte-for-byte identical to `bus`, with a "**cross-check against the real `bus`**" criterion
  (build an envelope with the real `bus`; `verify` must recognise it).
 3. **Letters from the transition period carrying `auth` could not be received** —— **this was found in real letters inside the shared post-office root**:
- the tank's engine **really did write `auth` into envelopes** during a transition (its later decision was "bucket by `mode`, not by `auth` ⇒ the envelope format is unchanged"),
+ the machine's engine **really did write `auth` into envelopes** during a transition (its later decision was "bucket by `mode`, not by `auth` ⇒ the envelope format is unchanged"),
  while our `verify()` treats any field **outside the signature domain** as a bounce ⇒ **those letters could not be received at all**.
  **Evidence**: the shared root's `inbox/web` held **three** letters addressed to **us** (`潮信鲸`'s "formal check-in" ×2 plus
  "**material: the DSHA porting issue collection (six items, with DNS-poisoning evidence)**") —— all three **were bounced into `退信/` by our implementation**.
@@ -367,7 +367,7 @@ the three in-service profiles (`desktop` / `qqbot` / `web`) **never changed mtim
  `broadcast()` / `group(name, { without })`; two spellings are accepted (a field on the member / a top-level array of the same name).
  `list()` now **keeps the member's remaining fields** (it used to map only `id`/`label`, eating every custom attribute).
 * **`roster`: `groupWithout`** —— broadcasts (both "by group" and "the whole roster") drop members carrying that attribute by default;
- **addressing someone by name is unaffected** (the rule from the tank: "broadcasts skip it, naming it gets through").
+ **addressing someone by name is unaffected** (the rule from the machine: "broadcasts skip it, naming it gets through").
  An explicit `without: null` means "do not drop anyone this time".
 * **`bus`: `dormantFlag` (only an explicit dormant bounces; we do not guess)** —— a member carrying this attribute is
  **explicitly marked dormant**: sending to them is **refused on the spot** (non-zero + **the letter never enters their mailbox** +
@@ -376,7 +376,7 @@ the three in-service profiles (`desktop` / `qqbot` / `web`) **never changed mtim
  Partially dormant (sending to a group) ⇒ **only the awake ones receive it**, and those dropped are returned in `skippedDormant`
  (the CLI prints **"not delivered to: …"** —— **no silence**).
  The attribute name comes from **configuration**; unset ⇒ the rule is entirely off (backward compatible).
-* **Members who receive offline letters only: an online letter is now sent anyway + said so (no refusal)** (ported from the original on 2026-10-10; criteria 58-62 plus "**the keeper's order of 2026-10-06**")
+* **Members who receive offline letters only: an online letter is now sent anyway + said so (no refusal)** (ported from the original on 2026-10-10; criteria 58-62 plus "**the order of 2026-10-06**")
  —— **this is the last of the three "opposite directions"**: it used to throw and refuse; the new rule is
  **send anyway + say plainly "offline-only ⇒ treated as offline for them"** (**never silent**).
  **`mode` is not touched at all** (original criterion 60) —— **it is inside the signature domain** ⇒ quietly rewriting it
@@ -386,7 +386,7 @@ the three in-service profiles (`desktop` / `qqbot` / `web`) **never changed mtim
  ⚠️ **The mode is a separate field** —— the first version packed it into `offlineOnlyFlag` (writing `'reject'` as if it were the mode),
  so the core went looking for "a member attribute named `reject`" ⇒ **it blocked nothing at all** (a criterion caught it immediately ⇒ now two fields).
  The disclosure field `wakePrediction.offlineOnly` sits next to `willWait` (same names as in the original).
-* **S11: a dormant recipient ⇒ bounce** (ported from the original on 2026-10-10; its criteria 100-106 plus "**the keeper's order of 2026-10-06 02:5x**") ——
+* **S11: a dormant recipient ⇒ bounce** (ported from the original on 2026-10-10; its criteria 100-106 plus "**the order of 2026-10-06 02:5x**") ——
  **five rules**: ① **it never enters their mailbox** (nobody will come for it ⇒ putting it there means it piles up forever)
  ② **it goes into the household `退信/`** (**not deleted** —— the sender can still recover it)
  ③ **a `*.why.txt` note is left** (stating "this person cannot receive mail")
@@ -416,7 +416,7 @@ the three in-service profiles (`desktop` / `qqbot` / `web`) **never changed mtim
  The cost of not cleaning it: idempotency marks it "skipped" ⇒ **the mailbox copy stays in `inbox/` forever** (one receipt missing, one letter that can never leave).
  ⇒ **do the MOVE** plus **no accounting** (it was accounted when first imported ⇒ accounting again would double-count).
  Criteria: a fresh half-file is left alone / a stale one goes to `垃圾/` (**not deleted**) / the scene is set up correctly / **the convergent MOVE happens** / **nothing is imported twice**.
-* **Structured acknowledgements** (ported from the original on 2026-10-10; "the keeper's order of 2026-10-06 01:5x" plus its criteria 87-90) ——
+* **Structured acknowledgements** (ported from the original on 2026-10-10; "the order of 2026-10-06 01:5x" plus its criteria 87-90) ——
  **One receipt states two things**: ① `recipientState` (**my state as the recipient**: `online` / `stale-online` / `offline`;
  "am I online" = **is the `hello` I myself sent still fresh** —— the receiving side can work that out alone);
  ② `disposition` (where the letter **went**): `accepted-online` / `delivered-offline-by-stale` (**no fresh hello** ⇒ downgraded) /
@@ -476,7 +476,7 @@ the three in-service profiles (`desktop` / `qqbot` / `web`) **never changed mtim
  Also wrote "which three things to run after changing code" into `docs/FOR-AGENTS` (CN/EN): `selftest` / `racetest` / `xcheck` plus
  **"booting it for real cannot be skipped"** (a green `selftest` ≠ the engine can load) and **"cut the negative test off at the root"**.
 * **The fetching half of S11: letters piled up in a declared-dormant member's mailbox are bounced** (ported 2026-10-10;
- original criteria 105-106 plus "**the keeper's order of 2026-10-06 02:5x**") —— verbatim:
+ original criteria 105-106 plus "**the order of 2026-10-06 02:5x**") —— verbatim:
  "when the post office marks a recipient as dormant, the processing centre should return all their mail (**this person cannot receive mail**)".
  **It sweeps two places**: the local `inbox/<who>/` plus **the remote mailbox's `inbox/<who>/`** ——
  **sweeping only the local side is not enough**: a "phone" member's letters **lie in the mailbox waiting to be collected** ⇒ not sweeping it means **nothing was bounced**.
@@ -692,9 +692,9 @@ the three in-service profiles (`desktop` / `qqbot` / `web`) **never changed mtim
  · `send`'s `offlineOnly` criterion is now the **union of two sources**: the roster pin + **its own declaration** ——
  **a declaration can widen protection, never narrow it** ("a declaration may only be more conservative").
  · ⚠️ **The original says "no fresh hello ⇒ be most conservative: offline only"** ——
- **and doing that literally does harm**: **in-tank members may have no fresh hello either** ⇒ that branch would **block every online letter inside the tank**.
+ **and doing that literally does harm**: **in-machine members may have no fresh hello either** ⇒ that branch would **block every online letter inside the machine**.
  ⇒ **only the "explicit declaration" branch was implemented**; "when in doubt, lean conservative" **is left to the phone line**
- (its real meaning is "**a phone that is away naturally has no hello ⇒ offline-only by default**", not "rework the tank").
+ (its real meaning is "**a phone that is away naturally has no hello ⇒ offline-only by default**", not "rework the machine").
 
  2. `cli`
  · `hello --recv offline-only` / `hello --cap 2` (both enter the signature domain, omitted means absent from the envelope);
@@ -746,7 +746,7 @@ the three in-service profiles (`desktop` / `qqbot` / `web`) **never changed mtim
  **what it blocks is exactly "code changed, criteria did not follow"**.
 * **Added the "deliver" half of S6: a letter to a remote member is written to the remote `inbox/`, with no second copy kept locally** (2026-10-10) ——
  **How it was found**: in round 67 I started writing the "fake phone" script from **§3** of the original's 《跨设备邮局-1.0局域网实现清单》,
- and partway through I found that **"the tank delivers ⇒ the fake phone receives" simply did not work** —— because **`send` never accepted `--remote`**.
+ and partway through I found that **"the machine delivers ⇒ the fake phone receives" simply did not work** —— because **`send` never accepted `--remote`**.
  **The illness**: `pickup` (the **receive** half) had been done long ago, while **`send` only ever wrote the local `inbox/`** ⇒
  **"delivering to the phone" was not implemented at all in the public repository** —— **and the checklist counts it as half of S6**.
  **The original's words** (§1 · S6): "**deliver**: a letter to the phone ⇒ write the remote `inbox/潮信鲸/` (**keep no second copy locally**)".
@@ -755,7 +755,7 @@ the three in-service profiles (`desktop` / `qqbot` / `web`) **never changed mtim
  **"No second copy locally" is not tidiness**: **keeping one creates two authorities** ⇒ and the two will **disagree** about fetching, receipts and consumption.
  **New `scripts/fake-phone.mjs`** (the "fake phone" §3 asked for): it reads and writes the "simulated mailbox" directory directly with `node`,
  performing the phone's **five actions** —— **PUT hello** / **list**≈`PROPFIND` / **GET** / **MOVE ⇒ seen** / **PUT ack**;
- **both the hello and the ack are genuinely signed** (through `bus.seal` ⇒ **the tank verifies them**).
+ **both the hello and the ack are genuinely signed** (through `bus.seal` ⇒ **the machine verifies them**).
  **The end-to-end run genuinely works** (the sentence §3 asked for):
  tank `send --remote` ⇒ mailbox `inbox/潮信鲸` **1** ／ local **0** ⇒
  fake phone `--drain` ⇒ `GET` + `MOVE ⇒ seen` + **`PUT ack`** ⇒
@@ -772,7 +772,7 @@ the three in-service profiles (`desktop` / `qqbot` / `web`) **never changed mtim
  ⓘ This entry had gone missing on the **English** side —— and that is exactly what `doccheck` caught
  (the criterion "bullets 43 vs 42"): last round I inserted a new entry using this very line as the anchor,
  which **pushed it out**; I restored the Chinese one then, but **forgot the English one**.
-* **No handshake no longer means "refused"** (ported from the original on 2026-10-10; its criteria 1-3 plus "**the keeper's order of 2026-10-06 01:5x**")
+* **No handshake no longer means "refused"** (ported from the original on 2026-10-10; its criteria 1-3 plus "**the order of 2026-10-06 01:5x**")
  —— **another "opposite direction"**: it used to throw and refuse when there was no handshake; the new rule is
  **send anyway + say plainly "downgraded to offline for them"**.
  Verbatim from the original: "**if you cannot wake them, leave it in the box for them —— but say so loudly**" ——
@@ -782,7 +782,7 @@ the three in-service profiles (`desktop` / `qqbot` / `web`) **never changed mtim
  `false` ⇒ no check; **`'reject'` ⇒ keeps the old refusal** (an old deployment writing it sees **no change at all**).
  Alongside: **offline letters never consult the handshake** (they lie there waiting; the handshake is none of their business).
  The return field `wakePrediction.willWait` has the **same name as in the original** (so the two ends can be read against each other later).
-* **`cli`: the "do not hang when the link drops" probe in `pickup` (S12)** —— **the fourth item ported from the tank's original**:
+* **`cli`: the "do not hang when the link drops" probe in `pickup` (S12)** —— **the fourth item ported from the original original**:
  verbatim from the original: "**when SMB drops, synchronous fs calls hang for tens of seconds** (a local disk does not)
  ⇒ `pickup` hangs, and so does sending". ⇒ **probe before touching the postbox**: TCP **445** only;
  a local path is **not probed**; **"Node's synchronous fs has no timeout of its own"** ⇒ the ceiling comes from
@@ -790,7 +790,7 @@ the three in-service profiles (`desktop` / `qqbot` / `web`) **never changed mtim
  The cache is keyed **by the root string** (a different root is probed again).
  **Measured numbers**: an unreachable UNC ⇒ **judged dead in 2.8 s** (message: "this time **not a single file was touched**");
  with the probe short-circuited ⇒ it takes **22.7 s** to fail —— **that is how the original's "tens of seconds" was confirmed**.
-* **`deliver`: dormancy detection v2 (`dormancyOf`)** —— **the third "half" ported from the tank's original**:
+* **`deliver`: dormancy detection v2 (`dormancyOf`)** —— **the third "half" ported from the original original**:
  **the v1 lesson** (verbatim from the original): "**do not take 'the postman is alive' for 'they are reading their mail'** ——
  a real deployment exposes it at once: **小毛咪's postman renews her `hello` every 10 minutes, but she herself does not read letters** (what you measure is the postman, not her)".
  ⇒ Two paths, **both carrying `source` (an inference must never be reported as a declaration)**: ① **declared** ⇒ `'declared'`;
@@ -798,7 +798,7 @@ the three in-service profiles (`desktop` / `qqbot` / `web`) **never changed mtim
  Four states: `awake` / `quiet` / `dormant` plus **`unknown`** (**"we do not know" ≠ "they are dormant"**).
  Two hard rules: **no backlog ⇒ never call it dormant** ("nothing to read ≠ not reading") / **only on-disk mtime is used** (never a timestamp from the content).
  Thresholds `dormantSoftDays: 3` / `dormantHardDays: 7`; **a merely `quiet`/`inferred` recipient is never bounced** (we do not guess).
-* **Offline letters are exempt from the whole loop gate** (ported from the original on 2026-10-10; its criteria 29-31 plus "**the keeper's order of 2026-10-06**")
+* **Offline letters are exempt from the whole loop gate** (ported from the original on 2026-10-10; its criteria 29-31 plus "**the order of 2026-10-06**")
  —— **this is the opposite of what upstream did**: all three loop gates exist to stop "**waking the other side one extra time**",
  and **an offline letter wakes nobody at all** (it just lies there waiting to be collected) ⇒ blocking it **buys nothing**
  and merely traps "what you wanted to say" in the sender's hands. **A gate should stop a cost, not an expression**.
@@ -808,7 +808,7 @@ the three in-service profiles (`desktop` / `qqbot` / `web`) **never changed mtim
  Criteria: `gate` has 46 (including the three "offline exemption ①②③", "online letters still bound by gates ①②", and "offline letters still bound by quotas");
  negative test: removing the exemption turns **3 criteria red immediately**. The older `bus`/`cli` criteria that built "refused by the gate"
  out of **offline** letters were updated to use **online** letters (otherwise they go red —— and that would be a **changed definition**, not a bug).
-* **S8: the small daily cap on online letters to a "phone" (`bus` + `gate`)** —— **the last item ported from the tank's original**:
+* **S8: the small daily cap on online letters to a "phone" (`bus` + `gate`)** —— **the last item ported from the original original**:
  verbatim from the original: "**every online letter = waking a member for one full-context inference** (**the most expensive step**)
  ⇒ a member like a phone, which "may wake up once and fire off several letters", needs a **small daily cap**
  (offline letters are **not subject to it** —— they just lie there waiting)".
@@ -867,7 +867,7 @@ the three in-service profiles (`desktop` / `qqbot` / `web`) **never changed mtim
  **`--force` bypasses the three loop gates** (a deliberate escape hatch, and it leaves a trace).
 * **When `verify` is disabled it blocks nothing** —— it is **not "secure by default"**:
  the default tier is "**known insecure + nags you every day**".
-* **Concurrent sequence claiming: from "untested" to "tested"** (2026-10-10) —— new `scripts/racetest.mjs` (ported from the tank's original):
+* **Concurrent sequence claiming: from "untested" to "tested"** (2026-10-10) —— new `scripts/racetest.mjs` (ported from the original original):
  **12 real sub-processes sending at once** ⇒ all exit codes 0 + 12 letters delivered + **every `seq` unique**;
  it also reproduces "the `state` file written backwards" (write `nextSeq` back to 1 ⇒ a new letter still gets a **new number** —— the **watermark** catches it).
  **Still untested**: the truncation path once the `seen` state array grows very long (hand-crafted only).

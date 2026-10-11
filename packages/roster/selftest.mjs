@@ -58,7 +58,7 @@ try {
   check('属性：group() 不带 opts ⇒ 原样（向后兼容）', JSON.stringify(roster.group('club')) === '["alice","carol"]')
   check('属性：flag 的名字由调用方给 ⇒ 换个名字照样工作（核心不认识任何具体属性名）', roster.flag('carol', 'flagB') === true && roster.flag('carol', 'flagC') === false)
 
-  // 群发默认剔除（groupWithout）：属性名由**配置**给 —— 班级里口径"群发默认不到它，点名才进"
+  // 群发默认剔除（groupWithout）：属性名由**配置**给 —— 同族实现的口径"群发默认不到它，点名才进"
   const rOff = createRoster({ file, groupWithout: 'flagA' })
   check('群发：group() 默认剔掉 groupWithout 指定的属性', JSON.stringify(rOff.group('club')) === '["alice"]', JSON.stringify(rOff.group('club')))
   check('群发：broadcast() 剔掉同一批人', JSON.stringify(rOff.broadcast()) === '["alice"]', JSON.stringify(rOff.broadcast()))

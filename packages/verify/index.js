@@ -1,5 +1,5 @@
 /**
- * dsh-whale-post-verify —— 安全校验（信封验签 ＋ 名单白名单）默认禁用（维护者 2026-10-09 23:1x 定）
+ * dsh-whale-post-verify —— 安全校验（信封验签 ＋ 名单白名单）默认禁用（2026-10-09 定的口径）
  *
  * 接口：`ctx.whale.verify`（apiVersion 1）
  *   verify(letter) → { ok, why?, skipped? }   ← 核心只问这一句
@@ -7,7 +7,7 @@
  *   nag()          → string | null            ← 该印提示就返回文案；不该印就返回 null
  *   enable() / disable()
  *
- * 三态设计（照维护者原话；原文见 `docs/` 与班级内《上游记忆》）：
+ * 三态设计（依据见 `docs/`；另见同族实现的设计文档）：
  *   ① **默认禁用** —— 未开启时 `verify()` 一律放行，但返回值里带 `skipped: true`
  *      （让上层知道"这封没验过" —— 不许假装验过了）。
  *   ② **禁用中要提示** —— `nag()` 在未开启时返回一条醒目文案：
@@ -47,9 +47,9 @@ export const FIELD_ORDER = FALLBACK_FIELD_ORDER
 
 const DEFAULTS = {
   root: undefined,          // 信箱根（不传 ⇒ WHALE_POST_ROOT ⇒ 当前目录 .whale-mail）
-  enabled: false,           // 默认禁用 —— 这是维护者定的，不是"还没写" 
+  enabled: false,           // 默认禁用 —— 这是使用者定的，不是"还没写" 
   allow: [],                // 白名单：允许的成员 id（空 ⇒ 不限制收件人）
-  nagDays: 3,               // 连提几天就不再提（维护者 2026-10-09：三天）
+  nagDays: 3,               // 连提几天就不再提（2026-10-09 定的：三天）
   dayBoundaryHour: 0,       // 日界（0 ＝ 自然日）
   keyFile: undefined,       // 共享钥匙文件（不传 ⇒ <root>/signing.key）
   keysDir: undefined,       // 每设备钥匙目录（不传 ⇒ <root>/keys）—— 按信封**声明的发件人**取钥

@@ -12,7 +12,7 @@
 ⇒ **The criterion in one sentence**: **offline by default**; **only "the other side must act right now" justifies going online**.
 1. **Letters are not lost**: when the other side has no live session, the letter **stays in the mailbox** ⇒ **"I am afraid they will not know" is not a reason to go online**.
 2. **Online = waking someone up**: the other side pays one **full-context inference** for that single sentence of yours (= the kind of cost that re-runs their entire context) ⇒ **offline by default**; use online only for "**must be handled right now**" (something broke / a service has stalled / the other side has to act immediately).
-3. **The quota is someone else's (the keeper's) money**: one more letter = one more unit burned ⇒ **send one fewer letter; merge first**.
+3. **The quota is someone else's money**: one more letter = one more unit burned ⇒ **send one fewer letter; merge first**.
 
 ## 2. The two tiers (which tier to use when)
 

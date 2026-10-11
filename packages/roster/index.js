@@ -53,7 +53,7 @@ export function createRoster(config = {}) {
 
   // 成员写成纯字符串也认（独立审计 2026-10-05：原来会变成 `id: "undefined"`）；没有 id 的一律丢掉
   // 2026-10-10：**保留成员自带的其余字段** —— 原来只映射 id/label ⇒ 自定义属性（"谁只收离线"之类）
-  //   全被吃掉 ⇒ "成员属性"这件事在接口层根本不成立 （班级里那套正是靠它区分"永久只收离线"的成员）
+  //   全被吃掉 ⇒ "成员属性"这件事在接口层根本不成立 （另一套同族实现正是靠它区分"永久只收离线"的成员）
   const list = () => safe(() => read().members
     .map((m) => {
       if (typeof m === 'string') return { id: m, label: m }
@@ -83,9 +83,9 @@ export function createRoster(config = {}) {
   const without = (ids, name) => (Array.isArray(ids) ? ids : []).map(String).filter((w) => !flag(w, name))
   const groups = () => safe(() => Object.keys(read().groups), [])
   /**
-   * **群发默认剔除**（2026-10-10，班级内口径移植）：`config.groupWithout` 给一个**属性名** ——
+   * **群发默认剔除**（2026-10-10，同族实现的口径移植）：`config.groupWithout` 给一个**属性名** ——
    *   按组解析、以及"群发清单"都会默认把带该属性的成员剔掉；**点名不受影响** 
-   *   （班级里口径："群发默认不到它，点名才进"—— 那条线的五处群发名单每处都剔同一批人）
+   *   （同族实现的口径："群发默认不到它，点名才进"—— 那条线的五处群发名单每处都剔同一批人）
    *   ⚠️ 显式 `opts.without` 优先；写 `opts.without: null` ⇒ **这一次不剔** （逃生门）
    */
   const group = (name, opts = {}) => {

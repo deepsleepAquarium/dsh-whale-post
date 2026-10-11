@@ -52,8 +52,8 @@ try {
   const halfLive = createDeliver({ sessionOf: () => ({ live: false, inject: () => { throw new Error('不该被调用') } }) })
   check('live:false 但给了 inject ⇒ 仍 kept（不许用 inject 顶替"活着"）', halfLive.deliver(letter({ mode: 'online' }), { targets: ['bob'] }) === 'kept')
 
-  // S10 v2 休眠判定（2026-10-10 从班级里设计文档移植）——
-  //   v1 的教训：**不许拿「邮差还活着」当「它在读信」**（班级里小毛咪的邮差每 10 分钟续 hello，可她本人不读信）
+  // S10 v2 休眠判定（2026-10-10 从同族实现的设计文档移植）——
+  //   v1 的教训：**不许拿「邮差还活着」当「它在读信」**（同族实现里，某个成员的邮差每 10 分钟续 hello，可它本人不读信）
   //   ⇒ ① 明示位（declared）② **推断**（信箱里最老的一封没读的信躺了多久 —— 这才是"没读信"的明证）
   //   ⚠️ **没有积压 ⇒ 不许判休眠**；**不知道就说 `unknown`** （不许把"不知道"说成"休眠"）
   const DAY = 24 * 3600 * 1000

@@ -43,7 +43,7 @@ try {
   check('信封：改正文 ⇒ 不过', bus.verify({ ...raw, body: raw.body + 'X' }).some((x) => /摘要不符|MAC/.test(x)))
   check('信封：改 mode ⇒ 不过（模式进签名）', bus.verify({ ...raw, mode: 'online' }).some((x) => /MAC/.test(x)))
 
-  // 安全校验的**策略**归 `whale.verify`（维护者 2026-10-09 定："默认禁用"）——
+  // 安全校验的**策略**归 `whale.verify`（2026-10-09 定的口径："默认禁用"）——
   //   不装 ⇒ 照旧验签（向后兼容）；装了但禁用 ⇒ **真的跳过 HMAC**；装了且开启 ⇒ 照验
   const broken = { ...raw, body: raw.body + 'X' }        // 正文被改 ⇒ 摘要那条必然报（与策略无关）
   const mk = (v) => createBus({ root: tmp, services: { roster, types, verify: v } })
@@ -60,8 +60,8 @@ try {
     mk({ verify: () => ({ ok: true, skipped: true }) }).verify({ ...raw, from: undefined }).some((x) => /from/.test(x)))
 
   // 已知但已废弃的字段（2026-10-10 从共享邮局根里真信上学到的）——
-  //   班级里的过渡期真把 `auth` 写进过信封；我们的 seal() 拒它（新信不许带），
-  //   但 verify() **该放行旧信** —— 否则班级友递的材料永远读不进来 （我们真栽过：三封信被退）
+  //   同族实现里的过渡期真把 `auth` 写进过信封；我们的 seal() 拒它（新信不许带），
+  //   但 verify() **该放行旧信** —— 否则同族实现递过来的材料永远读不进来 （我们真栽过：三封信被退）
   check('旧字段：带 auth 的旧信 ⇒ verify **不报"没进签名域"**（历史信要收得下）',
     !bus.verify({ ...raw, auth: 'self' }).some((x) => /没进签名域/.test(x)), JSON.stringify(bus.verify({ ...raw, auth: 'self' })))
   check('旧字段：auth 也**不进签名域** ⇒ 改它照样验得过（因为它已无语义，改了没用）',
@@ -95,7 +95,7 @@ try {
     eatOut.length === 1 && /已挪进/.test(eatOut[0].why) && !existsSync(kp) && existsSync(join(busKeep.paths().dead, `${rk.id}.msg.json`)),
     JSON.stringify(eatOut.map((x) => x.why)))
 
-  // "只收离线"的成员（2026-10-10 班级内口径移植）：
+  // "只收离线"的成员（2026-10-10 同族实现的口径移植）：
   //   属性名**由配置给**（offlineOnlyFlag）—— 核心不认识任何具体属性名；
   //   对它们发在线 ⇒ 拒发（非 0 ＋ 不落信箱 ＋ 不许静默降级 ＋ 文案带出路），且 --force 不豁免（物理约束 ≠ 闸）
   // 用**独立的临时根**做这批测试 —— 否则"发给别人在线"会往 `tmp` 的 bob 信箱里塞一封，
@@ -114,7 +114,7 @@ try {
   busOff.hello({ as: 'alice' }); busOff.hello({ as: 'bob' }); busOff.hello({ as: 'carol' })
 
   const before = lsInbox('carol')
-  // "只收离线"的新口径（2026-10-10 按**设计文档**改：设计文档判据 58-62 ＋「维护者 2026-10-06 令」）：
+  // "只收离线"的新口径（2026-10-10 按**设计文档**改：设计文档判据 58-62 ＋「2026-10-06 定的口径」）：
   //   **不再拒发** ⇒ **照发 ＋ 明示「只收离线 ⇒ 已按离线处理」** （不许静默）；
   //   ⚠️ **信封里的 `mode` 一字不改** —— 它在签名域里 ⇒ "偷偷改成离线"会破签。
   const rOff1 = busOff.send({ as: 'alice', to: 'carol', mode: 'online', subject: 's', body: '在线件：应当照发但要明示' })
@@ -149,7 +149,7 @@ try {
       return r.wakePrediction?.offlineOnly?.includes('carol') === true
     })())
 
-  // 群发默认不到"只收离线"的成员（班级里口径：群发默认不到它，**点名才进**）
+  // 群发默认不到"只收离线"的成员（同族实现的口径：群发默认不到它，**点名才进**）
   //   配置给属性名 ⇒ 核心不认识它；点名走 `has(to) ⇒ [to]`，根本不经过 group()／broadcast() 
   const busGa = createBus({ root: tmpOff, services: { roster: createRoster({ file: offFile, groupWithout: 'off' }), types } })
   const rAll = busGa.send({ as: 'alice', to: 'all', mode: 'offline', subject: 's', body: '群发：整份名单' })
@@ -165,7 +165,7 @@ try {
   check('群发：没配 groupWithout ⇒ 谁都到（向后兼容）',
     createBus({ root: tmpOff, services: { roster: createRoster({ file: offFile }), types } }).send({ as: 'alice', to: 'all', mode: 'offline', subject: 's', body: '群发：没配' }).targets.includes('carol'))
 
-  // 被**明确**标成休眠的成员（2026-10-10 班级内口径移植：**明确的 dormant 才退，不猜**）——
+  // 被**明确**标成休眠的成员（2026-10-10 同族实现的口径移植：**明确的 dormant 才退，不猜**）——
   //   属性名由配置给（dormantFlag），核心不认识它；**不根据"多久没 hello"自己猜** 
   const dormFile = join(tmpOff, 'roster-dormant.json')
   writeFileSync(dormFile, JSON.stringify({ apiVersion: 1,
@@ -176,12 +176,12 @@ try {
   const busDorm = createBus({ root: tmpOff, services: { roster: rosterDorm, types }, dormantFlag: 'zzz' })
   busDorm.hello({ as: 'alice' }); busDorm.hello({ as: 'bob' }); busDorm.hello({ as: 'sleepy' })
   const beforeSleepy = lsInbox('sleepy')
-  // S11：收件人**全休眠** ⇒ **退信**（不是"拒发"）—— 设计文档判据 100-104 ＋「维护者 2026-10-06 02:5x 令」：
-  //   ① 不落它信箱 ② 进班级里 `退信/`（**没删**）③ 留说明 ④ 结果里明示 ⑤ **不占配额** 
+  // S11：收件人**全休眠** ⇒ **退信**（不是"拒发"）—— 设计文档判据 100-104 ＋「2026-10-06 定的口径」：
+  //   ① 不落它信箱 ② 进同族实现里 `退信/`（**没删**）③ 留说明 ④ 结果里明示 ⑤ **不占配额** 
   const rDorm = busDorm.send({ as: 'alice', to: 'sleepy', mode: 'offline', subject: '退信测试', body: '发给明确休眠的人（正文有货）' })
   check('休眠：对明确休眠的成员发信 ⇒ **退信**（`verdict === "bounced"`，不是拒发）', rDorm.verdict === 'bounced', String(rDorm.verdict))
   check('休眠：**不落它信箱** （它不会有人来取 ⇒ 落进去就是永远堆着）', lsInbox('sleepy') === beforeSleepy, `${beforeSleepy} ⇒ ${lsInbox('sleepy')}`)
-  check('休眠：**进班级里 `退信/`** （**没删** —— 发信人还能找回来）',
+  check('休眠：**进同族实现里 `退信/`** （**没删** —— 发信人还能找回来）',
     existsSync(join(tmpOff, '退信', `${rDorm.id}.msg.json`)))
   const whyTxt = join(tmpOff, '退信', `${rDorm.id}.why.txt`)
   check('休眠：**留说明** （写明"无法收到邮件"）',
@@ -237,7 +237,7 @@ try {
   expectThrow('没握手', () => bus.send({ as: 'alice', to: 'carol', subject: 'x', body: '正文有货', force: false }), /未知收件人/)
   check('拒发：四条非法输入都当场挡住', fails.length === 0, fails.join('；'))
 
-  // ⑥ 握手（2026-10-10 按设计文档改成"**未握手不再拒发**"—— 设计文档判据 1-3 ＋「维护者 2026-10-06 01:5x 令」）
+  // ⑥ 握手（2026-10-10 按设计文档改成"**未握手不再拒发**"—— 设计文档判据 1-3 ＋「2026-10-06 定的口径」）
   //   新口径三态：`false` 不检查 ／ `'reject'` 旧的拒发 ／ 其它真值（默认）⇒ **照发 ＋ 明示降级为离线** 
   writeFileSync(join(tmp, 'roster.json'), JSON.stringify({ apiVersion: 1, members: [{ id: 'alice' }, { id: 'bob' }, { id: 'dave' }], groups: {} }), 'utf8')
   //   ⚠️下面这些必须写 `mode: 'online'` —— 不写就默认**离线**，而**离线件根本不看握手** 
@@ -283,7 +283,7 @@ try {
       return b0.helloFresh('ok') === false
     })())
 
-  // 结构化回执（2026-10-10 从设计文档移植；"维护者 2026-10-06 01:5x 令"＋设计文档判据 87-90）——
+  // 结构化回执（2026-10-10 从设计文档移植；"2026-10-06 定的口径"＋设计文档判据 87-90）——
   //   一张回执说清**两件事**：① `recipientState`（**我＝收件人**当时的状态）
   //     ② `disposition`（这封信的**去向**）—— `disposition` **优先取发件人写下的投递说明** 
   const ackRoot = join(process.env.TEMP ?? '/tmp', `whale-bus-ack-${Date.now()}`)
@@ -429,7 +429,7 @@ try {
   const seqBefore = bus6.loadState('alice').nextSeq
   let refused = ''
   try { bus6.send({ as: 'alice', to: 'bob', mode: 'online', subject: 'x', body: '收到' }) } catch (e) { refused = e.message }
-  //   注意必须用**在线件** —— 2026-10-10 起离线件**豁免整套回环闸** （维护者 2026-10-06 令）；
+  //   注意必须用**在线件** —— 2026-10-10 起离线件**豁免整套回环闸** （2026-10-06 定的口径）；
   //     用离线件构造"被闸拒"现在构造不出来 ⇒ 水位当然会变（不是"烧了不该烧的号"）。
   check('拒发不烧序号：被闸拒掉的信 ⇒ 水位不变', /闸拒发/.test(refused) && bus6.loadState('alice').nextSeq === seqBefore,
     JSON.stringify({ refused: refused.slice(0, 30), before: seqBefore, after: bus6.loadState('alice').nextSeq }))
@@ -498,7 +498,7 @@ check('**字段多寡会改变签名值** （同一封→相同；多一个字�
 //   “收件习惯应由**邮差自己声明**”：判据从“**名册钉死位**”换成“**它自己的声明**”。
 //   两个来源取**并集** （声明能**扩大**保护面、**不能缩小**）。
 //   ⚠️ 设计文档原话是“没有新鲜 hello ⇒ 只许离线” —— 而**直接照做会误伤**：
-//     **班级内成员平时也可能没有新鲜 hello** ⇒ 那一支会把班级内在线件**全拦掉**。
+//     **同族实现里的成员平时也可能没有新鲜 hello** ⇒ 那一支会把同族实现内在线件**全拦掉**。
 //     ⇒ 这里**只做“显式声明”那一支**；“说不清就往保守倒”**留给手机那条线**。
 check('`recv`：声明 `offline-only` 的人 ⇒ 对它的**在线件会明示** （不拒发、**明示**）',
   (() => {
@@ -513,7 +513,7 @@ check('`recv`：声明 `offline-only` 的人 ⇒ 对它的**在线件会明示**
       return JSON.stringify(s.wakePrediction ?? {}).includes('offlineOnly')
     } catch { return false }
   })())
-check('声明了才算：**没声明的人不受影响** （不能误伤班级内）',
+check('声明了才算：**没声明的人不受影响** （不能误伤同族实现内）',
   (() => {
     try {
       const r = join(tmp, 'recv-null'); mkdirSync(r, { recursive: true })

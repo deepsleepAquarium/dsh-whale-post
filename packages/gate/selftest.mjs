@@ -86,7 +86,7 @@ check('台账：**增量目录**落盘了（基线 ＋ 增量，各写各的）'
   existsSync(join(tmp, 'state', 'quota-erin.d')) || existsSync(join(tmp, 'state', 'quota-erin.json')),
   JSON.stringify((() => { try { return readdirSync(join(tmp, 'state')) } catch { return [] } })()))
 
-  // 分桶规则（2026-10-10 班级内口径移植：就是"按授权级别分四档"那种）——
+  // 分桶规则（2026-10-10 同族实现的口径移植：就是"按授权级别分四档"那种）——
   //   字段名与桶名**全由配置给**，本件里不出现任何具体名字 
   const g4 = createGate({ root: tmp, quota: {
     bucketRules: [
@@ -117,7 +117,7 @@ check('台账：**增量目录**落盘了（基线 ＋ 增量，各写各的）'
   check('分桶规则：不配 ⇒ 行为一字不变（在线按 type、离线走 offline 桶）',
     rOld1.bucket === 'direct' && rOld2.bucket === 'offline', JSON.stringify([rOld1.bucket, rOld2.bucket]))
 
-  // S8 手机在线件小日上限（2026-10-10 从班级里设计文档移植）——
+  // S8 手机在线件小日上限（2026-10-10 从同族实现的设计文档移植）——
   //   **每封在线件 ＝ 叫醒一个成员做一次满上下文推理**（最贵的那一步）
   //   ⇒ 额度 ＝ **min(收件人自报, phoneOnlineCap)**，**声明只能更保守** 
   //   "谁算手机"由配置给（phoneFlag）—— 闸里不出现任何具体属性名 
@@ -237,12 +237,12 @@ check('台账：**增量目录**落盘了（基线 ＋ 增量，各写各的）'
       return readDay(r)[0] === today
     })())
 
-  // 离线件豁免**整套回环闸** （2026-10-10 从设计文档移植；设计文档 29-31 三条 ＋ 「维护者 2026-10-06 令」）
+  // 离线件豁免**整套回环闸** （2026-10-10 从设计文档移植；设计文档 29-31 三条 ＋ 「2026-10-06 定的口径」）
   //   为什么：三道回环闸拦的是"**别多叫醒人一次**" —— 而离线件**根本不叫醒任何人** 
   //   ⇒ 拦它没有收益，只会把"想说的话"堵在发信人手里 （"闸"该拦代价，不该拦表达）
   const gOff = createGate({ root: tmp })
   const LO = (over = {}) => ({ as: 'offexempt', to: 'qq', targets: ['qq'], mode: 'offline', type: 'direct', body: '离线件（正文有货，别当回执）', ...over })
-  check('离线豁免①：纯回执「已读」的**离线件照发**（维护者 2026-10-06 令）', gOff.check(LO({ body: '已读' })) === 'pass')
+  check('离线豁免①：纯回执「已读」的**离线件照发**（2026-10-06 定的口径）', gOff.check(LO({ body: '已读' })) === 'pass')
   for (let i = 0; i < 5; i += 1) gOff.record(LO(), ['qq'])
   check('离线豁免②：同对 20 分钟内第 4、5 封**照发**', gOff.check(LO()) === 'pass')
   check('离线豁免③：本链第 3 跳的离线件**照发**', gOff.check(LO({ hop: 3, re: 'x' })) === 'pass')

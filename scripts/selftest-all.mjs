@@ -102,7 +102,24 @@ import { readFileSync as _readFileSync, readdirSync as _readdirSync } from 'node
 {
   const MARK = /[★✓✗]/
   //   ★★**内部用词**：★出了这个仓就没人认识的那些称呼 ✓（★新加一个之前，先 `git grep` 数一遍 ✓）
-  const INNER = /WEB鲸|阿鲸|本鲸|鲸鲸|小鲸|主人|缸|正本|子agent|记事本|本子/
+  const INNER = /WEB鲸|阿鲸|本鲸|鲸鲸|小鲸|主人|缸|正本|子agent|记事本|本子|班级|老师|同学|上游记忆|维护者/
+  //   ★★★**2026-10-12 03:3x 按 QQ鲸 的红线加** ✗✓✓：
+  //     ★① **范围**：★原先 `if (!e.name.endsWith('.md')) continue` ✗ ⇒ ★**只扫 `.md`** ⇒
+  //       ★`hooks/pre-commit`（**无扩展名** ✗）与**全部 `packages/*/index.js`** **从来不扫** ✗
+  //       —— ★`bus/index.js` 那 20 处**就是这么漏的** ✓✓；
+  //     ★② **词表**：★漏了 `班级|老师|同学|上游记忆|维护者` ✗，★且**只匹配中文** ✗ ⇒
+  //       ★英文译名 `the tank`／`the keeper`／`the class`／`WEB whale` **全绕得过** ✗✓。
+  //   ⓘ **一个我要补的口径** ✗✓：★**标记只查文档** ✓ —— ★代码注释里的 `★✓✗` 是**本仓的书写风格** ✓，
+  //     ★一放开就全红 ⇒ ★**文档查"标记 ＋ 词"、代码与配置只查"词"** ✓✓。
+  //   ⓘ **自豁免** ✗：★**词表就住在下面这行里** ✓ ⇒ ★**这个文件自己跳过** ✓（否则永远红 ✓）。
+  //   ★★★**2026-10-12 03:3x 校准（★第一次放开就抓出 8 份假阳性 ✓）** ✗✓✓：
+  //     ★`LICENSE` × 8 份命中「`the tank`」✗ —— ★原因是版权行「★**`Copyright (c) 2026 The Tank`**」✓
+  //     ★而那是**本账号的 git 身份名**（★提交作者 ✓）、**不是内部称呼** ✗ ⇒
+  //     ★**英文别名改成区分大小写**（★真正的泄漏写法是小写 `the tank` ✓）＋ ★**版权行整行跳过** ✓✓。
+  //     ⓘ 教训同"太严的守卫比没有更坏" ✓：★判据第一次开火时，★**先看它打的是不是该打的人** ✓。
+  const INNER_EN = /\bthe tank\b|\bthe keeper\b|\bthe class\b|\bWEB whale\b/
+  const COPYRIGHT = /Copyright\s*\(c\)/i
+  const SELF = 'scripts/selftest-all.mjs'
   const SKIP = ['node_modules', '.git', '.strip-backups']
   const offenders = []
   const offenders2 = []
@@ -114,7 +131,11 @@ import { readFileSync as _readFileSync, readdirSync as _readdirSync } from 'node
       const p = join(dir, e.name)
       const rel = relBase ? relBase + '/' + e.name : e.name
       if (e.isDirectory()) { walk(p, rel); continue }
-      if (!e.name.endsWith('.md')) continue
+      if (rel === SELF) continue // ★词表自豁免 ✓
+      const isDoc = e.name.endsWith('.md')
+      const isSrc = /\.(js|mjs|cjs|yml|yaml|json)$/.test(e.name)
+      const isNoExt = !e.name.includes('.') // ★如 `hooks/pre-commit` ✓
+      if (!isDoc && !isSrc && !isNoExt) continue
       let text = ''
       try { text = _readFileSync(p, 'utf8') } catch { continue }
       let inFence = false
@@ -123,8 +144,9 @@ import { readFileSync as _readFileSync, readdirSync as _readdirSync } from 'node
       for (const l of text.split('\n')) {
         if (/^\s*```/.test(l)) { inFence = !inFence; continue }
         if (inFence) continue
-        if (MARK.test(l)) hitMark = true
-        if (INNER.test(l)) hitWord = true
+        if (isDoc && MARK.test(l)) hitMark = true // ★标记只查文档 ✓
+        if (COPYRIGHT.test(l)) continue // ★版权行跳过（★那里是 git 身份名 ✓）
+        if (INNER.test(l) || INNER_EN.test(l)) hitWord = true
         if (hitMark && hitWord) break
       }
       if (hitMark) offenders.push(rel)

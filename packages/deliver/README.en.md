@@ -30,7 +30,7 @@ The interface carries `apiVersion`; the core knows no member name and no type id
 | **`dormancyOf(id)`** | **`{ state, days, lastMs, source }`** —— **who is still awake** (see "Dormancy decision" below) |
 | `log` | **a trace of the decisions** (for self-tests and troubleshooting) |
 
-## Dormancy decision (S10 v2 —— ported from the class design document on 2026-10-10)
+## Dormancy decision (S10 v2 —— ported from the same-family implementation’s design document on 2026-10-10)
 
 **The lesson from v1 (the design document's own words)**: "**you are not allowed to take "the postman is still alive" for "it is reading its letters"** —— a real round exposes it at once: **Xiao Maomi's postman renews `hello` for her every 10 minutes, but she herself does not read her letters** (what got measured was the postman, not her)"
 

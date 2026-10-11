@@ -107,7 +107,7 @@ const pkEnv = spawnSync(process.execPath, [bin, 'pickup', '--as', 'bob', '--root
 check('pickup：环境变量 WHALE_POST_REMOTE_ROOT 也认（坏件已清 ⇒ 取回 0 封、退出码 0）',
   pkEnv.status === 0 && /取回 0 封/.test(pkEnv.stdout), `exit=${pkEnv.status} out=${String(pkEnv.stdout).slice(0, 40)}`)
 
-// ⑤ S6 完整版（2026-10-10 从班级里设计文档移植）：镜像 hello ／ 远端那份 MOVE 进 seen ／ 到达侧记账（默认关）
+// ⑤ S6 完整版（2026-10-10 从同族实现的设计文档移植）：镜像 hello ／ 远端那份 MOVE 进 seen ／ 到达侧记账（默认关）
 const s6Remote = join(process.env.TEMP ?? '/tmp', `whale-cli-s6-remote-${Date.now()}`)
 const s6Local = join(process.env.TEMP ?? '/tmp', `whale-cli-s6-local-${Date.now()}`)
 const s6Roster = JSON.stringify({ apiVersion: 1, members: [{ id: 'web' }, { id: 'phone', phone: true }, { id: 'qq' }] })
@@ -117,7 +117,7 @@ run(['hello', '--as', 'web', '--root', s6Remote])
 run(['send', '--as', 'phone', '--to', 'web', '--body', '手机在邮筒里留的离线件（正文有货，别当回执）', '--root', s6Remote])
 const pk6 = run(['pickup', '--as', 'web', '--root', s6Local, '--remote', s6Remote, '--only-offline', 'phone'])
 check('S6：取回 1 封 ＋ 镜像 hello 1 份', pk6.status === 0 && /取回 1 封/.test(pk6.stdout) && /镜像 hello 1 份/.test(pk6.stdout), `exit=${pk6.status} out=${String(pk6.stdout).slice(0, 70)}`)
-check('S6：只镜像"只收离线"成员的 hello（班级内成员 web 的 hello 不搬）',
+check('S6：只镜像"只收离线"成员的 hello（同族实现里的成员 web 的 hello 不搬）',
   existsSync(join(s6Local, 'hello', 'phone.json')) && !existsSync(join(s6Local, 'hello', 'web.json')),
   JSON.stringify((() => { try { return readdirSync(join(s6Local, 'hello')) } catch { return [] } })()))
 check('S6：远端那份 **MOVE 进 seen/**（消费凭证 —— 不是删掉）',
@@ -211,7 +211,7 @@ run(['pickup', '--as', 'web', '--root', b6Local, '--remote', b6Root, '--only-off
 check('S6b：**新回执**会被补镜（只多 1 份）', b6Acks(b6Local).length === 3, `本机 ${b6Acks(b6Local).length} 份`)
 
 // S11 取件那半边：把**明示休眠**者信箱里积压的信**退回** 
-//   （2026-10-10 从设计文档移植；设计文档判据 105-106 ＋「维护者 2026-10-06 02:5x 令」）
+//   （2026-10-10 从设计文档移植；设计文档判据 105-106 ＋「2026-10-06 定的口径」）
 //   它扫**两个地方**：本机 `inbox/<谁>/` ＋ **远端邮筒的** `inbox/<谁>/` （只扫本机是不够的）
 //   ⚠️ **推断休眠不自动退** （设计文档原话）：否则"退掉积压 ⇒ 证据消失 ⇒ 又判活跃"**来回摆** 
 const s11Root = join(process.env.TEMP ?? '/tmp', `whale-cli-s11-rem-${Date.now()}`)
@@ -266,7 +266,7 @@ check('S11：说明里写明「此人无法收到邮件」＋「没有进收件�
   //   它把"**猜测**"和"**决定**"分开：推断永远是推断（`inferred`）；
   //     而"钉"是**一个人的决定** ⇒ 落盘留痕（谁／为什么／什么时候）⇒ 从此算 `declared`。
   //   **闭环**：**推断（只提示）→ 人来钉（留痕）→ 才退**。
-  const pinRun = run(['dormant', '--pin', 'quiet', '--why', '十天没读信，维护者决定先钉住', '--by', '自测', '--root', qLocal])
+  const pinRun = run(['dormant', '--pin', 'quiet', '--why', '十天没读信，使用者决定先钉住', '--by', '自测', '--root', qLocal])
   check('钉：`dormant --pin` 成功，且**留痕**（谁／为什么／什么时候 —— 那是一个决定）',
     pinRun.status === 0 && /十天没读信/.test(pinRun.stdout) && /自测/.test(pinRun.stdout), String(pinRun.stdout).slice(0, 80))
   check('钉：`dormant` 不带参数 ⇒ **列出来**（钉过谁看得见）',
@@ -280,7 +280,7 @@ check('S11：说明里写明「此人无法收到邮件」＋「没有进收件�
     unpinRun.status === 0 && /自测/.test(unpinRun.stdout) && !run(['dormant', '--root', qLocal]).stdout.includes('· quiet'))
 }
 
-// ⑥ S12 断线不卡死（2026-10-10 从班级里设计文档移植）：动"邮筒"之前先探活
+// ⑥ S12 断线不卡死（2026-10-10 从同族实现的设计文档移植）：动"邮筒"之前先探活
 //    病：SMB 掉线时**同步 fs 会挂住几十秒** （本地盘不会）⇒ pickup 会卡住 
 //    方：只看 **TCP 445** 通不通；本机路径不探；"Node 的同步 fs 没有超时" ⇒ 靠子进程 ＋ timeout 拿上限 
 const deadStart = Date.now()

@@ -229,7 +229,7 @@ Three rules (do not mix them up):
 | | `helloMaxAgeMs` | `24 hours` | how old a handshake may be |
 | | `defaultType` | `'direct'` | set it to `null` ⇒ **a letter with no type is refused** (we do not guess for the caller) |
 | | `offlineOnlyFlag` + `offlineOnlyMode` | unset / `'warn'` | **three states**: unset ⇒ off; an attribute name ⇒ **send anyway + say so** (`wakePrediction.offlineOnly` — criteria 58-62: **no more refusal**); `offlineOnlyMode: 'reject'` ⇒ **the old refusal** |
-| | `dormantFlag` | unset | a member **explicitly marked dormant** is **refused on the spot** (the letter **never enters their mailbox**; `--force` does not exempt it). **Never guess dormancy yourself** (not from "how long since their last hello" — the rule from the class: "**only an explicit `dormant` bounces; do not guess**") |
+| | `dormantFlag` | unset | a member **explicitly marked dormant** is **refused on the spot** (the letter **never enters their mailbox**; `--force` does not exempt it). **Never guess dormancy yourself** (not from "how long since their last hello" — the existing rule: "**only an explicit `dormant` bounces; do not guess**") |
 | `roster` | `file` | `<root>/roster.json` | the roster file |
 | | `groupWithout` | unset | **broadcasts drop** members carrying this attribute by default (see §7) |
 | | `sample` | `false` | `true` ⇒ fall back to the built-in sample when the file is missing (for a quick try only) |
