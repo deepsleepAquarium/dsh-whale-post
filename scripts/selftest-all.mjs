@@ -102,7 +102,15 @@ import { readFileSync as _readFileSync, readdirSync as _readdirSync } from 'node
 {
   const MARK = /[★✓✗]/
   //   ★★**内部用词**：★出了这个仓就没人认识的那些称呼 ✓（★新加一个之前，先 `git grep` 数一遍 ✓）
-  const INNER = /WEB鲸|阿鲸|本鲸|鲸鲸|小鲸|主人|缸|正本|子agent|记事本|本子|班级|老师|同学|上游记忆|维护者/
+  //   ★★★**2026-10-12 05:2x 再补三个词**（★搭档在 A 包里点出来的 ✓）：
+  //     ★① `真局`（★缸内说法，★英文孪生写的是 `a real deployment` ✓）；
+  //     ★② `小毛咪`（★**真成员昵称** ✗ —— ★它在 `deliver/README.md:36` 的**逐字引语**里 ✓，
+  //       ★搭档**拒绝动引语**（★理由：★"改引语就是改别人说的话"✓ —— ★而本仓甲批正有
+  //       ★`audit-36` 伪造引语／`audit-12` 改引号里的原词两个 DEFECT ✓✓）⇒ ★**交给我裁定** ✓；
+  //       ★★我的裁定：★**去引号、改成陈述** ✓ —— ★既保住"不许拿『邮差活着』当『它在读信』"
+  //       这层意思 ✓、★又去掉真名与"原话"二字 ✓（★改完这里才敢把词加进表 ✓）；
+  //     ★③ `Xiao Maomi`（★英文音译 —— ★**比中文更露** ✗✓）。
+  const INNER = /WEB鲸|阿鲸|本鲸|鲸鲸|小鲸|主人|缸|正本|子agent|记事本|本子|班级|老师|同学|上游记忆|维护者|真局|小毛咪/
   //   ★★★**2026-10-12 03:3x 按 QQ鲸 的红线加** ✗✓✓：
   //     ★① **范围**：★原先 `if (!e.name.endsWith('.md')) continue` ✗ ⇒ ★**只扫 `.md`** ⇒
   //       ★`hooks/pre-commit`（**无扩展名** ✗）与**全部 `packages/*/index.js`** **从来不扫** ✗
@@ -117,7 +125,7 @@ import { readFileSync as _readFileSync, readdirSync as _readdirSync } from 'node
   //     ★而那是**本账号的 git 身份名**（★提交作者 ✓）、**不是内部称呼** ✗ ⇒
   //     ★**英文别名改成区分大小写**（★真正的泄漏写法是小写 `the tank` ✓）＋ ★**版权行整行跳过** ✓✓。
   //     ⓘ 教训同"太严的守卫比没有更坏" ✓：★判据第一次开火时，★**先看它打的是不是该打的人** ✓。
-  const INNER_EN = /\bthe tank\b|\bthe keeper\b|\bthe class\b|\bWEB whale\b/
+  const INNER_EN = /\bthe tank\b|\bthe keeper\b|\bthe class\b|\bWEB whale\b|Xiao Maomi/
   const COPYRIGHT = /Copyright\s*\(c\)/i
   const SELF = 'scripts/selftest-all.mjs'
   const SKIP = ['node_modules', '.git', '.strip-backups']

@@ -32,7 +32,7 @@ The interface carries `apiVersion`; the core knows no member name and no type id
 
 ## Dormancy decision (S10 v2 —— ported from the same-family implementation’s design document on 2026-10-10)
 
-**The lesson from v1 (the design document's own words)**: "**you are not allowed to take "the postman is still alive" for "it is reading its letters"** —— a real round exposes it at once: **Xiao Maomi's postman renews `hello` for her every 10 minutes, but she herself does not read her letters** (what got measured was the postman, not her)"
+**The lesson from v1 (design document)**: **you are not allowed to take "the postman is still alive" for "it is reading its letters"** —— **a real deployment exposes it at once**: **one member's postman renews `hello` for her every 10 minutes, but she herself does not read her letters** (what got measured was the postman, not her)
 
 So the decision runs **two paths**, **both carrying `source`, and an inference must never be stated as a declaration**:
 

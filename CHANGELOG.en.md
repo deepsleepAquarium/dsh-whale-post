@@ -791,8 +791,8 @@ the three in-service profiles (`desktop` / `qqbot` / `web`) **never changed mtim
  **Measured numbers**: an unreachable UNC ⇒ **judged dead in 2.8 s** (message: "this time **not a single file was touched**");
  with the probe short-circuited ⇒ it takes **22.7 s** to fail —— **that is how the original's "tens of seconds" was confirmed**.
 * **`deliver`: dormancy detection v2 (`dormancyOf`)** —— **the third "half" ported from the original original**:
- **the v1 lesson** (verbatim from the original): "**do not take 'the postman is alive' for 'they are reading their mail'** ——
- a real deployment exposes it at once: **小毛咪's postman renews her `hello` every 10 minutes, but she herself does not read letters** (what you measure is the postman, not her)".
+ **the v1 lesson** (design document): **do not take 'the postman is alive' for 'they are reading their mail'** ——
+ a real deployment exposes it at once: **one member's postman renews its `hello` every 10 minutes, but it does not read letters itself** (what you measure is the postman, not the reader).
  ⇒ Two paths, **both carrying `source` (an inference must never be reported as a declaration)**: ① **declared** ⇒ `'declared'`;
  ② **inferred**: **"how long the oldest unread letter in their mailbox has been lying there"**.
  Four states: `awake` / `quiet` / `dormant` plus **`unknown`** (**"we do not know" ≠ "they are dormant"**).
