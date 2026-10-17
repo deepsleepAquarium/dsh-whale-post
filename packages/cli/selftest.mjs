@@ -420,6 +420,30 @@ try {
 const recBad = run(['reconcile', '--as', 'web', '--days', '3', '--root', recRoot])
 check('对账：**少一封 ⇒ 必须报差**（退出码 3；证明它是真读文件的）', recBad.status === 3, String(recBad.status))
 
+// ── `env`：引擎自检（2026-10-14 加）────────────────────────────────────
+//   **为什么要它** ✗✓：★本仓七件**声明"两种引擎上都跑得住"**（`CHANGELOG`《兼容性》✓）——
+//     而★"装在哪条线上、装没装、启没启"原来**只能靠人翻 profile** ✗ ⇒ ★做成一条命令 ✓。
+//   ⚠️ **判据只认"能跑通 ＋ 说出三样事实"** ✓ —— ★不认具体版本号 ✗（★那是会变的环境事实，
+//     写进判据就会"改一台机器红一次" ✗）。
+const envDir = join(process.env.TEMP ?? '/tmp', `whale-cli-env-${Date.now()}`)
+mkdirSync(envDir, { recursive: true })
+//   ★用一个**假的 DSH_HOME**（`profiles/` 下放一个假 profile）⇒ ★不碰真机器的 profile ✓
+const fakeHome = join(envDir, 'dshhome')
+mkdirSync(join(fakeHome, 'profiles', 'fakecli'), { recursive: true })
+writeFileSync(join(fakeHome, 'profiles', 'fakecli', 'package.json'), JSON.stringify({
+  name: 'dsh-profile-fakecli', private: true,
+  dependencies: { 'dsh-whale-post-bus': 'link:/x' },
+  dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', 'dsh-whale-post-bus'] } },
+}), 'utf8')
+//   ⓘ **`run` 助手不接 `env`**（`const run = (args) => spawnSync(…, { encoding })` ⇒ 只传两个参数 ✗）
+//     ⇒ ★这三条要**直接 `spawnSync`** 并把 `DSH_HOME` 传进去 ✓（★否则它读的是真机器的 profile ✗）。
+const envRun = spawnSync(process.execPath, [bin, 'env'], { encoding: 'utf8', env: { ...process.env, DSH_HOME: fakeHome } })
+const envOut = String(envRun.stdout ?? '')
+check('env：退出码 0（自检命令能跑通）', envRun.status === 0, String(envRun.status))
+check('env：说得出"本机有哪几条引擎线"', envOut.includes('引擎线'), envOut.split(/\r?\n/).slice(0, 3).join(' / '))
+check('env：说得出"装没装／启没启"', envOut.includes('启用') && envOut.includes('fakecli'), envOut.split(/\r?\n/).find((l) => l.includes('fakecli')) ?? '(没列出 fakecli)')
+check('env：装了但没进 bundles 的件会**被点名**（不静默）', envOut.includes('装了但没启用') || envOut.includes('启用 1/6'), envOut.split(/\r?\n/).find((l) => l.includes('装了但没启用')) ?? '(没有这一行)')
+
 for (const c of checks) console.log(`${c.ok ? 'PASS' : 'FAIL'}  ${c.name}${c.ok ? '' : '  :: ' + c.extra}`)
 const pass = checks.filter((c) => c.ok).length
 console.log(`\n${pass}/${checks.length} 通过`)

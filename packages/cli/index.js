@@ -24,6 +24,7 @@
  */
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync, renameSync, unlinkSync, statSync, utimesSync } from 'node:fs'
 import { join } from 'node:path'
+import { homedir } from 'node:os'
 import { spawnSync } from 'node:child_process'
 import { createBus } from 'dsh-whale-post-bus'
 import { createRoster } from 'dsh-whale-post-roster'
@@ -301,6 +302,119 @@ function selftest() {
   return pass === checks.length
 }
 
+// ── env：引擎自检（2026-10-14 加 · 需求：「自动判断接的是 CLI 还是 desktop，接对应版本」）──
+//   **为什么需要它** ✗✓：★本仓七件**本来就不区分两版** ✓ —— 靠的是"只用 `ctx.provide`／`ctx.get`／
+//     `apiVersion` 三样 ＋ 不碰 `ctx.whale` ＋ 不用 `inject`"（见 `CHANGELOG` 的《兼容性》一节 ✓）；
+//     ★但**两版的引擎线号是不一样的** ✗（桌面版 `0.2.0-rc.2`／CLI `0.1.5-*` ✓ —— 2026-10 实测 ✓）⇒
+//     ★"装在哪一版上、装没装、启没启"这三件事**人得看得见** ✓✓。
+//   **它做什么** ✓：★**只读**三样 ——
+//     ① ★**本机有哪几条引擎线**（CLI 有没有、什么版本；桌面版的 profile 在不在）✓；
+//     ② ★**我们的六件插件在每条 profile 里**装没装、**在不在 `dsh.profile.bundles` 里**（＝启没启用）✓；
+//     ③ ★**一句话结论**：★"你这条是 CLI 线／桌面版线／都装了" ✓✓。
+//   **它不做什么** ✗：★**不写任何 profile、不装东西、不碰桌面版进程** ✓ ——
+//     ★桌面版的 profile **归 Electron 程序独占** ✗（CLI 写它会直接被拒：★
+//     「managed exclusively by the Electron application」✓）⇒ ★那一侧只能**从插件页点** ✓。
+const OUR_PLUGINS = ['bus', 'roster', 'types', 'deliver', 'gate', 'verify']
+const OUR_PKG = (n) => `dsh-whale-post-${n}`
+
+function dshHome() {
+  return process.env.DSH_HOME ?? join(homedir(), '.dsh')
+}
+
+function readJsonQuiet(p) {
+  try { return JSON.parse(readFileSync(p, 'utf8')) } catch { return null }
+}
+
+//   ★一条 profile 的"装／启用"统计（★只看 package.json，★不跑引擎 ✓）
+function profileStats(profileDir) {
+  const pkg = readJsonQuiet(join(profileDir, 'package.json'))
+  if (!pkg) return null
+  const deps = pkg.dependencies ?? {}
+  const bundles = Array.isArray(pkg?.dsh?.profile?.bundles) ? pkg.dsh.profile.bundles : []
+  const installed = OUR_PLUGINS.filter((n) => Object.prototype.hasOwnProperty.call(deps, OUR_PKG(n)))
+  const enabled = OUR_PLUGINS.filter((n) => bundles.includes(OUR_PKG(n)))
+  return { pkg, installed, enabled, hasCli: Object.prototype.hasOwnProperty.call(deps, 'dsh-whale-post-cli') }
+}
+
+function mainEnv() {
+  const home = dshHome()
+  const lines = []
+  lines.push('whale-post env —— 引擎自检（只读：不写 profile、不装东西、不碰桌面版进程）')
+  lines.push('')
+
+  //   ★① CLI 线
+  //   ⓘ **写法**：★这里**不给 `shell: true` 传数组**（Node 会报 DEP0190 弃用警告）⇒
+  //     ★直接给一条**命令串** ✓（`dsh` 在 Windows 上是 `.cmd`，走 shell 才找得到 ✓）。
+  let cliVer = null
+  try {
+    const r = spawnSync('dsh --version', { encoding: 'utf8', shell: true, timeout: 20000 })
+    if (r.status === 0) cliVer = String(r.stdout ?? '').trim()
+  } catch { /* 没有就没有 */ }
+  lines.push('本机的引擎线：')
+  lines.push(`  · CLI       ${cliVer ? `✓ dsh ${cliVer}` : '（没找到 dsh 命令）'}`)
+
+  //   ★② 桌面版线（★看 profile 在不在 —— 那是"装得到"的前提 ✓；★不碰进程 ✓）
+  const profilesRoot = join(home, 'profiles')
+  const desktopDir = join(profilesRoot, 'desktop')
+  const hasDesktop = existsSync(desktopDir)
+  lines.push(`  · desktop   ${hasDesktop ? `✓ profile 在（${desktopDir}；★归桌面版程序独占 ✗）` : '（没找到 desktop profile）'}`)
+  lines.push('')
+
+  //   ★③ 逐 profile 看我们那六件
+  let names = []
+  try {
+    names = readdirSync(profilesRoot, { withFileTypes: true })
+      .filter((e) => e.isDirectory() && !e.name.includes('.bak') && !e.name.includes('.broken'))
+      .map((e) => e.name)
+  } catch { /* 没有 profiles 目录 */ }
+
+  const rows = []
+  for (const name of names) {
+    const st = profileStats(join(profilesRoot, name))
+    if (!st) continue
+    rows.push({ name, st })
+  }
+  if (rows.length === 0) {
+    lines.push('（没找到任何 dsh profile —— 说明这台机器上还没装过引擎，或 DSH_HOME 指到了别处）')
+    console.log(lines.join('\n'))
+    return 0
+  }
+
+  lines.push('我们的六件插件（装 ＝ 在 dependencies 里；启用 ＝ 在 dsh.profile.bundles 里）：')
+  for (const { name, st } of rows) {
+    const tag = name === 'desktop' ? '（桌面版线）' : ''
+    lines.push(`  · ${name.padEnd(14)}装 ${st.installed.length}/${OUR_PLUGINS.length}　启用 ${st.enabled.length}/${OUR_PLUGINS.length}${st.hasCli ? '　（cli 也装了）' : ''} ${tag}`)
+    if (st.installed.length && st.enabled.length < st.installed.length) {
+      const notEnabled = st.installed.filter((n) => !st.enabled.includes(n))
+      lines.push(`       ⚠️ 装了但没启用：${notEnabled.join('、')}（★"装了"不等于"在用" ✗ —— 要在 bundles 里才算 ✓）`)
+    }
+  }
+  lines.push('')
+
+  //   ★④ 一句话结论（★这就是那条需求要的"自动判断" ✓）
+  const anyCli = rows.some((r) => r.name !== 'desktop' && r.st.enabled.length > 0)
+  const anyDesktop = rows.some((r) => r.name === 'desktop' && r.st.enabled.length > 0)
+  const verdict = anyCli && anyDesktop
+    ? '两种引擎线上都有启用的件 ⇒ 注意：★同一个成员不要同时在两条线上跑（会抢宿主）✗'
+    : anyDesktop
+      ? '这条机器上是【桌面版线】在用 ✓'
+      : anyCli
+        ? '这台机器上是【CLI 线】在用 ✓'
+        : '两条线上都还没启用任何一件 ⇒ 照 docs/INSTALL.md 装 ✓'
+  lines.push('结论：' + verdict)
+  lines.push('')
+  //   ★★**这一段**不写死版本号** ✗✓（2026-10-17 的教训 ✓）：★原来我硬编码了「桌面版 `0.2.0-rc.2`／
+  //     CLI `0.1.5-*`」✗ —— ★而那天本机 CLI 已经报 `0.2.0-rc.2` 了 ✓ ⇒ ★**硬编码的立刻就成了假话** ✓✓。
+  //     ⇒ ★改成"**本机 CLI 报什么就印什么**"＋★**只给判断方法、不给结论** ✓✓。
+  lines.push(`ⓘ 本机 CLI 自报的引擎版本：${cliVer ?? '（没取到）'}　—　桌面版的实际版本以程序自己为准`)
+  lines.push('  （本工具**不读**桌面版的安装目录 —— 那是程序的地盘 ✗）')
+  lines.push('⇒ 装第三方插件前，先看它 `package.json` 里 `peerDependencies["@deepseek-ai/dsh-tools"]`')
+  lines.push('  的范围能不能覆盖你这一版；覆盖不了就别装 —— 可能会崩或丢数据 ✗')
+  console.log(lines.join('\n'))
+  return 0
+}
+
+
 // ── 命令 ───────────────────────────────────────────────────────────────
 function main() {
   // --help／-h／help 一律当"打用法"（陌生人第一下就敲这个）
@@ -316,6 +430,7 @@ function main() {
       '                                     看安全校验状态（默认禁用；禁用中会提示开启，连提三天后不再提）',
       '  nag                                看该不该提示（未开启时每天至多一次；提满三天后不再提）',
       '  roster  / types / key              看名单 / 看类型 / 看密钥指纹',
+      '  env                                引擎自检：本机有哪几条引擎线、我们的件在每条 profile 里装没装／启没启（只读）',
       '  selftest                           自测（只看退出码：0 过 / 非 0 不过）',
       '',
       '通用：--root <目录>（默认 ./.whale-mail，或环境变量 WHALE_POST_ROOT）   --roster <名单 json>',
@@ -323,6 +438,8 @@ function main() {
     return 0
   }
   if (!cmd) die(2, '用法：whale-post --help')
+  //   ★`env` 要在 `wire()` **之前**返回 ✓ —— 它**不需要邮局总线**（只读 profile，不碰信箱 ✓）
+  if (cmd === 'env') return mainEnv()
   const { bus, services } = wire()
   try {
     if (cmd === 'key') {

@@ -7,6 +7,38 @@
 
 ---
 
+## v0.7.0 —— 2026-10-17 (**unreleased**: in the working tree)
+
+> **Adding `env`: one command to see which engine line we are installed on, whether it is installed, and whether it is enabled —— instead of a human reading profiles.**
+
+### **Why this release exists**
+
+All seven packages **declare that they run on both engines** (the desktop engine and the web engine; see the Compatibility section in `v0.4.0`).
+That claim rests on three self-imposed rules: only `ctx.provide` / `ctx.get` / `apiVersion`, never touching `ctx.whale`, and no `inject`.
+**Not distinguishing between the two versions is correct by design** —— but "**which line is it installed on, is it installed, is it enabled**" used to be answerable only by a human reading `profiles/*/package.json`, and **one missed profile flips the conclusion**.
+
+Concretely: the script that verifies "it installs and boots in a real engine" (`scripts/check-install.mjs`) has always walked the **CLI line** (`dsh` plus the `headless` template), while the repository also claims support for the **desktop** line.
+The desktop profile is owned exclusively by the Electron application (the CLI is refused outright), so the desktop line could neither be installed from the CLI nor automatically checked —— **supported in the claim, with no check behind it**.
+
+### **What changed**
+
+* New `whale-post env`: a read-only self-check printing three things ——
+  1. which engine lines this machine has (is `dsh` there, what version does it report; does the desktop profile exist);
+  2. for every profile, whether our six plugins are **installed** (looked up in `dependencies`) and **enabled** (looked up in `dsh.profile.bundles`);
+  3. one-line verdict: is this machine using the CLI line, the desktop line, or both (and if both, a warning not to run the same member on both at once).
+  It writes no profile, installs nothing, and does not touch the desktop process.
+* `check-install` gains item ⑧: a **read-only check of the desktop line**. The verdict rule is spelled out ——
+  **not installed = SKIP** (the user's freedom, not a failure); **installed but not in `bundles` = FAIL**
+  ("installed but not enabled" is as good as not installed, the same disease as item ③).
+* Criteria 367 → **371** (`cli` 61 → 65: `env` adds four —— exit code, it names the engine lines,
+  it reports installed/enabled, and plugins that are installed but not enabled are called out).
+
+### **Which number this is, and why**
+
+**Adding a command changes the interface** ⇒ per this repository's rule, bump the **middle** number: `0.6.1` → `0.7.0`.
+
+---
+
 ## v0.6.1 —— 2026-10-11 (**released**)
 
 > **Removing a sentence from the first line of `--help` that had stopped being true.**

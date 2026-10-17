@@ -27,7 +27,7 @@ export const BASELINE = {
   deliver: 23,
   gate: 53,
   verify: 49,
-  cli: 61,
+  cli: 65,
   xcheck: 6,
   doccheck: 5,
   pkgcheck: 17,

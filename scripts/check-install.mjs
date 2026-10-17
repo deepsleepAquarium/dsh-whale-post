@@ -13,6 +13,15 @@
  * ⚠️**它不会动你现有的 profile** —— 临时 profile 的名字带时间戳；
  *   **而"在跑的引擎"一个都不碰** （不重启、不 kill）。
  *
+ * ★**⑧ 桌面版线（2026-10-14 加）** ✗✓：★上面 ①～⑦ 走的都是 **CLI 那条线** ✗ ——
+ *   而本仓七件**声明要在两种引擎上都跑得住**（`CHANGELOG`《兼容性》一节 ✓）⇒ ★"桌面版那条线"
+ *   一直没人自动看 ✗✓。⇒ ★⑧ 补上**只读**核对：★桌面版 profile 在不在、我们的件**装没装**、
+ *   ★装了的**在不在 `dsh.profile.bundles` 里**（★＝启没启用 ✓）。
+ *   ⓘ★**判分**：★"没装" ＝ **SKIP**（用户的自由，不算失败 ✓）；★"装了但没启用" ＝ **FAIL** ✗
+ *     （★装了不启用 ＝ 白装，与 ③ 同一条病 ✓）。
+ *   ⓘ★**它不能替桌面版装** ✗ —— ★桌面档归 Electron 程序独占（CLI 写它会被直接拒 ✓），
+ *     ★**装那一步只能从桌面版的插件页点** ✓✓。
+ *
  * 用法：`node scripts/check-install.mjs`（会真建 profile、真启一次，约 1 分钟）
  */
 import { existsSync, readFileSync, rmSync, readdirSync, mkdirSync, copyFileSync } from 'node:fs'
@@ -103,6 +112,43 @@ try {
     say(left.length === 0, '⑥ 一次性 profile 已清掉', left.length ? '残留：' + left.join(', ') : '')
   } catch (e) {
     say(false, '⑥ 清 profile 时出错', String(e.message).slice(0, 80))
+  }
+}
+
+// ── ⑧ 桌面版线：只读核对（2026-10-14 加 · 需求「自动判断接的是 CLI 还是 desktop」）──
+//   **为什么加** ✗✓：★上面 ①～⑦ 走的是 **CLI 那条线**（`dsh` 命令 ＋ `headless` 模板）✗ ——
+//     而本仓七件**声明要在两种引擎上都跑得住**（★`CHANGELOG` 的《兼容性》一节 ✓：
+//     桌面版／web 版；靠"只用 `ctx.provide`／`ctx.get`／`apiVersion` ＋ 不碰 `ctx.whale`
+//     ＋ 不用 `inject`"保证 ✓）⇒ ★**于是"桌面版那条线"一直没人自动看** ✗✓✓。
+//   **它能做什么** ✓：★**只读**核对 —— ★桌面版 profile 在不在 ✓、★我们的件**装没装** ✓、
+//     ★装了的**在不在 `dsh.profile.bundles` 里**（★＝启没启用 ✓）。
+//   **它不能做什么** ✗：★**替桌面版装** ✗ —— ★桌面版的 profile **归 Electron 程序独占** ✓
+//     （★CLI 写它会直接被拒：★「managed exclusively by the Electron application」✓ ——
+//     ★2026-10-12 本机实测过 ✓）⇒ ★**装那一步只能从桌面版的插件页点** ✓✓。
+//   ⓘ **判分口径** ✗：★"**没装**"＝**SKIP**（★那是用户的自由，★不算失败 ✓）；
+//     ★"**装了但没启用**"＝**FAIL** ✗（★"装了不启用"等于白装 —— 与上面 ③ 同一条病 ✓）。
+const desktopDir = join(dshHome, 'profiles', 'desktop')
+const plugs = parts.filter((p) => p !== 'cli')
+if (!existsSync(desktopDir)) {
+  console.log('  SKIP  ⑧ 桌面版线：本机没有 desktop profile（这台机器只跑 CLI 线）')
+} else {
+  try {
+    const dj = JSON.parse(readFileSync(join(desktopDir, 'package.json'), 'utf8'))
+    const ddeps = dj.dependencies ?? {}
+    const dbundles = dj.dsh?.profile?.bundles ?? []
+    const installed = plugs.filter((p) => Object.prototype.hasOwnProperty.call(ddeps, 'dsh-whale-post-' + p))
+    const enabled = plugs.filter((p) => dbundles.includes('dsh-whale-post-' + p))
+    if (installed.length === 0) {
+      console.log('  SKIP  ⑧ 桌面版线：desktop profile 在，但我们六件一件都没装')
+      console.log('        （★装它只能从桌面版的插件页点 ✓ —— 桌面档归程序独占，CLI 写不进去 ✗）')
+    } else if (enabled.length === installed.length) {
+      say(true, `⑧ 桌面版线：装 ${installed.length}/6、启用 ${enabled.length}/6（装了的都在 bundles 里 ✓）`, desktopDir)
+    } else {
+      const notEnabled = installed.filter((p) => !enabled.includes(p))
+      say(false, `⑧ 桌面版线：装了 ${installed.length}/6、只启用 ${enabled.length}/6`, '装了但没启用：' + notEnabled.join('、') + '（★白装 ✗）')
+    }
+  } catch (e) {
+    say(false, '⑧ 读桌面版 profile 时出错', String(e.message).slice(0, 80))
   }
 }
 
